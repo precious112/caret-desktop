@@ -74,9 +74,8 @@ chmod +x Caret-Linux-x86_64.AppImage && ./Caret-Linux-x86_64.AppImage   # portab
 Caret is also published as an extension, so you can add it to an editor you already have, no new app to install:
 
 - **Open VSX** (VSCodium, Cursor, Windsurf, Gitpod, code-server, …): open the **Extensions** panel, search **"Caret"**, and install, or get it here: **https://open-vsx.org/extension/caretAI/caret**
-- **VS Code Marketplace:** _coming soon_, `[marketplace link placeholder]`
 
-> **Microsoft VS Code** uses its own marketplace (not Open VSX). Until the Marketplace listing is live, VS Code users can download the `.vsix` from the Open VSX page above and install it via **Extensions → ⋯ → Install from VSIX…**.
+> **Microsoft VS Code** uses its own marketplace (not Open VSX). VS Code users can download the `.vsix` from the Open VSX page above and install it via **Extensions → ⋯ → Install from VSIX…**.
 
 The IDE simply ships this same extension pre-installed and configured, so the experience is identical either way.
 
