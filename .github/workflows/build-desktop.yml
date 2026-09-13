@@ -1,0 +1,158 @@
+name: Build Caret Desktop
+
+# Builds the Caret desktop app (Electron) for macOS, Windows and Linux, and
+# optionally cuts a draft release here. The SOURCE lives in precious112/caret;
+# this repo is the CI host and the download home, which is where the README's
+# download table points.
+#
+# macOS is signed with a Developer ID certificate and notarized by Apple, so it
+# opens on a double-click. Windows and Linux are unsigned for now, and the
+# README documents the one-time OS warning that causes.
+#
+#   gh workflow run build-desktop.yml --repo precious112/caret-desktop \
+#     -f ref=main -f release=true
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Ref of precious112/caret to build (branch, tag or sha)"
+        required: false
+        default: "main"
+      release:
+        description: "Create a draft GitHub Release with the installers"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      # One platform failing should not throw away the other two: each takes
+      # many minutes, and macOS additionally waits on Apple.
+      fail-fast: false
+      matrix:
+        include:
+          # One macOS runner produces BOTH arches. before-pack.cjs stages the
+          # per-arch opencode binary and after-pack.cjs prunes each slice, so a
+          # single invocation is enough (verified locally: arm64 and x64 both
+          # signed and notarized from one Intel Mac).
+          - { os: macos-14, name: macos, args: "--mac --arm64 --x64" }
+          - { os: windows-2022, name: windows, args: "--win --x64 --arm64" }
+          - { os: ubuntu-22.04, name: linux, args: "--linux --x64" }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v4
+        with:
+          repository: precious112/caret
+          ref: ${{ inputs.ref }}
+          path: source
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+
+      - name: Install
+        working-directory: source
+        run: npm ci
+
+      # The .p12 goes straight in as base64 (CSC_LINK accepts content, not just
+      # a path). The .p8 has to be a real file, so it is written here and
+      # removed in the always() step below whatever happens.
+      - name: Stage the notarization key
+        if: matrix.name == 'macos'
+        run: |
+          mkdir -p "$RUNNER_TEMP/sign"
+          echo "${{ secrets.APPLE_API_KEY_P8 }}" | base64 --decode > "$RUNNER_TEMP/sign/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/sign/AuthKey.p8"
+
+      - name: Build (macOS, signed and notarized)
+        if: matrix.name == 'macos'
+        working-directory: source
+        env:
+          CSC_LINK: ${{ secrets.MACOS_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_API_KEY: ${{ runner.temp }}/sign/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          npm run build
+          npx electron-builder ${{ matrix.args }} --publish never
+
+      - name: Build (unsigned)
+        if: matrix.name != 'macos'
+        working-directory: source
+        env:
+          # Without this electron-builder hunts the keychain for an identity and
+          # can pick up something unrelated.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          npm run build
+          npx electron-builder ${{ matrix.args }} --publish never
+
+      - name: Remove the key
+        if: always() && matrix.name == 'macos'
+        run: rm -f "$RUNNER_TEMP/sign/AuthKey.p8"
+
+      - name: Confirm macOS is notarized
+        if: matrix.name == 'macos'
+        working-directory: source
+        run: |
+          for app in release/mac*/Caret.app; do
+            echo "== $app"
+            codesign --verify --deep --strict "$app"
+            xcrun stapler validate "$app"
+            spctl --assess --type execute --verbose=4 "$app"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caret-${{ matrix.name }}
+          path: |
+            source/release/*.zip
+            source/release/*.exe
+            source/release/*.deb
+            source/release/*.rpm
+            source/release/*.AppImage
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: inputs.release
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: precious112/caret
+          ref: ${{ inputs.ref }}
+          path: source
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Read the version
+        id: v
+        run: echo "version=$(node -p "require('./source/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la artifacts
+          gh release create "v${{ steps.v.outputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --title "Caret v${{ steps.v.outputs.version }}" \
+            --draft \
+            --notes "Built from precious112/caret@${{ inputs.ref }}. macOS builds are signed and notarized; Windows and Linux are unsigned, see the README for the one-time OS warning." \
+            artifacts/*
