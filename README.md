@@ -53,15 +53,37 @@ builds them; the **source** is at
 | **Linux**, Fedora/RHEL | [Caret-Linux-x86_64.rpm](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x86_64.rpm) |
 | **Linux**, AppImage | [Caret-Linux-x86_64.AppImage](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x86_64.AppImage) |
 
-Windows and Linux builds are not signed yet, so your OS shows a one-time
-warning. The apps are safe. On Windows, unblock the file first:
+macOS builds are signed and notarized by Apple: download, unzip, drag
+`Caret.app` into **Applications**, double-click. No warnings.
+
+### Windows: what you will see, and what to click
+
+Windows builds are not code-signed yet, so Windows treats the installer as
+unknown. That can produce up to three separate warnings. The app is safe, and
+**you never need to turn off your antivirus** — every warning has a button
+that lets you keep going:
+
+1. **When the download finishes**, the browser may say the file "isn't
+   commonly downloaded".
+   - Chrome: click the download, then **⋯ → Keep → Keep anyway**
+   - Edge: **… → Keep → Show more → Keep anyway**
+2. **When you run the installer**, SmartScreen says "Windows protected your
+   PC". Click **More info → Run anyway**.
+3. **If the file never shows up in Downloads at all**, Defender quarantined it
+   on arrival. Open **Windows Security → Virus & threat protection →
+   Protection history**, find the Caret entry, choose **Restore**, then run
+   the installer and do step 2.
+
+Prefer the terminal? This does the same as step 2:
 
 ```powershell
 Unblock-File "$HOME\Downloads\Caret-Windows-Setup-x64.exe"
 ```
 
-On Linux, `sudo dpkg -i` the `.deb`, `sudo rpm -i` the `.rpm`, or `chmod +x` the
-AppImage.
+### Linux
+
+No signing needed: `sudo dpkg -i` the `.deb`, `sudo rpm -i` the `.rpm`, or
+`chmod +x` the AppImage and run it.
 
 ### You also need Node.js
 
