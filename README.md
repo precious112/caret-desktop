@@ -74,7 +74,16 @@ that lets you keep going:
    Protection history**, find the Caret entry, choose **Restore**, then run
    the installer and do step 2.
 
-Prefer the terminal? This does the same as step 2:
+**If Defender keeps removing the file anyway**, turn real-time protection off
+just for the install:
+
+1. **Windows Security → Virus & threat protection → Manage settings**, switch
+   **Real-time protection** off.
+2. Download and run the installer.
+3. Switch it back on. Windows also re-enables it by itself after a short
+   while, so you cannot forget it off.
+
+Prefer the terminal? This does the same as step 2 of the warnings above:
 
 ```powershell
 Unblock-File "$HOME\Downloads\Caret-Windows-Setup-x64.exe"
