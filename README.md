@@ -46,10 +46,11 @@ builds them; the **source** is at
 | **macOS**, Apple Silicon (M1/M2/M3…) | [Caret-macOS-arm64.zip](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-macOS-arm64.zip) |
 | **macOS**, Intel | [Caret-macOS-x64.zip](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-macOS-x64.zip) |
 | **Windows**, installer | [Caret-Windows-Setup-x64.exe](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Windows-Setup-x64.exe) |
+| **Windows**, Arm installer | [Caret-Windows-Setup-arm64.exe](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Windows-Setup-arm64.exe) |
 | **Windows**, portable | [Caret-Windows-Portable-x64.exe](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Windows-Portable-x64.exe) |
-| **Linux**, Debian/Ubuntu | [Caret-Linux-x64.deb](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x64.deb) |
-| **Linux**, Fedora/RHEL | [Caret-Linux-x64.rpm](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x64.rpm) |
-| **Linux**, AppImage | [Caret-Linux-x64.AppImage](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x64.AppImage) |
+| **Linux**, Debian/Ubuntu | [Caret-Linux-amd64.deb](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-amd64.deb) |
+| **Linux**, Fedora/RHEL | [Caret-Linux-x86_64.rpm](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x86_64.rpm) |
+| **Linux**, AppImage | [Caret-Linux-x86_64.AppImage](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x86_64.AppImage) |
 
 Windows and Linux builds are not signed yet, so your OS shows a one-time
 warning. The apps are safe. On Windows, unblock the file first:
