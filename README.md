@@ -1,143 +1,186 @@
 <div align="center">
-  <h1>Caret IDE</h1>
-  <p><strong>An AI design tool in your IDE, where design and code are one.</strong></p>
+  <h1>Caret</h1>
+  <p><strong>A design canvas over your real code.</strong></p>
   <p>
-    <a href="https://github.com/precious112/caret-ide/releases/latest"><img src="https://img.shields.io/github/v/release/precious112/caret-ide?label=latest" alt="latest release"/></a>
-    <img src="https://img.shields.io/github/downloads/precious112/caret-ide/total?label=downloads" alt="downloads"/>
-    <a href="https://open-vsx.org/extension/caretAI/caret"><img src="https://img.shields.io/open-vsx/v/caretAI/caret?label=Open%20VSX" alt="Open VSX"/></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license"/></a>
+    <a href="https://github.com/precious112/caret-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/precious112/caret-desktop?label=latest" alt="latest release"/></a>
+    <img src="https://img.shields.io/github/downloads/precious112/caret-desktop/total?label=downloads" alt="downloads"/>
+    <img src="https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-lightgrey" alt="platforms"/>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="license"/></a>
+  </p>
+  <p>
+    <a href="https://github.com/precious112/caret-desktop/releases/latest"><strong>Download</strong></a> ·
+    <a href="docs/connect-an-agent.md">Connect your agent</a> ·
+    <a href="https://caretai.cloud">Website</a> ·
+    <a href="https://github.com/precious112/caret/discussions">Discussions</a>
   </p>
 </div>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/Pstore_backend/refs/heads/master/media/media/caret_main_edit-ezgif.com-video-to-gif-converter.gif" width="100%" alt="Caret, edit your UI with AI on a live canvas" />
-</p>
+https://github.com/user-attachments/assets/93e273d4-aed3-45cd-bb5e-c5b587691017
 
-> For decades, design and development have lived in separate worlds: you mock a screen in a design tool, then someone rebuilds it by hand in code, and the two drift apart from the moment they're created. Caret is built on a bet that **this divide no longer needs to exist.** AI is now powerful enough that the design *is* the code.
->
-> In Caret you describe and shape your UI on a live canvas inside your editor, and it stays real, version-controlled React the entire time, then you sync it straight into the app you ship. No separate design tool. No handoff. No drift. One source of truth that is design and code at once.
->
-> It's for the people building the modern frontend: **designers moving into code, and frontend engineers who'd rather design where they already work.** As AI erases the line between designing and building, Caret is what's on the other side: **design and code, finally the same thing.**
+Your pages render on a canvas. Click a headline and retype it, right-click a
+colour and pick a new one, and the change is written into your source files.
+The canvas was never a picture of your app. It is your app.
 
-> This is **Caret IDE**, the Caret extension bundled into a branded **VS Code (OSS) build based on [VSCodium](https://github.com/VSCodium/vscodium)**, so you get a ready-to-go editor with Caret already inside. The core extension lives at **[precious112/caret](https://github.com/precious112/caret)**.
+The design lives in your repo as real React, in git, reviewable in a pull
+request. So a fix you make once is still there tomorrow, instead of being
+regenerated away the next time you ask for something.
+
+- **Edit on the page**: text, colour, images, and size, written to source
+- **Ask for the harder changes**: paint a region, describe it in words
+- **Three versions at once**: generate, compare, keep one
+- **Make the assets too**: logos, photographs, textures, animated backgrounds
+- **Sync into your app**: in any framework, both directions
+- **Bring your own model**: a subscription you have, or an API key
+- **Or bring your own agent**: Claude Code and Codex work over MCP
+
+Free, runs on your machine, no account. This repo holds the **downloads** and
+builds them; the **source** is at
+[precious112/caret](https://github.com/precious112/caret).
 
 ---
 
 ## Download
 
-Grab the build for your platform (links always point to the newest release):
-
 | Platform | Download |
 |----------|----------|
-| **macOS, Apple Silicon** (M1/M2/M3…) | [Caret-macOS-arm64.zip](https://github.com/precious112/caret-ide/releases/latest/download/Caret-macOS-arm64.zip) |
-| **macOS, Intel** | [Caret-macOS-x64.zip](https://github.com/precious112/caret-ide/releases/latest/download/Caret-macOS-x64.zip) |
-| **Windows**, installer (recommended) | [Caret-Windows-UserSetup-x64.exe](https://github.com/precious112/caret-ide/releases/latest/download/Caret-Windows-UserSetup-x64.exe) |
-| **Windows**, system-wide installer | [Caret-Windows-Setup-x64.exe](https://github.com/precious112/caret-ide/releases/latest/download/Caret-Windows-Setup-x64.exe) |
-| **Windows**, portable zip | [Caret-Windows-x64.zip](https://github.com/precious112/caret-ide/releases/latest/download/Caret-Windows-x64.zip) |
-| **Linux**, Debian/Ubuntu (.deb) | [Caret-Linux-x64.deb](https://github.com/precious112/caret-ide/releases/latest/download/Caret-Linux-x64.deb) |
-| **Linux**, Fedora/RHEL (.rpm) | [Caret-Linux-x64.rpm](https://github.com/precious112/caret-ide/releases/latest/download/Caret-Linux-x64.rpm) |
-| **Linux**, AppImage (portable) | [Caret-Linux-x86_64.AppImage](https://github.com/precious112/caret-ide/releases/latest/download/Caret-Linux-x86_64.AppImage) |
-| **Linux**, tarball | [Caret-Linux-x64.tar.gz](https://github.com/precious112/caret-ide/releases/latest/download/Caret-Linux-x64.tar.gz) |
+| **macOS**, Apple Silicon (M1/M2/M3…) | [Caret-macOS-arm64.zip](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-macOS-arm64.zip) |
+| **macOS**, Intel | [Caret-macOS-x64.zip](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-macOS-x64.zip) |
+| **Windows**, installer | [Caret-Windows-Setup-x64.exe](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Windows-Setup-x64.exe) |
+| **Windows**, portable | [Caret-Windows-Portable-x64.exe](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Windows-Portable-x64.exe) |
+| **Linux**, Debian/Ubuntu | [Caret-Linux-x64.deb](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x64.deb) |
+| **Linux**, Fedora/RHEL | [Caret-Linux-x64.rpm](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x64.rpm) |
+| **Linux**, AppImage | [Caret-Linux-x64.AppImage](https://github.com/precious112/caret-desktop/releases/latest/download/Caret-Linux-x64.AppImage) |
 
-## ⚠️ The builds are not code-signed yet, here's how to open them
+Windows and Linux builds are not signed yet, so your OS shows a one-time
+warning. The apps are safe. On Windows, unblock the file first:
 
-Caret IDE isn't signed with a paid OS code-signing certificate yet (those run **$99–$500/yr**, which we'll invest in once Caret gains traction). **The apps are completely safe.** Your OS just shows a one-time warning because it can't see a signature. The most reliable fix is a single **terminal command** (this worked consistently across machines in testing, more dependable than clicking through the dialogs):
-
-### 🍎 macOS
-1. Unzip the download and drag **`Caret.app`** into **Applications**.
-2. Run this in **Terminal**, then open Caret normally:
-   ```bash
-   xattr -dr com.apple.quarantine /Applications/Caret.app
-   ```
-
-### 🪟 Windows
-1. Download the installer.
-2. Open **PowerShell** and unblock it (this removes the "Mark of the Web" that triggers SmartScreen), then run the installer normally:
-   ```powershell
-   Unblock-File "$HOME\Downloads\Caret-Windows-UserSetup-x64.exe"
-   ```
-   > Using the portable zip instead? Unblock everything inside after extracting:
-   > ```powershell
-   > Get-ChildItem -Recurse "$HOME\Downloads\Caret-Windows-x64" | Unblock-File
-   > ```
-
-### 🐧 Linux
-No signing needed:
-```bash
-sudo dpkg -i Caret-Linux-x64.deb      # Debian/Ubuntu
-sudo rpm -i  Caret-Linux-x64.rpm      # Fedora/RHEL
-chmod +x Caret-Linux-x86_64.AppImage && ./Caret-Linux-x86_64.AppImage   # portable
+```powershell
+Unblock-File "$HOME\Downloads\Caret-Windows-Setup-x64.exe"
 ```
 
-## Don't want to install an unsigned IDE? Use Caret in your existing editor
-
-Caret is also published as an extension, so you can add it to an editor you already have, no new app to install:
-
-- **Open VSX** (VSCodium, Cursor, Windsurf, Gitpod, code-server, …): open the **Extensions** panel, search **"Caret"**, and install, or get it here: **https://open-vsx.org/extension/caretAI/caret**
-
-> **Microsoft VS Code** uses its own marketplace (not Open VSX). VS Code users can download the `.vsix` from the Open VSX page above and install it via **Extensions → ⋯ → Install from VSIX…**.
-
-The IDE simply ships this same extension pre-installed and configured, so the experience is identical either way.
+On Linux, `sudo dpkg -i` the `.deb`, `sudo rpm -i` the `.rpm`, or `chmod +x` the
+AppImage.
 
 ---
 
-## How it works
+## Edit on the page
 
-Caret splits your frontend into two layers that live in the same repo:
-
-- A **design layer**, standardized to React and stored under `.caret/`. This is where you design: pages, flows, shared components, and design tokens. Think "Figma frames as code," version-controlled in parallel with your app.
-- Your **application layer**, the app you actually ship, in any framework (React, Vue, Svelte, Angular, …). Caret stays unopinionated about it.
-
-You design in the first layer, then sync into the second. The design layer's predictable structure is what unlocks the live canvas, visual editing, flow simulation, and design→app sync below.
-
-### A standardized design layer
-
-Everything you design lives under `.caret/` as plain React: pages in `.caret/pages/`, reusable pieces in `.caret/components/` and `.caret/layouts/`, navigation in `.caret/flows/`, and design tokens in `.caret/tokens/`. Each page carries a small `meta.json` describing its title, type, states, and tags. Because the design layer is always React with a known shape, Caret can reason about your pages reliably no matter what framework your shipped app uses.
-
-### A token-driven design system
-
-A guided wizard captures the foundations of your design system: a **vibe** descriptor, **color** (brand + neutral character + semantic), **typography** (Google Fonts + scale ratio), **spacing**, and **radius**. It shows a live preview of representative components updating as you tune each one. Pick the character, Caret generates the scale, you override what you want. The result is saved as namespaced JSON under `.caret/tokens/` and injected into generation so every page stays visually consistent.
-
-### A live design canvas
-
-All your pages render on a zoomable, pannable canvas, a Figma-style overview of the whole product. The focused page runs as live, interactive React; the rest show as cached thumbnails so the canvas stays fast even with many pages. Click any page to mount it live, switch viewport presets (desktop / tablet / mobile) to check responsiveness, and pan back out to see how everything fits together.
+Right-click any text, colour or image and change it there. Caret writes it into
+the real source file and the page reloads.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/Pstore_backend/refs/heads/master/media/media/caret_res_sec_edit-ezgif.com-video-to-gif-converter.gif" width="100%" alt="Switching viewport presets to check responsiveness on the canvas" />
+  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/edit-text.gif" width="100%" alt="Editing a headline directly on the page, and Caret confirming the edit landed in the file" />
 </p>
 
-### Visual editing
-
-Edit the rendered UI directly. Right-click an element to change its **text**, **color**, or **image** inline. The change is written back to the exact line of source and reflected instantly via hot-reload, no AI round-trip needed. For anything structural, choose **"Edit with AI"**: Caret hands the model rich context about the element (its source location, component, and props) and applies the change. Element targeting is deterministic via stable `data-caret-id` attributes and AST-level source edits, so edits land precisely instead of guessing.
-
-> **Edit with AI** and all source/file edits are powered by [Cline](https://github.com/cline/cline), the open-source coding agent Caret is built on. It makes the precise code changes behind the scenes.
+Pick a colour and Caret checks it against your design tokens. If one is close,
+it writes the token instead of a hex code, so changing your brand colour later
+changes everywhere that used it. You can drag an edge to resize, too, and the
+size lands in the code.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/Pstore_backend/refs/heads/master/media/media/caret_inline_edit_third_edit-ezgif.com-video-to-gif-converter.gif" width="100%" alt="Editing text, color, and images inline on the rendered UI" />
+  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/edit-colour.gif" width="100%" alt="Picking a colour on the page, and Caret matching it to the brand token" />
 </p>
 
-### Flows and simulation
+## Ask for the harder changes
 
-Define user journeys as flow graphs in `.caret/flows/*.flow.json`, referencing pages by ID. Overlay flow connections on the canvas to see how pages link together, restructure a flow by dragging an edge (Caret offers to update the underlying navigation to match), and enter **simulation mode** to click through your app in a device frame as a real user would, jumping between page states (empty, loading, error, success) with a state selector.
+Some things are too fiddly to click. Paint over the part of the page you mean
+and say what you want. Your agent gets the exact elements you marked, so it
+does not have to guess which bit you meant.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/Pstore_backend/refs/heads/master/media/media/caret_flow_edit-ezgif.com-video-to-gif-converter.gif" width="100%" alt="Defining and editing user flows between pages on the canvas" />
+  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/describe-a-change.gif" width="100%" alt="Painting over a section of a page and describing a change in words, then the rebuilt section" />
 </p>
 
-### Design → app sync
+## Three versions at once
 
-When the design is ready, sync it into your real app. Caret tracks design changes against a git-based bookmark in `.caret/sync-state.json`, reads the current state of both layers, and produces a reviewable plan covering the UI translation plus any state, routing, or data changes the design implies. You review and accept; Caret applies the changes and advances the bookmark. Sync is one-way (design → app) and reversible. An undo restores your app files and rewinds the bookmark.
+When you do not know what you want yet, ask for a few. Caret builds them side by
+side, live, and you keep one. Picking leaves an undo step.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/explore-takes.gif" width="100%" alt="Three versions of a page generating side by side on the canvas, then one is picked and becomes the live page" />
+</p>
+
+## Make the assets too
+
+Say what the thing is and Caret makes it: photographs, textures, logos drawn as
+real vector files, and animated backgrounds written as code so the colours stay
+adjustable. How it is lit, framed and coloured comes from your design tokens, so
+it matches the rest of your work.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/generate-asset.gif" width="100%" alt="Asking for a logo in one sentence and getting several versions to choose from" />
+</p>
+
+## See the journeys
+
+Describe the paths through your product and the canvas draws them over your
+pages. Each journey gets a colour, error paths are dashed, and pages nothing
+leads to are obvious.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/flows.png" width="100%" alt="Two user journeys drawn over the pages on the canvas, each in its own colour, with an error path as a dashed line" />
+</p>
+
+## Sync into your app
+
+Your design lives in `.caret/`. Your app is whatever you ship, in any framework.
+Caret works out which design files changed since the last sync and your agent
+makes the app match. It takes a snapshot first, so undo always works.
+
+It goes the other way too. If someone edits the app directly, Caret notices by
+comparing file contents and offers to bring the design back in line. You see
+both versions and choose. It never merges them for you.
+
+## Catch the mistakes early
+
+Caret runs a set of plain rules over your pages and shows what it finds on the
+canvas without being asked: a colour that is nearly but not quite your brand
+colour, text too faint to read, a heading scale that skips a step.
+
+It also writes your tokens into `AGENTS.md`, `CLAUDE.md` and `.cursor/rules`,
+and keeps them current. An agent told to "build me a card" that has to *decide*
+to look up your spacing scale will not bother, and will invent something
+instead.
+
+## Bring your own model
+
+OpenCode's engine is built in and connects to whichever provider you want: an
+API key, or a subscription you already have. ChatGPT Plus, Pro and Go, Kimi For
+Coding, the Z.AI and Zhipu coding plans, and GitHub Copilot all work as
+providers you sign into. Anthropic is API key only, because Anthropic does not
+allow Claude subscriptions in other tools.
+
+Already working with an agent in your terminal? Caret exposes your design layer
+over MCP so it can read and write too. Claude Code and Codex are tested.
+See [docs/connect-an-agent.md](https://github.com/precious112/caret/blob/main/docs/connect-an-agent.md).
 
 ---
 
-## Also a full coding agent
+## Your first project
 
-Caret is built on the open-source [Cline](https://github.com/cline/cline) coding agent, so beyond design it's a complete autonomous coding assistant: bring any API and model, run terminal commands, create and edit files with reviewable diffs, drive a browser, extend itself with Model Context Protocol (MCP) tools, and roll back to checkpoints, all human-in-the-loop, with you approving each step.
+1. **Open a folder.** Caret creates `.caret/` inside it and touches nothing else.
+2. **Say what you are building**, in a sentence.
+3. **Set your foundation**: colour, type, spacing, radius. Caret can interview
+   you, which needs a model, or you can set them by hand, which needs nothing.
+4. **Make pages.** Ask in the chat, or write the file yourself. Either way it
+   appears on the canvas.
 
----
+## Building from source
 
-## About
+Node 20 or newer.
 
-Caret IDE is a standalone, branded build of **VS Code (OSS)** produced via [VSCodium](https://github.com/VSCodium/vscodium), with the Caret extension bundled as a built-in. It's licensed under the [MIT License](LICENSE); no Microsoft branding or telemetry is included, and the extension gallery is [Open VSX](https://open-vsx.org). The Caret extension itself is [Apache-2.0](https://github.com/precious112/caret) and built on [Cline](https://github.com/cline/cline).
+```bash
+npm install
+npm run dev       # run in development
+npm run build
+npm run package   # installer for your platform
+```
 
-Build & maintenance docs: [README-CARET.md](README-CARET.md).
+Tests: `npm run test:unit`, `npm run verify:design-shell`, `npm run verify:app`.
+
+## Licence
+
+Apache-2.0. Free forever, runs on your machine, no key and no account. The only
+thing Caret sends anywhere is anonymous usage and crash data, and one click
+turns it off. [docs/telemetry.md](https://github.com/precious112/caret/blob/main/docs/telemetry.md) lists exactly what is and
+is not collected.
