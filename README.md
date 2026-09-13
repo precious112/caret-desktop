@@ -33,7 +33,8 @@ regenerated away the next time you ask for something.
 - **Bring your own model**: a subscription you have, or an API key
 - **Or bring your own agent**: Claude Code and Codex work over MCP
 
-Free, runs on your machine, no account. This repo holds the **downloads** and
+Free, runs on your machine, no account. Needs [Node.js](https://nodejs.org/en/download)
+installed for the live canvas. This repo holds the **downloads** and
 builds them; the **source** is at
 [precious112/caret](https://github.com/precious112/caret).
 
@@ -61,6 +62,23 @@ Unblock-File "$HOME\Downloads\Caret-Windows-Setup-x64.exe"
 
 On Linux, `sudo dpkg -i` the `.deb`, `sudo rpm -i` the `.rpm`, or `chmod +x` the
 AppImage.
+
+### You also need Node.js
+
+Caret's live canvas runs a local dev server, so **Node.js must be installed or
+the canvas will not load**. Everything else works without it, which makes this
+easy to miss: the app opens, the chat answers, and only the canvas sits on
+"preview loading" forever.
+
+Install the **LTS build** from [nodejs.org](https://nodejs.org/en/download) and
+you are fine. If you want the exact floor, it is **Node 20.19+, or 22.12+ on
+the 22 line** — that is Vite's requirement, not ours.
+
+Check what you have:
+
+```bash
+node --version
+```
 
 ---
 
