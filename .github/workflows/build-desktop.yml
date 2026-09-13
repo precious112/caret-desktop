@@ -40,7 +40,15 @@ jobs:
           # single invocation is enough (verified locally: arm64 and x64 both
           # signed and notarized from one Intel Mac).
           - { os: macos-14, name: macos, args: "--mac --arm64 --x64" }
-          - { os: windows-2022, name: windows, args: "--win --x64 --arm64" }
+          # Per target AND per arch, deliberately. Passing "--win --x64 --arm64"
+          # makes electron-builder emit a COMBINED dual-arch installer on top of
+          # the per-arch ones, so every byte ships twice (1.4GB of artifacts for
+          # a 350MB app). CLI arch flags also override the per-target arch list
+          # in electron-builder.yml, which is how an arm64 portable appeared
+          # when the config asks for x64 only.
+          - { os: windows-2022, name: windows, args: "--win nsis --x64" }
+          - { os: windows-2022, name: windows-arm, args: "--win nsis --arm64" }
+          - { os: windows-2022, name: windows-portable, args: "--win portable --x64" }
           - { os: ubuntu-22.04, name: linux, args: "--linux --x64" }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
