@@ -4,10 +4,10 @@ We're thrilled you're interested in contributing to Caret. Whether you're fixing
 
 ## Reporting Bugs or Issues
 
-Bug reports help make Caret better for everyone! Before creating a new issue, please [search existing ones](https://github.com/precious112/caret/issues) to avoid duplicates. When you're ready to report a bug, head over to our [issues page](https://github.com/precious112/caret/issues/new/choose) where you'll find a template to help you with filling out the relevant information.
+Bug reports help make Caret better for everyone! Before creating a new issue, please [search existing ones](https://github.com/precious112/caret-desktop/issues) to avoid duplicates. When you're ready to report a bug, head over to our [issues page](https://github.com/precious112/caret-desktop/issues/new/choose) where you'll find a template to help you with filling out the relevant information.
 
 <blockquote class='warning-note'>
-     🔐 <b>Important:</b> If you discover a security vulnerability, please use the <a href="https://github.com/precious112/caret/security/advisories/new">Github security tool to report it privately</a>.
+     🔐 <b>Important:</b> If you discover a security vulnerability, please use the <a href="https://github.com/precious112/caret-desktop/security/advisories/new">Github security tool to report it privately</a>.
 </blockquote>
 
 
@@ -15,7 +15,7 @@ Bug reports help make Caret better for everyone! Before creating a new issue, pl
 
 All contributions must begin with a GitHub Issue, unless the change is for small bug fixes, typo corrections, minor wording improvements, or simple type fixes that don't change functionality.
 **For features and contributions**:
-- First check the [Feature Requests discussions board](https://github.com/precious112/caret/discussions) for similar ideas
+- First check the [Feature Requests discussions board](https://github.com/precious112/caret-desktop/discussions) for similar ideas
 - If your idea is new, create a new feature request  
 - Wait for approval from core maintainers before starting implementation
 - Once approved, feel free to begin working on a PR with the help of our community!
@@ -25,9 +25,9 @@ All contributions must begin with a GitHub Issue, unless the change is for small
 
 ## Deciding What to Work On
 
-Looking for a good first contribution? Check out issues labeled ["good first issue"](https://github.com/precious112/caret/labels/good%20first%20issue) or ["help wanted"](https://github.com/precious112/caret/labels/help%20wanted). These are specifically curated for new contributors and areas where we'd love some help!
+Looking for a good first contribution? Check out issues labeled ["good first issue"](https://github.com/precious112/caret-desktop/labels/good%20first%20issue) or ["help wanted"](https://github.com/precious112/caret-desktop/labels/help%20wanted). These are specifically curated for new contributors and areas where we'd love some help!
 
-We also welcome contributions to our [documentation](https://github.com/precious112/caret/tree/main/docs)! Whether it's fixing typos, improving existing guides, or creating new educational content - we'd love to build a community-driven repository of resources that helps everyone get the most out of Caret. You can start by diving into `/docs` and looking for areas that need improvement.
+We also welcome contributions to our [documentation](https://github.com/precious112/caret-desktop/tree/main/docs)! Whether it's fixing typos, improving existing guides, or creating new educational content - we'd love to build a community-driven repository of resources that helps everyone get the most out of Caret. You can start by diving into `/docs` and looking for areas that need improvement.
 
 ## Development Setup
 
@@ -36,7 +36,7 @@ We also welcome contributions to our [documentation](https://github.com/precious
 
 1. Clone the repository _(Requires [git-lfs](https://git-lfs.com/))_:
     ```bash
-    git clone https://github.com/precious112/caret.git
+    git clone https://github.com/precious112/caret-desktop.git
     ```
 2. Open the project in VSCode:
     ```bash

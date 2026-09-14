@@ -8,7 +8,7 @@ We actively patch only the most recent minor release of Caret. Older versions re
 
 We appreciate your efforts to responsibly disclose your findings and will make every effort to acknowledge your contributions.
 
-To report a security issue, please submit your report through our [Bugcrowd Vulnerability Disclosure Program](https://github.com/precious112/caret/security/advisories/new). Bugcrowd will manage communication and triage on our behalf.
+To report a security issue, please submit your report through our [Bugcrowd Vulnerability Disclosure Program](https://github.com/precious112/caret-desktop/security/advisories/new). Bugcrowd will manage communication and triage on our behalf.
 
 When reporting, please include:
 

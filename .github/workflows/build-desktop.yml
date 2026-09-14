@@ -1,9 +1,9 @@
 name: Build Caret Desktop
 
 # Builds the Caret desktop app (Electron) for macOS, Windows and Linux, and
-# optionally cuts a draft release here. The SOURCE lives in precious112/caret;
-# this repo is the CI host and the download home, which is where the README's
-# download table points.
+# optionally cuts a draft release here. The source lives in THIS repo since the
+# merge from precious112/caret; the checkout still lands in `source/` so every
+# path below is unchanged from the certified cross-repo pipeline.
 #
 # macOS is signed with a Developer ID certificate and notarized by Apple, so it
 # opens on a double-click. Windows and Linux are unsigned for now, and the
@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Ref of precious112/caret to build (branch, tag or sha)"
+        description: "Ref of this repo to build (branch, tag or sha)"
         required: false
         default: "main"
       release:
@@ -59,7 +59,6 @@ jobs:
       - name: Check out the source
         uses: actions/checkout@v4
         with:
-          repository: precious112/caret
           ref: ${{ inputs.ref }}
           path: source
 
@@ -140,7 +139,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: precious112/caret
           ref: ${{ inputs.ref }}
           path: source
 
@@ -162,5 +160,5 @@ jobs:
             --repo "${{ github.repository }}" \
             --title "Caret v${{ steps.v.outputs.version }}" \
             --draft \
-            --notes "Built from precious112/caret@${{ inputs.ref }}. macOS builds are signed and notarized; Windows and Linux are unsigned, see the README for the one-time OS warning." \
+            --notes "Built from ${{ github.repository }}@${{ inputs.ref }}. macOS builds are signed and notarized; Windows and Linux are unsigned, see the README for the one-time OS warning." \
             artifacts/*

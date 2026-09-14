@@ -265,7 +265,7 @@ function PrivacySection() {
 						No account, no file contents, no paths — feature names, error shapes and nothing else.{" "}
 						<a
 							className="underline hover:text-white"
-							href="https://github.com/precious112/caret/blob/main/docs/telemetry.md">
+							href="https://github.com/precious112/caret-desktop/blob/main/docs/telemetry.md">
 							Exactly what's collected.
 						</a>
 					</span>

@@ -104,11 +104,11 @@ export function buildMenu(windows: WindowManager): void {
 			submenu: [
 				{
 					label: "Caret Documentation",
-					click: () => void shell.openExternal("https://github.com/precious112/caret#readme"),
+					click: () => void shell.openExternal("https://github.com/precious112/caret-desktop#readme"),
 				},
 				{
 					label: "Report an Issue",
-					click: () => void shell.openExternal("https://github.com/precious112/caret/issues/new"),
+					click: () => void shell.openExternal("https://github.com/precious112/caret-desktop/issues/new"),
 				},
 				{
 					label: "Show Logs Folder",

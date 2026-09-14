@@ -37,7 +37,7 @@ export function TelemetryNotice() {
 			<p className="leading-relaxed">
 				Caret sends anonymous usage and crash data to help improve it — no account, no file contents, no paths.{" "}
 				{/* External links route through the OS browser via main's navigation guard. */}
-				<a className="underline hover:text-white" href="https://github.com/precious112/caret/blob/main/docs/telemetry.md">
+				<a className="underline hover:text-white" href="https://github.com/precious112/caret-desktop/blob/main/docs/telemetry.md">
 					See exactly what's collected.
 				</a>
 			</p>

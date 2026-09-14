@@ -9,11 +9,11 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/precious112/caret"
+		"url": "https://github.com/precious112/caret-desktop"
 	},
-	"homepage": "https://github.com/precious112/caret",
+	"homepage": "https://github.com/precious112/caret-desktop",
 	"bugs": {
-		"url": "https://github.com/precious112/caret/issues"
+		"url": "https://github.com/precious112/caret-desktop/issues"
 	},
 	"type": "module",
 	"main": "./out/main/index.js",

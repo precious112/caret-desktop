@@ -190,7 +190,7 @@ export class OpencodeBackend implements CodingBackend {
 				authenticated: false,
 				ready: false,
 				detail: "The bundled backend is missing from this build.",
-				remedy: { label: "Reinstall Caret", url: "https://github.com/precious112/caret/releases" },
+				remedy: { label: "Reinstall Caret", url: "https://github.com/precious112/caret-desktop/releases" },
 			}
 		}
 

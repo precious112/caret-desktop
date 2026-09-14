@@ -11,7 +11,7 @@
     <a href="https://github.com/precious112/caret-desktop/releases/latest"><strong>Download</strong></a> ·
     <a href="docs/connect-an-agent.md">Connect your agent</a> ·
     <a href="https://caretai.cloud">Website</a> ·
-    <a href="https://github.com/precious112/caret/discussions">Discussions</a>
+    <a href="https://github.com/precious112/caret-desktop/discussions">Discussions</a>
   </p>
 </div>
 
@@ -34,12 +34,11 @@ regenerated away the next time you ask for something.
 - **Or bring your own agent**: Claude Code and Codex work over MCP
 
 Free, runs on your machine, no account. Needs [Node.js](https://nodejs.org/en/download)
-installed for the live canvas. This repo holds the **source**; the
-**downloads** are at
-[caret-desktop](https://github.com/precious112/caret-desktop), which is also
-where the issues and stars live. The two are split for historical reasons
-only, from when Caret was a VS Code fork, and **we are merging them as soon as
-the current release settles**.
+installed for the live canvas. This repo holds the source, the issues and the
+[downloads](https://github.com/precious112/caret-desktop/releases/latest). It
+used to be split in two from when Caret was a VS Code fork; the source moved
+in here, and [precious112/caret](https://github.com/precious112/caret) remains
+as the old home.
 
 ---
 
