@@ -15,19 +15,7 @@
   </p>
 </div>
 
-> ### Looking for the code?
->
-> This repo publishes the builds. The source lives in
-> **[precious112/caret](https://github.com/precious112/caret)**, so cloning or
-> forking this one gives you the release pipeline and no application code.
->
-> The split is historical. Caret used to be a VS Code fork: this repo built the
-> editor, and the extension code sat in `caret`. Caret is a standalone desktop
-> app now, so there is no longer any reason for the two to be apart.
->
-> **We are merging them as soon as the current release settles.** This repo keeps
-> its name, issues and releases until then, because it is where people already are.
-
+> **The source lives in [precious112/caret](https://github.com/precious112/caret).** This repo publishes the builds. [Why they are separate](#looking-for-the-code).
 
 https://github.com/user-attachments/assets/93e273d4-aed3-45cd-bb5e-c5b587691017
 
@@ -124,6 +112,21 @@ Check what you have:
 ```bash
 node --version
 ```
+
+---
+
+## Looking for the code?
+
+This repo publishes the builds. The source lives in
+**[precious112/caret](https://github.com/precious112/caret)**, so cloning or
+forking this one gives you the release pipeline and no application code.
+
+The split is historical. Caret used to be a VS Code fork: this repo built the
+editor, and the extension code sat in `caret`. Caret is a standalone desktop
+app now, so there is no longer any reason for the two to be apart.
+
+**We are merging them as soon as the current release settles.** This repo keeps
+its name, issues and releases until then, because it is where people already are.
 
 ---
 
