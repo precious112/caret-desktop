@@ -9,11 +9,25 @@
   </p>
   <p>
     <a href="https://github.com/precious112/caret-desktop/releases/latest"><strong>Download</strong></a> ·
-    <a href="docs/connect-an-agent.md">Connect your agent</a> ·
+    <a href="https://github.com/precious112/caret/blob/main/docs/connect-an-agent.md">Connect your agent</a> ·
     <a href="https://caretai.cloud">Website</a> ·
     <a href="https://github.com/precious112/caret/discussions">Discussions</a>
   </p>
 </div>
+
+> ### Looking for the code?
+>
+> This repo publishes the builds. The source lives in
+> **[precious112/caret](https://github.com/precious112/caret)**, so cloning or
+> forking this one gives you the release pipeline and no application code.
+>
+> The split is historical. Caret used to be a VS Code fork: this repo built the
+> editor, and the extension code sat in `caret`. Caret is a standalone desktop
+> app now, so there is no longer any reason for the two to be apart.
+>
+> **We are merging them as soon as the current release settles.** This repo keeps
+> its name, issues and releases until then, because it is where people already are.
+
 
 https://github.com/user-attachments/assets/93e273d4-aed3-45cd-bb5e-c5b587691017
 
