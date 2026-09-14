@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    The hardened runtime is required for notarization, and it turns off things
+    Electron needs by default. Each entitlement below is here for a reason:
+
+    allow-jit / allow-unsigned-executable-memory
+      V8 compiles JavaScript to machine code at runtime. Without these the
+      renderer dies on launch.
+
+    disable-library-validation
+      Caret loads native modules that are not signed by this team:
+      onnxruntime-node for the cutout matte, sharp for image work. Library
+      validation would refuse to load them.
+
+    allow-dyld-environment-variables
+      Caret spawns system node for matte-infer and glb-compress with a prepared
+      environment (see src/core/design/spawn-env.ts), because Finder-launched
+      apps inherit launchd's minimal PATH.
+
+    automation.apple-events
+      "Open in editor" sends an Apple event to another app. The matching
+      NSAppleEventsUsageDescription is set in electron-builder.yml.
+  -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+  <key>com.apple.security.automation.apple-events</key>
+  <true/>
+</dict>
+</plist>

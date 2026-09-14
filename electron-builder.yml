@@ -1,0 +1,118 @@
+appId: com.caret.app
+productName: Caret
+copyright: Copyright © 2026 Caret contributors
+
+directories:
+  output: release
+  buildResources: build
+
+# Stages the bundled coding backend for the target platform and architecture,
+# which is not the build machine's. See the file.
+beforePack: build/before-pack.cjs
+
+# Ad-hoc signs the macOS bundle. See the file for why `identity: null` alone is
+# not enough — it means "skip", and an unsigned arm64 binary will not launch.
+afterPack: build/after-pack.cjs
+# Verifies the signature electron-builder just applied. Runs after signApp.
+afterSign: build/after-sign.cjs
+
+files:
+  - out/**/*
+  - package.json
+  # The vendored component catalog: MIT/Apache source mirrored at pinned SHAs,
+  # licences alongside. Ships in the bundle so catalog installs need no network.
+  - assets/catalog/**/*
+  # The dock/window icon read at runtime (desktop/main/index.ts) — the .app/.exe
+  # icon comes from build/icon.png separately.
+  - assets/icons/**/*
+
+# No asar: the cutout model and glb compression deliberately run under SYSTEM
+# node (Electron's allocator shim SIGTRAPs onnxruntime — see
+# desktop/main/matte-infer.ts), and plain node cannot read inside an asar
+# archive, so the paths this app hands its workers must be real files.
+asar: false
+
+# The coding backend Caret drives. Spawned from here and never from `PATH`, so a
+# user upgrading their own OpenCode cannot change what Caret executes.
+extraResources:
+  - from: build/opencode
+    to: opencode
+
+# `.caret/` dependencies are installed into the user's project at runtime, so
+# nothing about the design layer is bundled here.
+npmRebuild: false
+
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+  # Version-free on purpose: the README's download table links to
+  # releases/latest/download/<name>, so a version in the filename would break
+  # every link in both repos on the next release.
+  artifactName: Caret-macOS-${arch}.${ext}
+  target:
+    - target: zip
+      arch: [arm64, x64]
+  # NO `identity: null` here, deliberately. It means "skip signing ALWAYS", even
+  # when CSC_LINK is set, and after-pack.cjs stands down as soon as it sees a
+  # certificate. Together those would have produced a bundle with no signature
+  # at all on the first signed build. Unsigned builds are selected by the
+  # environment instead:
+  #
+  #   unsigned:  CSC_IDENTITY_AUTO_DISCOVERY=false npm run package
+  #              -> electron-builder skips, after-pack.cjs ad-hoc signs.
+  #              Ad-hoc is mandatory on Apple Silicon: an arm64 Mach-O with no
+  #              valid signature will not execute, and the failure reads as
+  #              "the app is damaged", i.e. a corrupt download.
+  #
+  #   signed:    CSC_LINK + CSC_KEY_PASSWORD (+ APPLE_* to notarize)
+  #              -> electron-builder signs with the hardened runtime and the
+  #              entitlements below, then notarizes and staples.
+  #
+  # The hardened runtime only applies during electron-builder's own signing
+  # step, so leaving it on costs the unsigned path nothing.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # `true` reads APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID from
+  # the environment and is a no-op when they are absent, so an unsigned build
+  # does not try to reach Apple.
+  notarize: true
+  gatekeeperAssess: false
+  extendInfo:
+    NSAppleEventsUsageDescription: Caret opens files in your editor.
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+    - target: portable
+      arch: [x64]
+  # SignPath Foundation provides free signing for OSS projects. Left unset so
+  # unsigned builds still produce artifacts.
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: Caret-Windows-Setup-${arch}.${ext}
+
+portable:
+  artifactName: Caret-Windows-Portable-${arch}.${ext}
+
+linux:
+  icon: build/icon.png
+  category: Development
+  artifactName: Caret-Linux-${arch}.${ext}
+  target:
+    - AppImage
+    - deb
+    - rpm
+  maintainer: Caret contributors
+  desktop:
+    entry:
+      Name: Caret
+      Comment: A persistent design layer for your codebase
+
+publish: null

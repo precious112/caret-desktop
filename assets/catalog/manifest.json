@@ -1,0 +1,495 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-12T00:34:50.814Z",
+  "libraries": {
+    "magicui": {
+      "sha": "2d671cc6c0e0f40e28682c9cbddd16694dcfe627",
+      "licence": "MIT",
+      "repo": "magicuidesign/magicui",
+      "components": {
+        "marquee": {
+          "file": "marquee.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "globe": {
+          "file": "globe.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "cobe",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "particles": {
+          "file": "particles.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "meteors": {
+          "file": "meteors.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "border-beam": {
+          "file": "border-beam.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "number-ticker": {
+          "file": "number-ticker.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "dock": {
+          "file": "dock.tsx",
+          "extraFiles": [],
+          "deps": [
+            "class-variance-authority",
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "warp-background": {
+          "file": "warp-background.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "retro-grid": {
+          "file": "retro-grid.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "hyper-text": {
+          "file": "hyper-text.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "morphing-text": {
+          "file": "morphing-text.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "sparkles-text": {
+          "file": "sparkles-text.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "smooth-cursor": {
+          "file": "smooth-cursor.tsx",
+          "extraFiles": [],
+          "deps": [
+            "motion"
+          ]
+        },
+        "aurora-text": {
+          "file": "aurora-text.tsx",
+          "extraFiles": [],
+          "deps": [
+            "motion"
+          ]
+        },
+        "light-rays": {
+          "file": "light-rays.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        }
+      }
+    },
+    "fancy": {
+      "sha": "f9f62c61207b2dd3210476dd98af3c9a5be24094",
+      "licence": "MIT",
+      "repo": "danielpetho/fancy",
+      "components": {
+        "text-rotate": {
+          "file": "text-rotate.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "scramble-hover": {
+          "file": "scramble-hover.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "vertical-cut-reveal": {
+          "file": "vertical-cut-reveal.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "letter-3d-swap": {
+          "file": "letter-3d-swap.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "text-along-path": {
+          "file": "text-along-path.tsx",
+          "extraFiles": [],
+          "deps": [
+            "motion"
+          ]
+        },
+        "text-cursor-proximity": {
+          "file": "text-cursor-proximity.tsx",
+          "extraFiles": [
+            "hooks/use-mouse-position-ref.ts"
+          ],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "image-trail": {
+          "file": "image-trail.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "parallax-floating": {
+          "file": "parallax-floating.tsx",
+          "extraFiles": [
+            "hooks/use-mouse-position-ref.ts"
+          ],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "pixel-trail": {
+          "file": "pixel-trail.tsx",
+          "extraFiles": [
+            "hooks/use-dimensions.ts"
+          ],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge",
+            "uuid"
+          ]
+        },
+        "box-carousel": {
+          "file": "box-carousel.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "gooey-svg-filter": {
+          "file": "gooey-svg-filter.tsx",
+          "extraFiles": [],
+          "deps": [
+            "motion"
+          ]
+        },
+        "pixelate-svg-filter": {
+          "file": "pixelate-svg-filter.tsx",
+          "extraFiles": [],
+          "deps": [
+            "motion"
+          ]
+        }
+      }
+    },
+    "motion-primitives": {
+      "sha": "92586e62a951eb9b6bfd1cc7c8a4e6e2ab6ba17d",
+      "licence": "MIT",
+      "repo": "ibelick/motion-primitives",
+      "components": {
+        "text-effect": {
+          "file": "text-effect.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "text-loop": {
+          "file": "text-loop.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "text-scramble": {
+          "file": "text-scramble.tsx",
+          "extraFiles": [],
+          "deps": [
+            "motion"
+          ]
+        },
+        "text-shimmer": {
+          "file": "text-shimmer.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "animated-number": {
+          "file": "animated-number.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "border-trail": {
+          "file": "border-trail.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "infinite-slider": {
+          "file": "infinite-slider.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "react-use-measure",
+            "tailwind-merge"
+          ]
+        },
+        "carousel": {
+          "file": "carousel.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "lucide-react",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "spotlight": {
+          "file": "spotlight.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        },
+        "magnetic": {
+          "file": "magnetic.tsx",
+          "extraFiles": [],
+          "deps": [
+            "motion"
+          ]
+        },
+        "cursor": {
+          "file": "cursor.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "motion",
+            "tailwind-merge"
+          ]
+        }
+      }
+    },
+    "cult-ui": {
+      "sha": "3b855612fb524cb042cc91b65f0cd575057471cc",
+      "licence": "MIT",
+      "repo": "nolly-studio/cult-ui",
+      "components": {
+        "texture-card": {
+          "file": "texture-card.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "framer-motion",
+            "tailwind-merge"
+          ]
+        },
+        "texture-button": {
+          "file": "texture-button.tsx",
+          "extraFiles": [],
+          "deps": [
+            "@radix-ui/react-slot",
+            "class-variance-authority",
+            "clsx",
+            "framer-motion",
+            "tailwind-merge"
+          ]
+        },
+        "text-animate": {
+          "file": "text-animate.tsx",
+          "extraFiles": [],
+          "deps": [
+            "framer-motion",
+            "motion"
+          ]
+        },
+        "canvas-fractal-grid": {
+          "file": "canvas-fractal-grid.tsx",
+          "extraFiles": [],
+          "deps": [
+            "framer-motion",
+            "motion"
+          ]
+        },
+        "logo-carousel": {
+          "file": "logo-carousel.tsx",
+          "extraFiles": [],
+          "deps": [
+            "framer-motion",
+            "motion"
+          ]
+        },
+        "gradient-heading": {
+          "file": "gradient-heading.tsx",
+          "extraFiles": [],
+          "deps": [
+            "@radix-ui/react-slot",
+            "class-variance-authority",
+            "clsx",
+            "framer-motion",
+            "tailwind-merge"
+          ]
+        }
+      }
+    },
+    "animata": {
+      "sha": "de9aabb0eed14e0db944bb07720961ddc450c672",
+      "licence": "MIT",
+      "repo": "codse/animata",
+      "components": {
+        "text-flip": {
+          "file": "text-flip.tsx",
+          "extraFiles": [],
+          "deps": [
+            "framer-motion"
+          ]
+        },
+        "hero-section-text-hover": {
+          "file": "hero-section-text-hover.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "framer-motion",
+            "lucide-react",
+            "tailwind-merge"
+          ]
+        },
+        "shape-shifter": {
+          "file": "shape-shifter.tsx",
+          "extraFiles": [
+            "internal/container/marquee.tsx"
+          ],
+          "deps": [
+            "clsx",
+            "framer-motion",
+            "tailwind-merge"
+          ]
+        },
+        "blurry-blob": {
+          "file": "blurry-blob.tsx",
+          "extraFiles": [],
+          "deps": [
+            "clsx",
+            "framer-motion",
+            "tailwind-merge"
+          ]
+        },
+        "shooting-stars": {
+          "file": "shooting-stars.tsx",
+          "extraFiles": [
+            "shooting-stars.css"
+          ],
+          "deps": [
+            "clsx",
+            "framer-motion",
+            "tailwind-merge"
+          ]
+        },
+        "card-stack": {
+          "file": "card-stack.tsx",
+          "extraFiles": [
+            "hooks/use-prefers-reduced-motion.ts"
+          ],
+          "deps": [
+            "clsx",
+            "framer-motion",
+            "motion",
+            "tailwind-merge"
+          ]
+        }
+      }
+    }
+  }
+}

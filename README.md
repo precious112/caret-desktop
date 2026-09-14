@@ -9,13 +9,11 @@
   </p>
   <p>
     <a href="https://github.com/precious112/caret-desktop/releases/latest"><strong>Download</strong></a> ·
-    <a href="https://github.com/precious112/caret/blob/main/docs/connect-an-agent.md">Connect your agent</a> ·
+    <a href="docs/connect-an-agent.md">Connect your agent</a> ·
     <a href="https://caretai.cloud">Website</a> ·
     <a href="https://github.com/precious112/caret/discussions">Discussions</a>
   </p>
 </div>
-
-> **The source lives in [precious112/caret](https://github.com/precious112/caret).** This repo publishes the builds. [Why they are separate](#looking-for-the-code).
 
 https://github.com/user-attachments/assets/93e273d4-aed3-45cd-bb5e-c5b587691017
 
@@ -36,9 +34,12 @@ regenerated away the next time you ask for something.
 - **Or bring your own agent**: Claude Code and Codex work over MCP
 
 Free, runs on your machine, no account. Needs [Node.js](https://nodejs.org/en/download)
-installed for the live canvas. This repo holds the **downloads** and
-builds them; the **source** is at
-[precious112/caret](https://github.com/precious112/caret).
+installed for the live canvas. This repo holds the **source**; the
+**downloads** are at
+[caret-desktop](https://github.com/precious112/caret-desktop), which is also
+where the issues and stars live. The two are split for historical reasons
+only, from when Caret was a VS Code fork, and **we are merging them as soon as
+the current release settles**.
 
 ---
 
@@ -115,28 +116,13 @@ node --version
 
 ---
 
-## Looking for the code?
-
-This repo publishes the builds. The source lives in
-**[precious112/caret](https://github.com/precious112/caret)**, so cloning or
-forking this one gives you the release pipeline and no application code.
-
-The split is historical. Caret used to be a VS Code fork: this repo built the
-editor, and the extension code sat in `caret`. Caret is a standalone desktop
-app now, so there is no longer any reason for the two to be apart.
-
-**We are merging them as soon as the current release settles.** This repo keeps
-its name, issues and releases until then, because it is where people already are.
-
----
-
 ## Edit on the page
 
 Right-click any text, colour or image and change it there. Caret writes it into
 the real source file and the page reloads.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/edit-text.gif" width="100%" alt="Editing a headline directly on the page, and Caret confirming the edit landed in the file" />
+  <img src="assets/docs/edit-text.gif" width="100%" alt="Editing a headline directly on the page, and Caret confirming the edit landed in the file" />
 </p>
 
 Pick a colour and Caret checks it against your design tokens. If one is close,
@@ -145,7 +131,7 @@ changes everywhere that used it. You can drag an edge to resize, too, and the
 size lands in the code.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/edit-colour.gif" width="100%" alt="Picking a colour on the page, and Caret matching it to the brand token" />
+  <img src="assets/docs/edit-colour.gif" width="100%" alt="Picking a colour on the page, and Caret matching it to the brand token" />
 </p>
 
 ## Ask for the harder changes
@@ -155,7 +141,7 @@ and say what you want. Your agent gets the exact elements you marked, so it
 does not have to guess which bit you meant.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/describe-a-change.gif" width="100%" alt="Painting over a section of a page and describing a change in words, then the rebuilt section" />
+  <img src="assets/docs/describe-a-change.gif" width="100%" alt="Painting over a section of a page and describing a change in words, then the rebuilt section" />
 </p>
 
 ## Three versions at once
@@ -164,7 +150,7 @@ When you do not know what you want yet, ask for a few. Caret builds them side by
 side, live, and you keep one. Picking leaves an undo step.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/explore-takes.gif" width="100%" alt="Three versions of a page generating side by side on the canvas, then one is picked and becomes the live page" />
+  <img src="assets/docs/explore-takes.gif" width="100%" alt="Three versions of a page generating side by side on the canvas, then one is picked and becomes the live page" />
 </p>
 
 ## Make the assets too
@@ -175,7 +161,7 @@ adjustable. How it is lit, framed and coloured comes from your design tokens, so
 it matches the rest of your work.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/generate-asset.gif" width="100%" alt="Asking for a logo in one sentence and getting several versions to choose from" />
+  <img src="assets/docs/generate-asset.gif" width="100%" alt="Asking for a logo in one sentence and getting several versions to choose from" />
 </p>
 
 ## See the journeys
@@ -185,7 +171,7 @@ pages. Each journey gets a colour, error paths are dashed, and pages nothing
 leads to are obvious.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/precious112/caret/main/assets/docs/flows.png" width="100%" alt="Two user journeys drawn over the pages on the canvas, each in its own colour, with an error path as a dashed line" />
+  <img src="assets/docs/flows.png" width="100%" alt="Two user journeys drawn over the pages on the canvas, each in its own colour, with an error path as a dashed line" />
 </p>
 
 ## Sync into your app
@@ -219,7 +205,7 @@ allow Claude subscriptions in other tools.
 
 Already working with an agent in your terminal? Caret exposes your design layer
 over MCP so it can read and write too. Claude Code and Codex are tested.
-See [docs/connect-an-agent.md](https://github.com/precious112/caret/blob/main/docs/connect-an-agent.md).
+See [docs/connect-an-agent.md](docs/connect-an-agent.md).
 
 ---
 
@@ -249,5 +235,5 @@ Tests: `npm run test:unit`, `npm run verify:design-shell`, `npm run verify:app`.
 
 Apache-2.0. Free forever, runs on your machine, no key and no account. The only
 thing Caret sends anywhere is anonymous usage and crash data, and one click
-turns it off. [docs/telemetry.md](https://github.com/precious112/caret/blob/main/docs/telemetry.md) lists exactly what is and
+turns it off. [docs/telemetry.md](docs/telemetry.md) lists exactly what is and
 is not collected.

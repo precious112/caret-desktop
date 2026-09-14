@@ -1,0 +1,118 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true,
+		"defaultBranch": "main"
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on",
+				"useSortedAttributes": "on"
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"domains": {
+			"react": "recommended"
+		},
+		"rules": {
+			"recommended": true,
+			"correctness": {
+				"useExhaustiveDependencies": "info",
+				"noUndeclaredVariables": "off",
+				"noEmptyPattern": "info",
+				"useJsxKeyInIterable": "off",
+				"noInnerDeclarations": "off",
+				"useHookAtTopLevel": "info",
+				"noUnusedImports": "error"
+			},
+			"a11y": "info",
+			"style": {
+				"useNodejsImportProtocol": "off",
+				"useImportType": "off",
+				"useBlockStatements": "off",
+				"useNamingConvention": "off",
+				"useConsistentArrayType": "off",
+				"noParameterAssign": "off",
+				"useAsConstAssertion": "off",
+				"useDefaultParameterLast": "off",
+				"noNonNullAssertion": "info",
+				"useSelfClosingElements": "info",
+				"useSingleVarDeclarator": "off",
+				"useNumberNamespace": "info",
+				"noInferrableTypes": "info",
+				"useTemplate": "info",
+				"noUselessElse": "info"
+			},
+			"suspicious": {
+				"noDoubleEquals": "warn",
+				"noImplicitAnyLet": "info",
+				"noAsyncPromiseExecutor": "info",
+				"noExplicitAny": "info",
+				"noControlCharactersInRegex": "warn",
+				"noArrayIndexKey": "info",
+				"noAssignInExpressions": "info",
+				"useIterableCallbackReturn": "info"
+			},
+			"complexity": {
+				"noUselessConstructor": "info",
+				"useOptionalChain": "info",
+				"noBannedTypes": "warn",
+				"useLiteralKeys": "info",
+				"noUselessCatch": "info",
+				"noStaticOnlyClass": "info"
+			},
+			"security": {
+				"noDangerouslySetInnerHtml": "info"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 4,
+		"lineWidth": 130,
+		"lineEnding": "lf",
+		"formatWithErrors": true
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"semicolons": "asNeeded",
+			"arrowParentheses": "always",
+			"bracketSameLine": true,
+			"bracketSpacing": true,
+			"jsxQuoteStyle": "double",
+			"quoteProperties": "asNeeded",
+			"trailingCommas": "all"
+		}
+	},
+	"json": {
+		"formatter": {
+			"trailingCommas": "none",
+			"expand": "always"
+		}
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"**",
+			"!!**/out",
+			"!!**/release",
+			"!!**/node_modules",
+			"!!**/test-results",
+			// Vendored third-party catalog source, mirrored byte-faithful at
+			// pinned SHAs — linting it would rewrite upstream code.
+			"!!assets/catalog"
+		]
+	}
+}

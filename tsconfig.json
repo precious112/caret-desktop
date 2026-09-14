@@ -1,0 +1,56 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"isolatedModules": true,
+		"lib": [
+			"es2022",
+			"DOM",
+			"DOM.Iterable"
+		],
+		"module": "esnext",
+		"moduleResolution": "Bundler",
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": false,
+		"resolveJsonModule": true,
+		"rootDir": ".",
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"target": "es2022",
+		"useDefineForClassFields": true,
+		"useUnknownInCatchVariables": false,
+		"types": [
+			"node"
+		],
+		"paths": {
+			"@/*": [
+				"./src/*"
+			],
+			"@core/*": [
+				"./src/core/*"
+			],
+			"@shared/*": [
+				"./src/shared/*"
+			],
+			"@utils/*": [
+				"./src/utils/*"
+			]
+		}
+	},
+	"include": [
+		"src/**/*",
+		"desktop/main/**/*",
+		"desktop/preload/**/*",
+		"desktop/shared/**/*",
+		"scripts/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		"out",
+		"dist",
+		"desktop/renderer"
+	]
+}

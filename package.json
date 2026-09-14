@@ -1,0 +1,90 @@
+{
+	"name": "caret",
+	"productName": "Caret",
+	"version": "0.1.3",
+	"description": "A persistent design layer for your codebase, driven by the agent you already use.",
+	"license": "Apache-2.0",
+	"author": {
+		"name": "precious112"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/precious112/caret"
+	},
+	"homepage": "https://github.com/precious112/caret",
+	"bugs": {
+		"url": "https://github.com/precious112/caret/issues"
+	},
+	"type": "module",
+	"main": "./out/main/index.js",
+	"engines": {
+		"node": "^20.19.0 || >=22.12.0"
+	},
+	"scripts": {
+		"dev": "electron-vite dev",
+		"build": "npm run check-types && electron-vite build",
+		"start": "electron-vite preview",
+		"check-types": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p desktop/renderer/tsconfig.json",
+		"lint": "biome lint --no-errors-on-unmatched --files-ignore-unknown=true --diagnostic-level=error",
+		"format": "biome format --changed --no-errors-on-unmatched --files-ignore-unknown=true",
+		"format:fix": "biome check --changed --no-errors-on-unmatched --files-ignore-unknown=true --write",
+		"test:unit": "mocha",
+		"verify:design-shell": "npx tsx scripts/verify-design-shell.ts",
+		"backends": "npx tsx scripts/backends.ts",
+		"verify:backend": "npx tsx scripts/verify-backend.ts",
+		"verify:app": "npm run build && npx tsx scripts/verify-app.ts",
+		"package": "npm run build && electron-builder --publish never",
+		"package:mac": "npm run build && electron-builder --mac --publish never",
+		"package:win": "npm run build && electron-builder --win --publish never",
+		"package:linux": "npm run build && electron-builder --linux --publish never",
+		"preview:markdown": "npx tsx scripts/preview-markdown.ts",
+		"preview:wizard": "npx tsx scripts/preview-wizard.ts"
+	},
+	"dependencies": {
+		"@babel/parser": "^7.29.8",
+		"@gltf-transform/cli": "^4.4.2",
+		"@modelcontextprotocol/sdk": "^1.25.1",
+		"axe-core": "^4.13.0",
+		"chokidar": "^4.0.1",
+		"google-auth-library": "^11.0.0",
+		"onnxruntime-node": "~1.23.0",
+		"posthog-node": "^5.21.2",
+		"react-markdown": "^10.1.0",
+		"recast": "^0.23.11",
+		"remark-gfm": "^4.0.1",
+		"simple-git": "^3.27.0",
+		"thinking-orbs": "^0.2.0",
+		"undici": "^7.16.0",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.6",
+		"@radix-ui/react-slot": "^1.1.2",
+		"@tailwindcss/vite": "^4.1.0",
+		"@types/chai": "^5.0.1",
+		"@types/mocha": "^10.0.10",
+		"@types/node": "^22.10.2",
+		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.0.0",
+		"@types/should": "^11.2.0",
+		"@vitejs/plugin-react": "^4.3.4",
+		"chai": "^5.1.2",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"electron": "^33.3.0",
+		"electron-builder": "^25.1.8",
+		"electron-vite": "^5.0.0",
+		"lucide-react": "^0.469.0",
+		"mocha": "^11.0.1",
+		"opencode-ai": "1.18.23",
+		"playwright": "^1.58.1",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"should": "^13.2.3",
+		"tailwind-merge": "^2.6.0",
+		"tailwindcss": "^4.1.0",
+		"tsx": "^4.19.2",
+		"typescript": "^5.7.2",
+		"vite": "^6.0.7"
+	}
+}

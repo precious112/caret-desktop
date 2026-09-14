@@ -1,0 +1,4 @@
+#!/bin/sh
+# Biome formats and lints, so lint-staged is no longer in the picture.
+npx --no-install biome check --staged --write --no-errors-on-unmatched --files-ignore-unknown=true || exit 1
+git update-index --again

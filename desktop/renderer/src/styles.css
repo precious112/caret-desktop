@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+/*
+ * Caret's own chrome. Deliberately quiet and dark: it frames the user's design
+ * work, and chrome that competes with the canvas makes their colours hard to
+ * judge — which is the one thing this window exists to let them do.
+ */
+@theme {
+	--color-caret-accent: #0b7aff;
+	--color-caret-accent-hover: #2e8bff;
+	--color-caret-accent-press: #0066db;
+	--color-caret-navy: #16233d;
+
+	--color-shell-bg: #0b0d12;
+	--color-shell-panel: #12151c;
+	--color-shell-border: #1e232e;
+	--color-shell-text: #e6e9ef;
+	--color-shell-muted: #8b93a7;
+	--color-shell-warn: #e0a83a;
+
+	/*
+	 * The design-wizard components were ported from the VS Code webview, whose
+	 * theme vocabulary (button-background, input, foreground, …) the shell
+	 * never defined — so every "selected" chip, bar and error painted NOTHING
+	 * (field-measured: the corner-style editor showed no current choice).
+	 * The vocabulary is aliased onto the shell palette here, once, so ported
+	 * components keep their states.
+	 */
+	--color-button-background: #0b7aff;
+	--color-button-hover: #2e8bff;
+	--color-button-foreground: #ffffff;
+	--color-button-secondary-background: #1e232e;
+	--color-button-secondary-background-hover: #2a3140;
+	--color-button-secondary-foreground: #e6e9ef;
+	--color-input-background: #12151c;
+	--color-input: #1e232e;
+	--color-input-border: #1e232e;
+	--color-input-foreground: #e6e9ef;
+	--color-input-placeholder: #8b93a7;
+	--color-foreground: #e6e9ef;
+	--color-muted-foreground: #8b93a7;
+	--color-accent: #0b7aff;
+	--color-primary-foreground: #ffffff;
+	--color-ring: #0b7aff;
+	--color-error: #e5484d;
+
+	/*
+	 * Second field-measured instance of the same porting hole (2026-09-02):
+	 * the vibe-tag picker's SELECTED state is `bg-badge-background`, which was
+	 * never aliased — a selected tag painted transparent, indistinguishable
+	 * from unselected, and the user reported "clicking on tags does not work".
+	 * The click always worked; the state was invisible. Aliased with the rest
+	 * of the badge vocabulary so no other variant is waiting to repeat this.
+	 */
+	--color-badge-background: #0b7aff;
+	--color-badge-foreground: #ffffff;
+	--color-success: #22c55e;
+	--color-warning: #e0a83a;
+	--color-error-icon: #e5484d;
+	--color-link: #2e8bff;
+	--color-link-hover: #5aa2ff;
+	--color-background: #0b0d12;
+}
+
+/* The same porting story for INLINE styles: a few components reference
+ * `--vscode-*` variables directly, which resolve to nothing outside VS Code
+ * (an undefined var with no fallback paints transparent). Defined once here. */
+:root {
+	--vscode-button-background: #0b7aff;
+	--vscode-editorWidget-background: #171b24;
+	--vscode-dropdown-background: #171b24;
+	--vscode-editor-background: #0b0d12;
+	--vscode-list-hoverBackground: rgba(255, 255, 255, 0.06);
+	--vscode-testing-iconPassed: #22c55e;
+	--vscode-testing-iconFailed: #e5484d;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	background: var(--color-shell-bg);
+	color: var(--color-shell-text);
+	font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-size: 13px;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Room for the macOS traffic lights under `titleBarStyle: hiddenInset`. */
+.titlebar-drag {
+	-webkit-app-region: drag;
+}
+
+.titlebar-nodrag {
+	-webkit-app-region: no-drag;
+}
+
+@keyframes caret-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.fade-in {
+	animation: caret-fade-in 320ms ease-out both;
+}
+
+/* The design-system reveal: sections cascade in instead of landing as one
+   block. Mount-only ("both" fill keeps the settled state); the loading and
+   empty branches carry the same testid but no <section>, so they are untouched.
+   Long enough to read as a sequence, short enough that reopening the tab
+   never feels gated on it. */
+@keyframes caret-rise-in {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+[data-testid="design-system-view"] section {
+	animation: caret-rise-in 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+[data-testid="design-system-view"] section:nth-of-type(2) {
+	animation-delay: 110ms;
+}
+[data-testid="design-system-view"] section:nth-of-type(3) {
+	animation-delay: 220ms;
+}
+[data-testid="design-system-view"] section:nth-of-type(4) {
+	animation-delay: 330ms;
+}
+[data-testid="design-system-view"] section:nth-of-type(5) {
+	animation-delay: 440ms;
+}
+[data-testid="design-system-view"] section:nth-of-type(6) {
+	animation-delay: 550ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-testid="design-system-view"] section {
+		animation: none;
+	}
+}

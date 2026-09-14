@@ -1,0 +1,70 @@
+name: 🐛 Bug Report
+description: File a bug report
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If the problem involves an AI edit, please say which model you were using. Caret's prompts are demanding and weaker models can behave differently.
+  - type: dropdown
+    id: plugin-type
+    attributes:
+      label: Plugin Type
+      description: Which plugin are you reporting a bug for?
+      options:
+        - VSCode Extension
+        - JetBrains Plugin
+        - CLI
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: caret-version
+    attributes:
+      label: Caret Version
+      description: Which version of Caret? (Settings shows it at the bottom.)
+      placeholder: 'e.g., 1.2.3'
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How do you trigger this bug? Please walk us through it step by step.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+  - type: input
+    id: provider-model
+    attributes:
+      label: Provider/Model
+      description: What provider and model were you using when the issue occurred?
+      placeholder: 'e.g., opencode-go/gpt-5.6-luna, anthropic/claude-sonnet-5'
+    validations:
+      required: false
+  - type: textarea
+    id: system-info
+    attributes:
+      label: System Information
+      description: What operating system and hardware are you using?
+      placeholder: |
+        Operating System: Windows 11, macOS Sonoma, Ubuntu 22.04, etc.
+        Hardware: CPU, GPU, RAM specifications if relevant
+        e.g.,
+        OS: Windows 11
+        CPU: Intel Core i7-11700K
+        GPU: NVIDIA GeForce RTX 3070
+        RAM: 32GB DDR4
+    validations:
+      required: false

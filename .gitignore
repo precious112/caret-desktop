@@ -1,8 +1,43 @@
-# This repo is CI plus releases. The app's source lives in precious112/caret
-# and is checked out into source/ by the build workflow.
-source/
-artifacts/
+out
+release
+node_modules
+tmp
 
 .DS_Store
-*.env
-node_modules/
+.idea
+.husky/_/
+
+pnpm-lock.yaml
+.venv
+CLAUDE.local.md
+
+*.tsbuildinfo
+test-results
+
+.env
+.secrets
+secrets.json
+
+# A `.caret/` in this repo would come from testing Caret against itself.
+.caret/node_modules/
+.caret/vite.log
+.caret/thumbnails/
+.caret/canvas-layout.json
+.caret/.sync-pending.json
+.caret/.mcp.json
+.caret/.provenance.jsonl
+
+# Staged by build/before-pack.cjs — a 145MB platform binary, never committed.
+build/opencode/
+
+# openvisio MCP index cache — machine-local, churns on every session
+.openvisio/
+
+# internal planning docs — kept local, not published
+CARET-PHASES.md
+CARET-V2-PLAN.md
+CARET-PLAN.md
+CARET-DECISIONS.md
+CARET-7.5-SURVEY.md
+BACKLOG.md
+REBRAND-TODO.md

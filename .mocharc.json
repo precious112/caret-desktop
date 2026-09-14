@@ -1,0 +1,16 @@
+{
+	"extension": [
+		"ts"
+	],
+	"spec": [
+		"src/**/__tests__/*.test.ts",
+		"desktop/**/__tests__/*.test.ts"
+	],
+	"require": [
+		"tsx",
+		"./test-setup.ts"
+	],
+	"recursive": true,
+	"exit": true,
+	"timeout": 10000
+}

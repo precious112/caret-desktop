@@ -1,8 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 🐛 Report a bug
-    url: https://github.com/precious112/caret/issues/new/choose
-    about: Bugs go in the source repo, where the code and the maintainers are
   - name: 💡 Feature requests and ideas
     url: https://github.com/precious112/caret/discussions
     about: Suggest something, or see what others have asked for
