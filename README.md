@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Caret</h1>
-  <p><strong>A design canvas over your real code.</strong></p>
+  <p><strong>A design layer that lives in your repo.</strong></p>
   <p>
     <a href="https://github.com/precious112/caret-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/precious112/caret-desktop?label=latest" alt="latest release"/></a>
     <img src="https://img.shields.io/github/downloads/precious112/caret-desktop/total?label=downloads" alt="downloads"/>
@@ -18,20 +18,21 @@
 https://github.com/user-attachments/assets/93e273d4-aed3-45cd-bb5e-c5b587691017
 
 Your pages render on a canvas. Click a headline and retype it, right-click a
-colour and pick a new one, and the change is written into your source files.
-The canvas was never a picture of your app. It is your app.
+colour and pick a new one, and the change is written into the file behind it.
+The canvas was never a picture of your design. It is the design, running.
 
-The design lives in your repo as real React, in git, reviewable in a pull
-request. So a fix you make once is still there tomorrow, instead of being
-regenerated away the next time you ask for something.
+That design lives in your repo as real React, in `.caret/`, in git, reviewable
+in a pull request. Your app's own source stays untouched until you sync. So a
+fix you make once is still there tomorrow, instead of being regenerated away
+the next time you ask for something.
 
-- **Edit on the page**: text, colour, images, and size, written to source
+- **Edit on the page**: text, colour, images, and size, written to the file
 - **Ask for the harder changes**: paint a region, describe it in words
 - **Three versions at once**: generate, compare, keep one
 - **Make the assets too**: logos, photographs, textures, animated backgrounds
 - **Sync into your app**: in any framework, both directions
 - **Bring your own model**: a subscription you have, or an API key
-- **Or bring your own agent**: Claude Code and Codex work over MCP
+- **Or hand the sync to your own agent**: Claude Code and Codex work over MCP
 
 Free, runs on your machine, no account. Needs [Node.js](https://nodejs.org/en/download)
 installed for the live canvas. This repo holds the source, the issues and the
@@ -62,8 +63,8 @@ macOS builds are signed and notarized by Apple: download, unzip, drag
 
 Windows builds are not code-signed yet, so Windows treats the installer as
 unknown. That can produce up to three separate warnings. The app is safe, and
-**you never need to turn off your antivirus** — every warning has a button
-that lets you keep going:
+**you never need to turn off your antivirus**. Every warning has a button that
+lets you keep going:
 
 1. **When the download finishes**, the browser may say the file "isn't
    commonly downloaded".
@@ -105,7 +106,7 @@ easy to miss: the app opens, the chat answers, and only the canvas sits on
 
 Install the **LTS build** from [nodejs.org](https://nodejs.org/en/download) and
 you are fine. If you want the exact floor, it is **Node 20.19+, or 22.12+ on
-the 22 line** — that is Vite's requirement, not ours.
+the 22 line**, which is Vite's requirement rather than ours.
 
 Check what you have:
 
@@ -118,7 +119,7 @@ node --version
 ## Edit on the page
 
 Right-click any text, colour or image and change it there. Caret writes it into
-the real source file and the page reloads.
+the page's own file in `.caret/` and the page reloads.
 
 <p align="center">
   <img src="assets/docs/edit-text.gif" width="100%" alt="Editing a headline directly on the page, and Caret confirming the edit landed in the file" />
@@ -203,7 +204,9 @@ providers you sign into. Anthropic is API key only, because Anthropic does not
 allow Claude subscriptions in other tools.
 
 Already working with an agent in your terminal? Caret exposes your design layer
-over MCP so it can read and write too. Claude Code and Codex are tested.
+over MCP, so you can hand it the sync rather than running that here. Designing
+itself stays in Caret: MCP runs one way, so an external agent can call in but
+Caret cannot push work back out to it. Claude Code and Codex are tested.
 See [docs/connect-an-agent.md](docs/connect-an-agent.md).
 
 ---
