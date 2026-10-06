@@ -17,12 +17,14 @@ import {
 	type CodingBackend,
 	clearWizardScratch,
 	coveredAreas,
+	detectAppProfile,
 	type FoundationProposal,
 	finalizeProposal,
 	getBackend,
 	nextWizardTurn,
 	questionCapFor,
 	readWizardScratch,
+	tracksCoverage,
 	type StoredQA,
 	type WizardAnswer,
 	type WizardMode,
@@ -72,9 +74,18 @@ async function persist(projectPath: string, session: WizardSession): Promise<voi
 	})
 }
 
+/**
+ * The description a finished foundation is filed under. A from-app session's
+ * `description` is Caret's detection note for the model, not the user's words —
+ * the model's own summary ("read from your app…") describes it better.
+ */
+function vibeDescription(session: WizardSession): string {
+	return session.mode === "from-app" ? "" : session.description
+}
+
 function stateFor(session: WizardSession): WizardStateWire {
 	if (session.proposal) {
-		const finalized = finalizeProposal(session.proposal, session.description)
+		const finalized = finalizeProposal(session.proposal, vibeDescription(session))
 		return {
 			phase: "finish",
 			mode: session.mode,
@@ -96,13 +107,12 @@ function stateFor(session: WizardSession): WizardStateWire {
 			asked: session.history.length,
 			cap: questionCapFor(session.mode),
 			history: session.history,
-			coverage:
-				session.mode === "collaborative"
-					? {
-							done: COVERAGE_AREAS.filter((area) => covered.has(area.id)),
-							missing: COVERAGE_AREAS.filter((area) => !covered.has(area.id)),
-						}
-					: undefined,
+			coverage: tracksCoverage(session.mode)
+				? {
+						done: COVERAGE_AREAS.filter((area) => covered.has(area.id)),
+						missing: COVERAGE_AREAS.filter((area) => !covered.has(area.id)),
+					}
+				: undefined,
 		}
 	}
 	return { phase: "describe", description: session.description }
@@ -181,9 +191,28 @@ export async function startWizard(
 	description: string,
 	mode: WizardMode = "collaborative",
 ): Promise<WizardStateWire> {
-	const session: WizardSession = { description: description.trim(), mode, history: [] }
+	const context = mode === "from-app" ? await describeApp(projectPath) : description.trim()
+	const session: WizardSession = { description: context, mode, history: [] }
 	await persist(projectPath, session)
 	return advance(projectPath, session)
+}
+
+/**
+ * What Caret detected, as the from-app interview's opening context. A head
+ * start for the model's reading, never a substitute for it — the detector does
+ * not extract a single token.
+ */
+async function describeApp(projectPath: string): Promise<string> {
+	const profile = await detectAppProfile(projectPath)
+	if (!profile) return "No app code was detected in this folder. Read whatever is there."
+	const lines = [
+		`Framework: ${profile.framework ?? "not named in package.json"}.`,
+		`Styling: ${profile.styling.length ? profile.styling.join(", ") : "nothing recognised by name — likely plain CSS or inline styles"}.`,
+		profile.styleSources.length
+			? `Files that probably declare the look (start here, but they are not the whole story): ${profile.styleSources.join(", ")}.`
+			: "No config or variables file was found — read the stylesheets and components themselves.",
+	]
+	return lines.join("\n")
 }
 
 export async function answerWizard(projectPath: string, answer: WizardAnswer): Promise<WizardStateWire> {
@@ -250,14 +279,19 @@ export async function commitWizard(projectPath: string): Promise<{ name: string;
 	const session = sessions.get(projectPath)
 	if (!session?.proposal) throw new Error("There is no finished foundation to commit.")
 
-	const finalized = finalizeProposal(session.proposal, session.description)
+	const finalized = finalizeProposal(session.proposal, vibeDescription(session))
 	// The rationale used to be shown once on the finish screen and destroyed
 	// with the scratch; `meta` is where it survives — and it doubles as the
 	// "a person actually committed this" marker the entry flow keys on.
 	finalized.tokens.meta = {
 		committed: true,
 		committedAt: new Date().toISOString(),
-		source: session.mode === "collaborative" ? "wizard-collaborative" : "wizard",
+		source:
+			session.mode === "collaborative"
+				? "wizard-collaborative"
+				: session.mode === "from-app"
+					? "wizard-from-app"
+					: "wizard",
 		rule: finalized.rule,
 		summary: finalized.summary,
 		decisions: finalized.decisions,

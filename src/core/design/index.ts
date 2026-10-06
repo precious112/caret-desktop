@@ -271,6 +271,7 @@ export {
 	ProposalError,
 	QUESTION_CAP,
 	questionCapFor,
+	tracksCoverage,
 	readWizardScratch,
 	type SpecimenParams,
 	type StepId,
@@ -288,6 +289,7 @@ export {
 	WizardTurnError,
 	writeWizardScratch,
 } from "./interview"
+export { type AppProfile, detectAppProfile } from "./app-profile"
 export { listPages, readPageMeta, validatePageMeta, writePageMeta } from "./page-meta"
 export {
 	addPromotedRule,

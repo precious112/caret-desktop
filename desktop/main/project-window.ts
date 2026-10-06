@@ -23,8 +23,11 @@ import * as path from "path"
 import {
 	type ConversationState,
 	caretDirectoryExists,
+	type AppProfile,
 	DesignSession,
+	detectAppProfile,
 	hostFor,
+	listPages,
 	readFoundationTokens,
 	registerProjectServices,
 	unregisterProjectServices,
@@ -92,6 +95,13 @@ export class ProjectWindow {
 	private chromeInsets: ChromeInsets = { top: DEFAULT_CHROME_INSET, right: 0 }
 	private canvasVisible = false
 	private closed = false
+	/**
+	 * Detected once per open: whether the folder holds app code is a property of
+	 * the project, not of any one push, and the walk is not free. `undefined`
+	 * means not yet detected.
+	 */
+	private appProfile: AppProfile | null | undefined
+	private statePushTimer: ReturnType<typeof setTimeout> | null = null
 	/** Watches `.caret/.variants.json` existence so the chrome can badge an open exploration. */
 	private exploreWatcher: fs.FSWatcher | null = null
 	private exploreOpen: boolean | null = null
@@ -194,7 +204,11 @@ export class ProjectWindow {
 			// An asset can arrive from an agent or from Finder, not only from the
 			// library surface, so the renderer is told rather than left to poll.
 			onAssetsChanged: () => this.sendToChrome("assets:changed", this.projectPath),
-			onPageWritten: (file) => void this.catalog.ensureSuppliedFor(file),
+			onPageWritten: (file) => {
+				void this.catalog.ensureSuppliedFor(file)
+				// The setup pill's step 2 is "the first page exists"; it learns that here.
+				this.schedulePushState()
+			},
 		})
 
 		this.loadChrome()
@@ -267,6 +281,10 @@ export class ProjectWindow {
 			const tokens = await readFoundationTokens(this.projectPath)
 			hasFoundation = tokens?.meta?.committed === true || Object.keys(tokens?.color?.brand?.scale ?? {}).length > 0
 		}
+		// Takes are pages on disk but not pages anyone made — an open exploration
+		// must not read as "your first page exists".
+		const hasPages = (await listPages(this.projectPath)).some((page) => !page.variantOf)
+		if (this.appProfile === undefined) this.appProfile = await detectAppProfile(this.projectPath)
 		return {
 			path: this.projectPath,
 			name: path.basename(this.projectPath),
@@ -274,6 +292,8 @@ export class ProjectWindow {
 			mcpUrl: this.mcp.getUrl(),
 			agentConnected: this.mcp.hasConnectedAgent(),
 			hasFoundation,
+			hasPages,
+			app: this.appProfile,
 		}
 	}
 
@@ -626,6 +646,18 @@ export class ProjectWindow {
 				height: Math.max(0, height - this.chromeInsets.top),
 			})
 		}
+	}
+
+	/**
+	 * Coalesced push for bursty sources: the healer reports every page it touches
+	 * at open, and each push re-lists the pages.
+	 */
+	private schedulePushState(): void {
+		if (this.statePushTimer) return
+		this.statePushTimer = setTimeout(() => {
+			this.statePushTimer = null
+			void this.pushState()
+		}, 300)
 	}
 
 	private async pushState(): Promise<void> {

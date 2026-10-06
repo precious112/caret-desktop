@@ -27,7 +27,10 @@ export interface ChannelEvent {
  */
 export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 	// Foundation interview — the onboarding funnel.
-	"wizard:start": { event: "wizard_started", props: (args) => ({ mode: enumArg(args[2], ["ai-led", "collaborative"]) }) },
+	"wizard:start": {
+		event: "wizard_started",
+		props: (args) => ({ mode: enumArg(args[2], ["ai-led", "collaborative", "from-app"]) }),
+	},
 	"wizard:answer": { event: "wizard_step", props: () => ({ action: "answer" }) },
 	"wizard:back": { event: "wizard_step", props: () => ({ action: "back" }) },
 	"wizard:retry": { event: "wizard_step", props: () => ({ action: "retry" }) },
@@ -64,7 +67,30 @@ export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 }
 
 /** The only event names the renderer may submit over `analytics:event`. */
-export const RENDERER_EVENTS: ReadonlySet<string> = new Set(["surface_switched", "renderer_exception"])
+export const RENDERER_EVENTS: ReadonlySet<string> = new Set(["surface_switched", "renderer_exception", "setup_route_chosen"])
+
+const SURFACES = ["canvas", "foundation", "agent", "assets"] as const
+const SETUP_ROUTES = ["from-app", "ai-new-look", "ai-describe", "manual"] as const
+
+/**
+ * The properties a renderer product event may carry, rebuilt from fixed
+ * vocabulary — the renderer's object is never spread. `renderer_exception`
+ * is not handled here: it is scrubbed and sent as an exception, not an event.
+ */
+export function rendererEventProps(name: string, props: Record<string, unknown> | undefined): Record<string, unknown> {
+	if (name === "surface_switched") {
+		return {
+			surface: enumArg(props?.surface, SURFACES),
+			// The automatic landing on Foundation for a project with no design
+			// system — without it the funnel only ever saw people LEAVING setup.
+			...(props?.initial === true ? { initial: true } : {}),
+		}
+	}
+	if (name === "setup_route_chosen") {
+		return { route: enumArg(props?.route, SETUP_ROUTES), has_app_code: props?.hasAppCode === true }
+	}
+	return {}
+}
 
 /** An argument admitted only when it matches a fixed vocabulary; anything else is named, not sent. */
 function enumArg(value: unknown, allowed: readonly string[]): string {

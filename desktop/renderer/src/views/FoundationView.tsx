@@ -19,13 +19,14 @@
  */
 import { useEffect, useState } from "react"
 
-import { landsInChat, type ProjectState, type WizardStateWire } from "../../../shared/ipc"
+import { landsInChat, type ProjectState, type WizardModeWire, type WizardStateWire } from "../../../shared/ipc"
 import { TokenWizard } from "../components/design-wizard/TokenWizard"
 import { invoke, on } from "../ipc"
 import { setActiveProject } from "../services/design-client"
 import { DesignSystemView } from "./DesignSystemView"
 import { FoundationEntry } from "./FoundationEntry"
 import { InterviewView } from "./InterviewView"
+import { FirstPageCard, SetupStepper } from "./Setup"
 import { WizardView } from "./WizardView"
 
 /** `agent` is only ever entered by an external agent pushing a question. */
@@ -35,13 +36,20 @@ export function FoundationView({
 	project,
 	onDone,
 	onInterviewAnswered,
+	onMakeFirstPage,
+	onOpenBackend,
 }: {
 	project: ProjectState
 	onDone(): void
 	onInterviewAnswered?(): void
+	/** Step 2 of setup: opens the chat seeded for a first page. */
+	onMakeFirstPage?(): void
+	/** The Backend tab — where an MCP agent is connected. */
+	onOpenBackend?(): void
 }) {
 	const [mode, setMode] = useState<Mode>(project.hasFoundation ? "overview" : "entry")
 	const [wizardState, setWizardState] = useState<WizardStateWire | null>(null)
+	const [wizardStart, setWizardStart] = useState<{ mode: WizardModeWire; description: string } | null>(null)
 	const [description, setDescription] = useState("")
 	const [blastRadius, setBlastRadius] = useState<{ occurrences: number; files: number } | null>(null)
 
@@ -113,14 +121,6 @@ export function FoundationView({
 
 	return (
 		<div className="flex flex-1 flex-col overflow-hidden bg-shell-bg">
-			{!project.hasFoundation && mode !== "agent" && (
-				<div className="border-b border-shell-border bg-caret-accent/10 px-8 py-3">
-					<p className="mx-auto max-w-3xl">
-						Set your foundations before generating any pages. Everything an agent writes will be styled from these,
-						and changing them afterwards means restyling what already exists.
-					</p>
-				</div>
-			)}
 			{rerunning && (
 				<div className="border-b border-shell-border bg-caret-accent/10 px-8 py-3" data-testid="foundation-rerun-notice">
 					<p className="mx-auto max-w-3xl">
@@ -140,25 +140,42 @@ export function FoundationView({
 				/>
 			)}
 			{mode === "overview" && (
-				<DesignSystemView onEditByHand={() => setMode("manual")} onRerunInterview={() => setMode("entry")} />
+				<DesignSystemView
+					header={
+						!project.hasPages && onMakeFirstPage ? (
+							<>
+								<SetupStepper step={2} />
+								<FirstPageCard onMakePage={onMakeFirstPage} />
+							</>
+						) : undefined
+					}
+					onEditByHand={() => setMode("manual")}
+					onRerunInterview={() => setMode("entry")}
+				/>
 			)}
 			{mode === "entry" && (
 				<FoundationEntry
+					app={project.app}
 					onManual={(described) => {
 						setDescription(described)
 						setMode("manual")
 					}}
-					onStarted={(state, described) => {
+					onStart={(startMode, described) => {
 						setDescription(described)
-						setWizardState(state)
+						setWizardState(null)
+						setWizardStart({ mode: startMode, description: described })
 						setMode("wizard")
 					}}
-					projectPath={project.path}
+					settingUp={!project.hasFoundation}
 				/>
 			)}
 			{mode === "wizard" && (
 				<WizardView
+					header={!project.hasFoundation ? <SetupStepper step={1} /> : undefined}
 					initialState={wizardState}
+					key={wizardStart ? `${wizardStart.mode}:${wizardStart.description}` : "resume"}
+					onOpenBackend={onOpenBackend}
+					start={wizardState ? null : wizardStart}
 					onCommitted={onDone}
 					onNothingInFlight={() => setMode("entry")}
 					onSwitchToManual={() => setMode("manual")}

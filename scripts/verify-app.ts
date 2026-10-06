@@ -203,7 +203,7 @@ async function openDesignSystem(chrome: import("playwright").Page): Promise<void
 	const onFoundation = await chrome.evaluate(() =>
 		Boolean(
 			document.querySelector(
-				'[data-testid="token-editor"], [data-testid="foundation-describe"], [data-testid="wizard"], [data-testid="wizard-needs-backend"]',
+				'[data-testid="token-editor"], [data-testid="foundation-entry"], [data-testid="wizard"], [data-testid="wizard-needs-backend"]',
 			),
 		),
 	)
@@ -212,6 +212,20 @@ async function openDesignSystem(chrome: import("playwright").Page): Promise<void
 	if (onFoundation) await chrome.click('[data-testid="top-bar"] >> text=Foundation')
 	await chrome.click('[data-testid="top-bar"] >> text=Foundation')
 	await chrome.waitForSelector('[data-testid="design-system-view"]', { timeout: 20_000 })
+}
+
+/**
+ * Entry → the description box, whichever shape the entry took. A folder with
+ * app code (the fixture has src/App.tsx) opens on routes, and "Design a new
+ * look" is the way to the box; a fresh folder opens on the box itself.
+ */
+async function openDescribe(chrome: import("playwright").Page, description: string): Promise<void> {
+	await chrome.waitForSelector('[data-testid="foundation-entry"]', { timeout: 20_000 })
+	if (await chrome.getByTestId("foundation-route-new-look").count()) {
+		await chrome.click('[data-testid="foundation-route-new-look"]')
+	}
+	await chrome.waitForSelector('[data-testid="foundation-describe"]', { timeout: 20_000 })
+	await chrome.fill('[data-testid="foundation-describe"]', description)
 }
 
 async function waitFor<T>(
@@ -4009,32 +4023,48 @@ export default function CatalogDemo() {
 		await openDesignSystem(chrome)
 		await chrome.click('[data-testid="ds-rerun"]')
 
-		await chrome.waitForSelector('[data-testid="foundation-describe"]', { timeout: 20_000 })
+		await chrome.waitForSelector('[data-testid="foundation-entry"]', { timeout: 20_000 })
 		assert(
 			(await chrome.getByTestId("foundation-rerun-notice").count()) === 1,
 			"re-running over a committed foundation did not show the blast-radius banner",
 		)
-		const description = "A dashboard for technical support teams who triage tickets all day"
-		await chrome.fill('[data-testid="foundation-describe"]', description)
-		await chrome.click('[data-testid="foundation-describe-continue"]')
-		await shot(chrome, "12-entry-chooser")
 
-		// Both doors are on screen (the AI-led third door was removed 2026-08-31 —
-		// silent decisions shipped a serif body and a null base size); the
-		// interview needs a backend and must say so rather than pretend.
-		for (const door of ["foundation-mode-collaborative", "foundation-mode-manual"]) {
-			assert((await chrome.getByTestId(door).count()) === 1, `the chooser is missing ${door}`)
+		// The fixture holds app code, so the entry leads with what it found and
+		// the three routes — never the "what are you building?" box an existing
+		// app was asked before. Detection is shown as context, not as an option.
+		await chrome.waitForSelector('[data-testid="foundation-app-detected"]', { timeout: 20_000 })
+		for (const route of ["foundation-route-from-app", "foundation-route-new-look", "foundation-route-manual"]) {
+			assert((await chrome.getByTestId(route).count()) === 1, `the entry is missing ${route}`)
 		}
+		assert(
+			(await chrome.getByTestId("foundation-describe").count()) === 0,
+			"an existing app was asked to describe itself before choosing a route",
+		)
+		await shot(chrome, "12-entry-routes")
+
+		// "Design a new look" leads to the description box, whose two buttons are
+		// the routes; both stay disabled until there is something to submit.
+		const description = "A dashboard for technical support teams who triage tickets all day"
+		await chrome.click('[data-testid="foundation-route-new-look"]')
+		await chrome.waitForSelector('[data-testid="foundation-describe"]', { timeout: 20_000 })
+		assert(
+			await chrome.getByTestId("foundation-mode-collaborative").isDisabled(),
+			"the AI route accepted an empty description",
+		)
+		await chrome.fill('[data-testid="foundation-describe"]', description)
+		await shot(chrome, "12-entry-describe")
 		await chrome.click('[data-testid="foundation-mode-collaborative"]')
-		await chrome.waitForSelector('[data-testid="wizard-needs-backend"]', { timeout: 30_000 })
+
+		// With no backend chosen the interview cannot run — and instead of the old
+		// dead end, the connect step is right here with its one-click door.
+		await chrome.waitForSelector('[data-testid="wizard-needs-backend"]', { timeout: 60_000 })
+		await chrome.waitForSelector('[data-testid="connect-continue"]:not([disabled])', { timeout: 30_000 })
 
 		// Back around to the manual door, which needs nothing: re-entering the
 		// surface resets the flow to the DS view (no interview is in flight).
 		await openDesignSystem(chrome)
 		await chrome.click('[data-testid="ds-rerun"]')
-		await chrome.waitForSelector('[data-testid="foundation-describe"]', { timeout: 20_000 })
-		await chrome.fill('[data-testid="foundation-describe"]', description)
-		await chrome.click('[data-testid="foundation-describe-continue"]')
+		await openDescribe(chrome, description)
 		await chrome.click('[data-testid="foundation-mode-manual"]')
 
 		// The manual editor opens with the description already in the vibe step —
@@ -4050,7 +4080,7 @@ export default function CatalogDemo() {
 
 		// Leave the surface where the suite expects it.
 		await chrome.getByTestId("top-bar").getByRole("button", { name: "Foundation" }).click()
-		return "describe → chooser showed both doors; the interview refused honestly; manual opened prefilled"
+		return "routes shown for the existing app; describe gated; connect step offered; manual opened prefilled"
 	})
 
 	await scenario("jj. with no backend, the interview refuses honestly and its escape works", async () => {
@@ -4059,16 +4089,20 @@ export default function CatalogDemo() {
 		// dead-ending or faking an interview.
 		await openDesignSystem(chrome)
 		await chrome.click('[data-testid="ds-rerun"]')
-		await chrome.waitForSelector('[data-testid="foundation-describe"]', { timeout: 20_000 })
-		await chrome.fill('[data-testid="foundation-describe"]', "A quiet reading app for long-form essays")
-		await chrome.click('[data-testid="foundation-describe-continue"]')
-		await chrome.click('[data-testid="foundation-mode-collaborative"]')
+		// The from-app route is a model route too, so it lands on the same
+		// connect step — it must not pretend it can read the app without one.
+		await chrome.waitForSelector('[data-testid="foundation-route-from-app"]', { timeout: 20_000 })
+		await chrome.click('[data-testid="foundation-route-from-app"]')
 
-		await chrome.waitForSelector('[data-testid="wizard-needs-backend"]', { timeout: 30_000 })
+		await chrome.waitForSelector('[data-testid="wizard-needs-backend"]', { timeout: 60_000 })
+		assert(
+			(await chrome.getByTestId("connect-mcp").count()) === 1,
+			"the connect step offers no way in for someone who already uses an agent over MCP",
+		)
 		await shot(chrome, "13-wizard-needs-backend")
 
 		// The offered escape actually goes somewhere.
-		await chrome.getByRole("button", { name: "Set tokens by hand" }).click()
+		await chrome.click('[data-testid="wizard-needs-backend-manual"]')
 		const textarea = chrome.locator("textarea").first()
 		await textarea.waitFor({ timeout: 20_000 })
 
@@ -4922,13 +4956,10 @@ export default function CatalogDemo() {
 		// The fixture is committed, so the road in is the DS view's re-run door.
 		await openDesignSystem(chrome)
 		await chrome.click('[data-testid="ds-rerun"]')
-		await chrome.waitForSelector('[data-testid="foundation-describe"]', { timeout: 20_000 })
-
-		await chrome.fill(
-			'[data-testid="foundation-describe"]',
+		await openDescribe(
+			chrome,
 			"A quiet reading app for long-form essays. People sit with it for an hour at a time. Calm, bookish, light background.",
 		)
-		await chrome.click('[data-testid="foundation-describe-continue"]')
 		await chrome.click('[data-testid="foundation-mode-collaborative"]')
 
 		// The first question is a whole model turn composing UI; give it the same

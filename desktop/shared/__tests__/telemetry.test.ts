@@ -7,7 +7,15 @@
  */
 import { strict as assert } from "assert"
 
-import { CHANNEL_EVENTS, createSessionBudget, hashText, RENDERER_EVENTS, scrubAndTruncate, scrubText } from "../telemetry"
+import {
+	CHANNEL_EVENTS,
+	createSessionBudget,
+	hashText,
+	RENDERER_EVENTS,
+	rendererEventProps,
+	scrubAndTruncate,
+	scrubText,
+} from "../telemetry"
 
 describe("telemetry scrubber", () => {
 	it("strips POSIX home and system paths", () => {
@@ -56,7 +64,24 @@ describe("channel allowlist", () => {
 	})
 
 	it("renderer event names are a closed set", () => {
-		assert.deepEqual([...RENDERER_EVENTS].sort(), ["renderer_exception", "surface_switched"])
+		assert.deepEqual([...RENDERER_EVENTS].sort(), ["renderer_exception", "setup_route_chosen", "surface_switched"])
+	})
+
+	it("renderer event props are rebuilt from fixed vocabulary, never spread", () => {
+		const smuggled = { surface: "/Users/someone/secret", initial: "yes", note: "free text" }
+		assert.deepEqual(rendererEventProps("surface_switched", smuggled), { surface: "other" })
+		assert.deepEqual(rendererEventProps("surface_switched", { surface: "foundation", initial: true }), {
+			surface: "foundation",
+			initial: true,
+		})
+		assert.deepEqual(rendererEventProps("setup_route_chosen", { route: "from-app", hasAppCode: true, path: "/x" }), {
+			route: "from-app",
+			has_app_code: true,
+		})
+		assert.deepEqual(rendererEventProps("setup_route_chosen", { route: "a description they typed" }), {
+			route: "other",
+			has_app_code: false,
+		})
 	})
 })
 

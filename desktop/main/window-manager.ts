@@ -9,7 +9,7 @@ import { app } from "electron"
 import * as fs from "fs/promises"
 import * as path from "path"
 
-import { caretDirectoryExists } from "../../src/core/design"
+import { caretDirectoryExists, detectAppProfile } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
 import { capture } from "./analytics"
 import { getPrefs, setPref } from "./prefs"
@@ -83,7 +83,10 @@ export class WindowManager {
 		// than the user staring at nothing.
 		window.start().catch((err) => Logger.error(`[windows] failed to start ${resolved}:`, err))
 
-		capture("project_opened", { open_windows: this.windows.size })
+		// Whether the folder already held an app is the fork the onboarding funnel
+		// turns on: existing apps and fresh projects get different first screens.
+		const hasAppCode = (await detectAppProfile(resolved)) !== null
+		capture("project_opened", { open_windows: this.windows.size, has_app_code: hasAppCode })
 		return window
 	}
 

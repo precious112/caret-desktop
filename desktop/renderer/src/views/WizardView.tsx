@@ -28,15 +28,27 @@ import type {
 	WizardQAWire,
 	WizardQuestionWire,
 	WizardSpecWire,
+	WizardModeWire,
 	WizardStateWire,
 } from "../../../shared/ipc"
 import { invoke, on } from "../ipc"
 import { cn } from "../lib/utils"
+import { ConnectModel } from "./ConnectModel"
 
 interface Props {
 	projectPath: string
 	/** The `wizard:start` result, when the entry flow already began the interview. */
 	initialState?: WizardStateWire | null
+	/**
+	 * An interview to begin on mount. The first turn can take a while (from-app
+	 * reads the whole app before asking anything), so it runs HERE, behind the
+	 * honest progress screen, instead of behind a spinner on the entry button.
+	 */
+	start?: { mode: WizardModeWire; description: string } | null
+	/** Shown above the interview while setup is on step 1. */
+	header?: React.ReactNode
+	/** The Backend tab, offered by the connect step for MCP users. */
+	onOpenBackend?(): void
 	onCommitted(name: string): void
 	onSwitchToManual(): void
 	/**
@@ -47,9 +59,19 @@ interface Props {
 	onNothingInFlight?(): void
 }
 
-export function WizardView({ projectPath, initialState, onCommitted, onSwitchToManual, onNothingInFlight }: Props) {
+export function WizardView({
+	projectPath,
+	initialState,
+	start,
+	header,
+	onOpenBackend,
+	onCommitted,
+	onSwitchToManual,
+	onNothingInFlight,
+}: Props) {
 	const [state, setState] = useState<WizardStateWire | null>(initialState ?? null)
 	const [busy, setBusy] = useState(!initialState)
+	const fromApp = (state && "mode" in state ? state.mode : start?.mode) === "from-app"
 	// The harness retries invisibly (up to MAX_TURN_ATTEMPTS); this is the only
 	// trace the user gets — an honest "taking longer than usual" once attempts
 	// pile up, never a failure screen while attempts remain.
@@ -63,7 +85,13 @@ export function WizardView({ projectPath, initialState, onCommitted, onSwitchToM
 	)
 
 	useEffect(() => {
-		if (initialState) return
+		if (initialState || !start) return
+		void transition(() => invoke("wizard:start", projectPath, start.description, start.mode))
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
+	useEffect(() => {
+		if (initialState || start) return
 		let cancelled = false
 		void invoke("wizard:resume", projectPath)
 			.then((resumed) => !cancelled && setState(resumed ?? { phase: "describe", description: "" }))
@@ -100,16 +128,29 @@ export function WizardView({ projectPath, initialState, onCommitted, onSwitchToM
 		}
 	}
 
-	if (!state) return <Centered>{busy ? "Loading…" : "Something went wrong."}</Centered>
+	if (!state && !(busy && start)) return <Centered>{busy ? "Loading…" : "Something went wrong."}</Centered>
 
 	return (
 		<div className="flex-1 overflow-auto bg-shell-bg" data-testid="wizard">
-			<div className="mx-auto flex max-w-5xl gap-8 px-8 py-10">
+			<div className="mx-auto max-w-5xl px-8 pt-10">{header}</div>
+			<div className={cn("mx-auto flex max-w-5xl gap-8 px-8 pb-10", !header && "pt-10")}>
 				<div className="min-w-0 flex-1">
-					{state.phase === "needs-backend" && <NeedsBackend detail={state.detail} onManual={onSwitchToManual} />}
+					{/* The first turn, and the retry after connecting a model. */}
+					{busy && (!state || state.phase === "needs-backend") && (
+						<Thinking asked={0} attempt={attempt} fromApp={fromApp} />
+					)}
 
-					{state.phase === "question" && busy && <Thinking asked={state.asked} attempt={attempt} />}
-					{state.phase === "question" && !busy && (
+					{state?.phase === "needs-backend" && !busy && (
+						<ConnectModel
+							detail={state.detail}
+							onManual={onSwitchToManual}
+							onOpenBackend={onOpenBackend}
+							onReady={() => transition(() => invoke("wizard:retry", projectPath))}
+						/>
+					)}
+
+					{state?.phase === "question" && busy && <Thinking asked={state.asked} attempt={attempt} fromApp={fromApp} />}
+					{state?.phase === "question" && !busy && (
 						<Question
 							key={state.current.id}
 							onAnswer={(answer) => transition(() => invoke("wizard:answer", projectPath, answer))}
@@ -121,7 +162,7 @@ export function WizardView({ projectPath, initialState, onCommitted, onSwitchToM
 						/>
 					)}
 
-					{state.phase === "finish" && (
+					{state?.phase === "finish" && (
 						<Finish
 							busy={busy}
 							onBack={() => transition(() => invoke("wizard:back", projectPath))}
@@ -136,7 +177,7 @@ export function WizardView({ projectPath, initialState, onCommitted, onSwitchToM
 						/>
 					)}
 
-					{state.phase === "error" && (
+					{state?.phase === "error" && (
 						<ErrorScreen
 							busy={busy}
 							canFinish={state.canFinish}
@@ -148,12 +189,12 @@ export function WizardView({ projectPath, initialState, onCommitted, onSwitchToM
 					)}
 				</div>
 
-				{(state.phase === "question" || state.phase === "finish") && (
+				{(state?.phase === "question" || state?.phase === "finish") && (
 					<div className="hidden w-56 shrink-0 flex-col gap-7 lg:flex">
-						{state.phase === "question" && state.coverage && <Coverage coverage={state.coverage} />}
+						{state?.phase === "question" && state.coverage && <Coverage coverage={state.coverage} />}
 						<SoFar
 							history={state.history}
-							proposalSpec={state.phase === "finish" ? proposalSpec(state) : undefined}
+							proposalSpec={state?.phase === "finish" ? proposalSpec(state) : undefined}
 						/>
 					</div>
 				)}
@@ -168,32 +209,22 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 // ── screens ─────────────────────────────────────────────────────────────────
 
-function NeedsBackend({ detail, onManual }: { detail: string; onManual(): void }) {
-	return (
-		<div className="fade-in" data-testid="wizard-needs-backend">
-			<h1 className="text-2xl font-medium">The interview needs a coding backend.</h1>
-			<p className="mt-2 max-w-xl leading-relaxed text-shell-muted">
-				A model runs this conversation — it reads your description and decides what to ask. {detail}
-			</p>
-			<div className="mt-5 flex items-center gap-2">
-				<button
-					className="rounded-lg bg-caret-accent px-4 py-2 font-medium text-white transition-colors hover:bg-caret-accent-hover"
-					onClick={onManual}
-					type="button">
-					Set tokens by hand
-				</button>
-			</div>
-		</div>
-	)
-}
-
-function Thinking({ asked, attempt }: { asked: number; attempt?: number }) {
+function Thinking({ asked, attempt, fromApp }: { asked: number; attempt?: number; fromApp?: boolean }) {
 	return (
 		<div className="fade-in flex flex-col gap-2 py-16" data-testid="wizard-thinking">
 			<div className="flex items-center gap-3 text-shell-muted">
 				<Loader2 className="animate-spin text-caret-accent" size={15} />
-				{asked === 0 ? "Reading your description and deciding what to ask…" : "Choosing what to ask next…"}
+				{asked === 0
+					? fromApp
+						? "Reading your app's styles…"
+						: "Reading your description and deciding what to ask…"
+					: "Choosing what to ask next…"}
 			</div>
+			{asked === 0 && fromApp && (
+				<p className="pl-7 text-[12.5px] text-shell-muted">
+					Looking through your stylesheets, theme files and components. Only reading: nothing in your app changes.
+				</p>
+			)}
 			{/* The retries themselves stay invisible; past the early attempts the
 			    user gets honesty, not an error — the failure screen exists only
 			    for a fully spent turn. */}

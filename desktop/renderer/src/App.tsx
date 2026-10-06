@@ -16,6 +16,7 @@ import { CHAT_SIDEBAR_WIDTH, ChatSidebar } from "./views/ChatSidebar"
 import { FoundationView } from "./views/FoundationView"
 import { NotificationStack } from "./views/NotificationStack"
 import { ProjectPicker } from "./views/ProjectPicker"
+import { AssetsBeforeSetup, CanvasSetup, FIRST_PAGE_SEED, setupStepOf } from "./views/Setup"
 import { TelemetryNotice } from "./views/TelemetryNotice"
 import { TopBar } from "./views/TopBar"
 
@@ -26,6 +27,10 @@ export function App() {
 	const [project, setProject] = useState<ProjectState | null>(null)
 	const [surface, setSurface] = useState<Surface>("canvas")
 	const [chatOpen, setChatOpen] = useState(false)
+	/** Text to place in the chat composer when it next opens — step 2's "Make a …". */
+	const [chatSeed, setChatSeed] = useState<{ text: string; nonce: number } | null>(null)
+	/** The user chose to look at Assets before setting up; asked once per window. */
+	const [assetsLookAround, setAssetsLookAround] = useState(false)
 	/**
 	 * The asset being viewed large, if any. Held here rather than in the chat
 	 * because the viewer covers the canvas column while the chat stays beside it,
@@ -94,9 +99,14 @@ export function App() {
 	// The asset viewer is a React overlay, which the native canvas view would
 	// simply sit on top of — so viewing an asset hides the canvas exactly the
 	// way switching surfaces does, and closing restores it.
+	//
+	// Before the first page exists there is nothing on the canvas to see, so the
+	// chrome shows the setup steps in its place (`CanvasSetup`) and the native
+	// view stays parked. An open exploration counts as something to see.
+	const canvasHasContent = Boolean(project?.hasPages) || exploreOpen
 	useEffect(() => {
-		if (project) invoke("canvas:setVisible", project.path, surface === "canvas" && viewerTag === null)
-	}, [project, surface, viewerTag])
+		if (project) invoke("canvas:setVisible", project.path, surface === "canvas" && viewerTag === null && canvasHasContent)
+	}, [project, surface, viewerTag, canvasHasContent])
 
 	// A stale tag from the last project would open the viewer onto "nothing is
 	// tagged that" in the new one.
@@ -147,8 +157,19 @@ export function App() {
 	// A project with no foundation gets the wizard first. Generating pages before
 	// tokens exist means re-styling all of them later, which is the exact rework
 	// the design layer is supposed to prevent.
+	//
+	// Once per project OPEN, not once per state push: pushes arrive on every
+	// token change, agent connection and page write, and re-running this on each
+	// one dragged a user who had chosen to look around straight back to setup.
+	// The landing is reported as `initial`, because otherwise the funnel only
+	// ever sees people leaving Foundation, never arriving.
+	const landedFor = useRef<string | null>(null)
 	useEffect(() => {
-		if (project && !project.hasFoundation) setSurface("foundation")
+		if (!project || landedFor.current === project.path) return
+		landedFor.current = project.path
+		if (project.hasFoundation) return
+		setSurface("foundation")
+		void invoke("analytics:event", "surface_switched", { surface: "foundation", initial: true })
 	}, [project])
 
 	/**
@@ -181,6 +202,13 @@ export function App() {
 		})
 	}, [])
 
+	// Step 2 happens in the chat: the composer opens seeded, the user finishes
+	// the sentence. Nothing is sent on their behalf.
+	const openFirstPage = useCallback(() => {
+		setChatSeed({ text: FIRST_PAGE_SEED, nonce: Date.now() })
+		setChatOpen(true)
+	}, [])
+
 	const openProject = useCallback(async (projectPath: string) => {
 		const state = await invoke("project:open", projectPath)
 		if (state) setProject(state)
@@ -207,6 +235,7 @@ export function App() {
 			<TopBar
 				chatOpen={chatOpen}
 				exploreOpen={exploreOpen}
+				onSetupClick={() => (setupStepOf(project) === 1 ? requestSurface("foundation") : openFirstPage())}
 				onSurfaceChange={requestSurface}
 				onToggleChat={() => setChatOpen((open) => !open)}
 				project={project}
@@ -218,20 +247,38 @@ export function App() {
 				{/* `relative` so the asset viewer can blanket exactly this column —
 				    the canvas's own footprint — while the chat stays beside it. */}
 				<div className="relative flex min-w-0 flex-1 flex-col">
+					{surface === "canvas" && !canvasHasContent && (
+						<CanvasSetup
+							onContinueSetup={() => requestSurface("foundation")}
+							onMakeFirstPage={openFirstPage}
+							step={project.hasFoundation ? 2 : 1}
+						/>
+					)}
 					{surface === "foundation" && (
 						<FoundationView
 							onDone={() => requestSurface("canvas")}
 							onInterviewAnswered={() => markInterviewPending(false)}
+							onMakeFirstPage={openFirstPage}
+							onOpenBackend={() => requestSurface("agent")}
 							project={project}
 						/>
 					)}
 					{surface === "agent" && <BackendPanel onClose={() => requestSurface("canvas")} project={project} />}
-					{surface === "assets" && <AssetsView onClose={() => requestSurface("canvas")} project={project} />}
+					{surface === "assets" &&
+						(!project.hasFoundation && !assetsLookAround ? (
+							<AssetsBeforeSetup
+								onBack={() => requestSurface("foundation")}
+								onLookAround={() => setAssetsLookAround(true)}
+							/>
+						) : (
+							<AssetsView onClose={() => requestSurface("canvas")} project={project} />
+						))}
 					{viewerTag && <AssetViewer onClose={() => setViewerTag(null)} project={project} tag={viewerTag} />}
 				</div>
 
 				{chatOpen && (
 					<ChatSidebar
+						seed={chatSeed}
 						onClose={() => setChatOpen(false)}
 						onOpenBackendSetup={() => requestSurface("agent")}
 						onViewAsset={setViewerTag}

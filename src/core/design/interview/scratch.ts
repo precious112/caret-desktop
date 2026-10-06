@@ -48,7 +48,7 @@ export async function readWizardScratch(projectPath: string): Promise<WizardScra
 		if (!Array.isArray(parsed.history)) return null
 		return {
 			description: parsed.description,
-			mode: parsed.mode === "collaborative" ? "collaborative" : "ai-led",
+			mode: parsed.mode === "collaborative" || parsed.mode === "from-app" ? parsed.mode : "ai-led",
 			history: parsed.history,
 			pending: parsed.pending,
 			proposal: parsed.proposal,

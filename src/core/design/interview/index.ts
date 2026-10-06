@@ -22,6 +22,7 @@ export {
 	nextWizardTurn,
 	QUESTION_CAP,
 	questionCapFor,
+	tracksCoverage,
 	type SettledValue,
 	settledValues,
 	validateQuestion,

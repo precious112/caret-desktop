@@ -775,3 +775,113 @@ describe("the library reading and shared validation", () => {
 		assert.throws(() => buildFoundation(DESCRIPTION, { typeface: typeface.id }), IncompleteInterviewError)
 	})
 })
+
+/**
+ * "Use what my app already has": the model reads the app before asking, and
+ * its opening screen confirms what it READ — so it may settle value areas the
+ * guessing modes may not. Everything else about a turn is held to the same
+ * rules as the other modes.
+ */
+describe("from-app mode", () => {
+	const READ = question({
+		kind: "assumptions",
+		covers: ["brand-color", "body-type", "radius"],
+		options: [
+			{ id: "a", label: "The main colour is indigo, #4F46E5", reason: "tailwind.config.ts, colors.primary" },
+			{ id: "b", label: "Everything is set in Inter", reason: "app/layout.tsx, next/font" },
+			{ id: "c", label: "Corners are rounded about 8px", reason: "components/ui/button.tsx" },
+		],
+	})
+
+	it("lets the opening screen settle values it read from the code", () => {
+		const valid = validateQuestion(READ, [], "from-app")
+		assert.deepEqual(valid.covers, ["brand-color", "body-type", "radius"])
+		assert.equal(valid.recommendedId, undefined, "an assumptions screen grew a recommendation")
+	})
+
+	it("refuses findings crammed into the question with verdict options — each finding needs its own Not quite", () => {
+		// Field-measured on a free model: nine findings in one 700-character
+		// question, options "All correct" / "Something needs correction".
+		const crammed = question({
+			kind: "assumptions",
+			covers: ["brand-color"],
+			question: `I read your app. ${"• The main colour is indigo, #4F46E5 (app/globals.css) ".repeat(6)}`,
+			options: [
+				{ id: "a", label: "The main colour is indigo, #4F46E5" },
+				{ id: "b", label: "Everything is set in Inter" },
+			],
+		})
+		assert.throws(() => validateQuestion(crammed, [], "from-app"), /carrying the statements/)
+		for (const verdict of ["Something needs correction", "All correct"]) {
+			const withVerdict = question({
+				kind: "assumptions",
+				covers: ["brand-color"],
+				question: "Here's what your app already decides.",
+				options: [
+					{ id: "a", label: "The main colour is indigo, #4F46E5" },
+					{ id: "v", label: verdict },
+				],
+			})
+			assert.throws(() => validateQuestion(withVerdict, [], "from-app"), WizardTurnError, `"${verdict}" was accepted`)
+		}
+	})
+
+	it("still refuses the same screen in a mode that would be guessing", () => {
+		assert.throws(() => validateQuestion(READ, [], "collaborative"), /may not settle/)
+		assert.throws(() => validateQuestion(READ, []), /may not settle/)
+	})
+
+	it("tells the model to read the app first, from the project directory, with Caret's head start", async () => {
+		const seen: Array<{ prompt: string; systemPrompt?: string; workingDirectory: string }> = []
+		const backend = {
+			id: "opencode",
+			async structured(request: { prompt: string; systemPrompt?: string; workingDirectory: string }) {
+				seen.push(request)
+				return { value: { action: "ask", question: READ }, emulated: false }
+			},
+		} as unknown as CodingBackend
+		const turn = await nextWizardTurn({
+			backend,
+			workingDirectory: "/projects/acme",
+			description: "Framework: Next.js.\nFiles that probably declare the look: app/globals.css.",
+			history: [],
+			mode: "from-app",
+		})
+		assert.equal(turn.action, "ask")
+		assert.equal(seen[0].workingDirectory, "/projects/acme", "the turn could not reach the app's files")
+		assert.match(seen[0].systemPrompt ?? "", /Read the app first/)
+		assert.match(seen[0].systemPrompt ?? "", /Never read `node_modules`/)
+		assert.match(seen[0].prompt, /app\/globals\.css/, "the detected style sources never reached the model")
+		assert.match(seen[0].prompt, /read the app now/)
+		assert.doesNotMatch(seen[0].prompt, /in their words/, "Caret's detection note was presented as the user's own words")
+	})
+
+	it("does not gate a finish on coverage — the app may simply not decide an area", async () => {
+		const turn = await nextWizardTurn({
+			backend: {
+				id: "opencode",
+				async structured() {
+					return { value: { action: "finish", foundation: PROPOSAL }, emulated: false }
+				},
+			} as unknown as CodingBackend,
+			workingDirectory: "/tmp/x",
+			description: "Framework: React.",
+			history: [
+				{ question: READ, answer: { questionId: READ.id, question: READ.question, kind: "assumptions", value: "a,b,c" } },
+			],
+			mode: "from-app",
+		})
+		assert.equal(turn.action, "finish")
+	})
+
+	it("survives a resume — scratch keeps the mode instead of falling back to ai-led", async () => {
+		const fs = await import("fs/promises")
+		const os = await import("os")
+		const path = await import("path")
+		const { readWizardScratch, writeWizardScratch } = await import("../scratch")
+		const root = await fs.mkdtemp(path.join(os.tmpdir(), "caret-fromapp-"))
+		await writeWizardScratch(root, { description: "Framework: Vue.", mode: "from-app", history: [] })
+		assert.equal((await readWizardScratch(root))?.mode, "from-app")
+		await fs.rm(root, { recursive: true, force: true })
+	})
+})

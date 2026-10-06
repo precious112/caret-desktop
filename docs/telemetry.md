@@ -40,14 +40,15 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 |---|---|
 | `app_launched` | `restored_windows` (count) |
 | `app_quit` | `session_duration_s` |
-| `project_opened` | `open_windows` (count) |
-| `surface_switched` | `surface`: canvas / foundation / agent / assets |
+| `project_opened` | `open_windows` (count); `has_app_code` (bool: whether the folder already held app code, never what it was) |
+| `surface_switched` | `surface`: canvas / foundation / agent / assets; `initial` (true only for the automatic landing on Foundation when a project has no design system yet) |
 
 ### Foundation interview (onboarding)
 
 | Event | Properties |
 |---|---|
-| `wizard_started` | `mode`: ai-led / collaborative / other |
+| `setup_route_chosen` | `route`: from-app / ai-new-look / ai-describe / manual; `has_app_code` (bool) |
+| `wizard_started` | `mode`: ai-led / collaborative / from-app / other |
 | `wizard_step` | `action`: answer / back / retry / finish_now; `ok`; `duration_s` |
 | `wizard_committed` | `ok`; `duration_s` |
 | `wizard_abandoned` | `ok`; `duration_s` |

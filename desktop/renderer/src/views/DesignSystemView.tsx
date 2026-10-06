@@ -34,9 +34,11 @@ type SectionId = "vibe" | "color" | "type" | "spacing" | "radius" | "depth"
 interface Props {
 	onRerunInterview(): void
 	onEditByHand(): void
+	/** Shown above the design system while setup's next step is open (step 2's first-page door). */
+	header?: React.ReactNode
 }
 
-export function DesignSystemView({ onRerunInterview, onEditByHand }: Props) {
+export function DesignSystemView({ onRerunInterview, onEditByHand, header }: Props) {
 	const [raw, setRaw] = useState<Record<string, any> | null>(null)
 	const [draft, setDraft] = useState<FoundationTokensDraft | null>(null)
 	const [editing, setEditing] = useState<SectionId | null>(null)
@@ -175,6 +177,7 @@ export function DesignSystemView({ onRerunInterview, onEditByHand }: Props) {
 	return (
 		<div className="flex-1 overflow-auto bg-shell-bg" data-testid="design-system-view">
 			<div className="mx-auto max-w-4xl px-8 py-10">
+				{header}
 				<p className="text-[11px] tracking-wider text-shell-muted uppercase">This project's design system</p>
 				<h1 className="mt-2 text-2xl font-medium">{name}</h1>
 				{meta?.summary && <p className="mt-2 max-w-2xl leading-relaxed text-shell-muted">{meta.summary}</p>}

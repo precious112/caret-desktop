@@ -141,7 +141,7 @@ export interface MotionTokens {
 export interface FoundationMeta {
 	committed: true
 	committedAt: string
-	source: "wizard" | "wizard-collaborative" | "manual" | "agent"
+	source: "wizard" | "wizard-collaborative" | "wizard-from-app" | "manual" | "agent"
 	/** The one-sentence restraint rule the foundation adopts. */
 	rule?: string
 	/** Two or three sentences to the user on what was built and why. */

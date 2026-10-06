@@ -77,6 +77,17 @@ export interface ProjectState {
 	agentConnected: boolean
 	/** Whether foundation tokens have been set (gates the onboarding prompt). */
 	hasFoundation: boolean
+	/** Whether any design page exists — step 2 of setup is the first one. */
+	hasPages: boolean
+	/** The app already in this folder, or null for a fresh project. Detected, never inferred. */
+	app: AppProfileWire | null
+}
+
+/** Mirror of the core `AppProfile`: what the entry screen can say about existing app code. */
+export interface AppProfileWire {
+	framework: string | null
+	styling: string[]
+	styleSources: string[]
 }
 
 export type NotificationLevel = "info" | "warn" | "error"
@@ -218,7 +229,7 @@ export interface WizardOptionWire {
 	spec?: WizardSpecWire
 }
 
-export type WizardModeWire = "ai-led" | "collaborative"
+export type WizardModeWire = "ai-led" | "collaborative" | "from-app"
 
 export interface WizardQuestionWire {
 	id: string

@@ -71,9 +71,11 @@ interface ChatSidebarProps {
 	onOpenBackendSetup(): void
 	/** Opens the asset viewer over the canvas. State lives in App, not here. */
 	onViewAsset(tag: string): void
+	/** Text placed in the composer (never sent) — a new nonce re-applies it. */
+	seed?: { text: string; nonce: number } | null
 }
 
-export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset }: ChatSidebarProps) {
+export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset, seed }: ChatSidebarProps) {
 	const [state, setState] = useState<AgentStateWire | null>(null)
 	const [draft, setDraft] = useState("")
 	const [attached, setAttached] = useState<ComposerImage[]>([])
@@ -86,6 +88,18 @@ export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset 
 	const [notice, setNotice] = useState<ModelNotice | null>(null)
 	const scrollRef = useRef<HTMLDivElement>(null)
 	const inputRef = useRef<HTMLTextAreaElement>(null)
+
+	useEffect(() => {
+		if (!seed) return
+		setDraft(seed.text)
+		// After the draft lands, so the caret sits at the end of the seed.
+		requestAnimationFrame(() => {
+			const input = inputRef.current
+			if (!input) return
+			input.focus()
+			input.setSelectionRange(input.value.length, input.value.length)
+		})
+	}, [seed])
 
 	useEffect(() => {
 		void invoke("agent:state", project.path).then(setState)

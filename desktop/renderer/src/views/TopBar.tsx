@@ -15,6 +15,7 @@ import type { Surface } from "../App"
 import caretIcon from "../assets/caret-icon.png"
 import { invoke, platform } from "../ipc"
 import { cn } from "../lib/utils"
+import { SetupPill, setupStepOf } from "./Setup"
 
 interface TopBarProps {
 	project: ProjectState
@@ -24,12 +25,15 @@ interface TopBarProps {
 	exploreOpen: boolean
 	onSurfaceChange(surface: Surface): void
 	onToggleChat(): void
+	/** The setup pill: step 1 goes to Foundation, step 2 opens the chat for a first page. */
+	onSetupClick(): void
 }
 
 export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
-	{ project, surface, chatOpen, exploreOpen, onSurfaceChange, onToggleChat },
+	{ project, surface, chatOpen, exploreOpen, onSurfaceChange, onToggleChat, onSetupClick },
 	ref,
 ) {
+	const setupStep = setupStepOf(project)
 	return (
 		<div
 			className={cn(
@@ -50,6 +54,12 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
 			<StatusDot label={project.canvasUrl ? "Preview running" : "Starting preview…"} ok={project.canvasUrl !== null} />
 
 			<div className="flex-1" />
+
+			{setupStep !== null && (
+				<span className="titlebar-nodrag">
+					<SetupPill onClick={onSetupClick} step={setupStep} />
+				</span>
+			)}
 
 			<div className="titlebar-nodrag flex items-center gap-1">
 				{/* Only while an exploration is open: the playground lives in the

@@ -42,7 +42,7 @@ import {
 } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
 import type { AssetRequestWire, ComposerImage } from "../shared/ipc"
-import { CHANNEL_EVENTS, RENDERER_EVENTS, scrubAndTruncate, scrubText } from "../shared/telemetry"
+import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps, scrubAndTruncate, scrubText } from "../shared/telemetry"
 import { buildAgentClientConfigs } from "./agent-configs"
 import { capture, captureError, setTelemetryEnabled } from "./analytics"
 import { acceptMark, authorMark, discardMark, holdMark } from "./authored-marks"
@@ -947,11 +947,7 @@ export function registerIpcHandlers(windows: WindowManager): void {
 			captureError(error, "renderer")
 			return
 		}
-		const surface = props?.surface
-		capture(name, {
-			surface:
-				typeof surface === "string" && ["canvas", "foundation", "agent", "assets"].includes(surface) ? surface : "other",
-		})
+		capture(name, rendererEventProps(name, props))
 	})
 
 	// ── canvas + chrome plumbing ──────────────────────────────────────────────

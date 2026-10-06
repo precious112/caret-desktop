@@ -46,10 +46,19 @@ export const COLLABORATIVE_QUESTION_CAP = 18
  * who wants the AI for the heavy lifting but the decisions surfaced: every
  * coverage area must be asked about, and nothing is decided silently.
  */
-export type WizardMode = "ai-led" | "collaborative"
+export type WizardMode = "ai-led" | "collaborative" | "from-app"
 
 export function questionCapFor(mode: WizardMode): number {
 	return mode === "collaborative" ? COLLABORATIVE_QUESTION_CAP : QUESTION_CAP
+}
+
+/**
+ * Whether answered/confirmed coverage is tracked and shown. `from-app` tracks
+ * it without enforcing it: what the app already decides is confirmed in one
+ * screen, so the checklist is how the user sees what is still open.
+ */
+export function tracksCoverage(mode: WizardMode): boolean {
+	return mode === "collaborative" || mode === "from-app"
 }
 
 /**
@@ -88,7 +97,24 @@ export function coveredAreas(history: StoredQA[]): string[] {
 
 /** "Yes, all of these" and its relatives — see the `assumptions` check below. */
 const BLANKET_CONFIRM =
-	/^(yes\b|all of (these|the above)|confirm all|these are all|that('| i)s all correct|sounds right|looks right|agree)/i
+	/^(yes\b|all of (these|the above)|all (correct|good|right)\b|everything('s| is) (correct|right|good)|confirm all|these are all|that('| i)s all correct|sounds right|looks right|agree)/i
+
+/**
+ * The verdict pair a model reaches for when it has crammed its statements into
+ * the question text: "All correct" / "Something needs correction". The screen
+ * already gives every statement its own "Not quite" — an option that means
+ * "some of the above are wrong" names nothing and corrects nothing.
+ */
+const VERDICT_OPTION =
+	/^(something|some(thing)? of (it|these|this)|parts?( of (it|this))?) (needs?|is|are) (correct|fix|chang|wrong|off)/i
+
+/**
+ * Past this, an assumptions question is carrying its statements in its text.
+ * Field-measured: a from-app opening put nine findings in one 700-character
+ * question and offered two verdict options, so no single finding could be
+ * corrected on its own.
+ */
+const ASSUMPTIONS_QUESTION_MAX = 240
 
 /** Every kind the renderer has a widget for; anything else draws nothing. */
 const KNOWN_KINDS: ReadonlyArray<WizardQuestion["kind"]> = [
@@ -143,6 +169,7 @@ export class WizardTurnError extends Error {
  * always should have been: known-good examples the model may use or ignore.
  */
 function systemPrompt(mode: WizardMode): string {
+	if (mode === "from-app") return fromAppSystemPrompt()
 	const pairings = TYPEFACE_PAIRINGS.map(
 		(p) => `- ${p.display.family} for headings with ${p.body.family} for body — ${p.feel}`,
 	).join("\n")
@@ -337,6 +364,90 @@ Colour directions that work:
 ${palettes}`
 }
 
+/**
+ * The from-app interview: the app already has a look, so the model's first job
+ * is reading it, not inventing one.
+ *
+ * Its tools stay read-only (the structured call disables bash/edit/write), and
+ * the working directory is the project, so `read`/`glob`/`grep` reach the app.
+ * Reading happens before the first question and its result lives on in the
+ * transcript — every later turn sees the confirmed statements and their source
+ * files, so nothing has to be read twice.
+ */
+function fromAppSystemPrompt(): string {
+	return `You are setting up the design system for an EXISTING app inside Caret, a design tool.
+The app already has a look. Your job is to find out what it already decides — colours,
+typefaces, type size, spacing, corner rounding, shadows — and turn that into Caret's
+foundation, so every page Caret makes matches the app. The point is truth, not improvement:
+never "fix" or modernise their choices.
+
+## Read the app first
+
+Before your first question, read the app with your tools (read, glob, grep, list). The
+working directory is the project. Look for, in roughly this order:
+- Tailwind: \`tailwind.config.*\` theme/extend, or a CSS \`@theme { … }\` block (Tailwind 4).
+- CSS custom properties (\`:root { --brand: … }\`) and global stylesheets.
+- Theme objects: MUI \`createTheme\`, Chakra \`extendTheme\`, styled-components themes, token JSON.
+- Font loading: \`next/font\`, Google Fonts \`<link>\`/\`@import\`, \`@font-face\`, \`font-family\`.
+- When nothing is declared: the colours, sizes and radii the components actually use most.
+Never read \`node_modules\`, build output, or \`.caret/\` (that is Caret's own layer, not the app).
+Plain CSS, CSS modules and inline styles are as valid a source as a config file — they just
+take more reading.
+
+## How to behave
+
+- **Open with ONE \`assumptions\` question listing what you found.** The question text is one
+  short sentence ("Here's what your app already decides."). Every finding is its OWN option —
+  never a list inside the question text, and never verdict options like "All correct" /
+  "Something needs correction": each option already has its own "Not quite". Write each
+  finding in plain words with the value ("The main colour is indigo, #4F46E5"), and put the
+  file it came from in that option's \`reason\` ("tailwind.config.ts, colors.primary"). Tag it with
+  \`covers\` for every area it states. In this mode — and only this one — an assumptions screen
+  MAY settle value areas, because these are facts you read, not guesses.
+- Then ask ONE question per area the app does NOT decide, tagged with its single \`covers\`
+  area, recommending the option that fits the look you read. Never re-ask something the
+  assumptions screen settled.
+- A correction typed into "Not quite" is the user's exact value and beats what you read.
+- Finish as soon as every area is either confirmed or answered. Aim for 1–4 questions total;
+  at ${QUESTION_CAP} you must finish.
+- Typefaces must be real Google Fonts family names, spelled exactly. If the app uses a font
+  that is not on Google Fonts (a system font, a licensed face), say so in its statement and
+  name the closest Google Fonts family as what Caret will use.
+- Colours are 6-digit hex. Mark a \`recommendedId\` on every question except \`assumptions\`.
+- Never offer an option that means "you decide" — the Skip button already covers that.
+
+## Write like you are talking to someone
+
+Short sentences, one idea each, plain words. Say what something looks like, not what the
+design profession calls it. A number is welcome next to the plain meaning ("16px body text").
+
+## The question formats
+
+- \`assumptions\` — statements shown as ALREADY AGREED; the user presses "Not quite" on wrong
+  ones and types the correction. All statements must be true at once. No blanket "yes, all of
+  these" option, and no \`recommendedId\`.
+- \`color\` — swatch options with \`hex\`; the screen adds a picker, hex field and eyedropper.
+- \`font\` — each option's \`label\` is a Google Fonts family; the screen adds a font search.
+- \`options\` / \`boolean\` — pick one, each option with a \`spec\` preview.
+- \`scale\` — a slider with \`leftLabel\`, \`rightLabel\` and 3–5 \`steps\`, each with a \`spec\`.
+- \`text\` — one free input, only for a fact you cannot read from the code.
+
+## Finishing
+
+Return \`action: "finish"\` with the foundation: families, scaleRatio (1.05–1.5), baseSize px,
+brand hex, neutral character, surface, optional semantic hexes, spacingUnit (4 or 8),
+radiusCharacter, a one-sentence restraint rule for how colour is used, vibeTags, and a
+2–3 sentence summary addressed to the user that says this was read from their app.
+Optional when the app has them: \`secondary\`, \`accent\`, \`elevationCharacter\`,
+\`displayWeight\`, \`bodyWeight\`. Leave \`secondary\` and \`accent\` OUT when the app has no such
+colour — never repeat the brand hex to fill the slot. Echo every value you read or they answered
+exactly.
+
+Also carry \`decisions\`: one entry per coverage area (\`area\`, \`choice\`, \`reason\`), where the
+reason names the file the value came from, or says it was their answer. Areas:
+${COVERAGE_AREAS.map((area) => `- \`${area.id}\` — ${area.label}`).join("\n")}`
+}
+
 function turnPrompt(
 	mode: WizardMode,
 	description: string,
@@ -371,7 +482,17 @@ ${ledgerLines(settled)}
 		: ""
 
 	let coverageNote = ""
-	if (mode === "collaborative" && !force) {
+	if (mode === "from-app" && !force) {
+		const covered = new Set(coveredAreas(history))
+		const open = COVERAGE_AREAS.filter((area) => !covered.has(area.id))
+		coverageNote = history.length
+			? open.length
+				? `\n\nConfirmed or answered so far: ${covered.size ? [...covered].join(", ") : "(nothing)"}. Not yet settled: ${open
+						.map((area) => `\`${area.id}\` (${area.label})`)
+						.join(", ")}. Ask about each one the app does not decide, or finish if the app's look already implies it.`
+				: "\n\nEvery area is settled — finish."
+			: "\n\nNothing is confirmed yet: read the app now, then open with the assumptions screen of what you found."
+	} else if (mode === "collaborative" && !force) {
 		const covered = new Set(coveredAreas(history))
 		const missing = COVERAGE_AREAS.filter((area) => !covered.has(area.id))
 		coverageNote = missing.length
@@ -381,12 +502,22 @@ ${ledgerLines(settled)}
 			: "\n\nEvery coverage area has been asked about — finish when you can defend every parameter."
 	}
 
-	return `Their project, in their words:
+	const project =
+		mode === "from-app"
+			? `Their project is the app in your working directory. What Caret detected before you started:
 
 """
 ${description.trim()}
 """
+`
+			: `Their project, in their words:
 
+"""
+${description.trim()}
+"""
+`
+
+	return `${project}
 ${ledger}## The full transcript (context for wording and reasons, not for state — ${questionCount} question(s) asked)
 
 ${transcript}${coverageNote}
@@ -416,7 +547,7 @@ function slug(value: string, fallback: string): string {
  * option silently would show the user a two-card question the model believed
  * had four.
  */
-export function validateQuestion(raw: WizardQuestion, history: StoredQA[]): WizardQuestion {
+export function validateQuestion(raw: WizardQuestion, history: StoredQA[], mode: WizardMode = "ai-led"): WizardQuestion {
 	const question: WizardQuestion = { ...raw, id: slug(raw.id, `q${history.length + 1}`) }
 	if (history.some((qa) => qa.question.id === question.id)) question.id = `${question.id}-${history.length + 1}`
 	if (!question.question?.trim()) throw new WizardTurnError("the question text is empty.")
@@ -455,7 +586,10 @@ export function validateQuestion(raw: WizardQuestion, history: StoredQA[]): Wiza
 				`one decision per question. Split it, one \`covers\` area each.`,
 		)
 	}
-	if (question.kind === "assumptions") {
+	// From-app is the exception, and only because its statements are READ, not
+	// guessed: "Brand colour is #4F46E5 (tailwind.config.ts)" is a fact with a
+	// source, and its "Not quite" box takes the exact value when it is wrong.
+	if (question.kind === "assumptions" && mode !== "from-app") {
 		const claimed = (question.covers ?? []).filter((id) => VALUE_AREAS.has(id))
 		if (claimed.length) {
 			throw new WizardTurnError(
@@ -544,6 +678,19 @@ export function validateQuestion(raw: WizardQuestion, history: StoredQA[]): Wiza
 			// what happens if the user touches nothing. Worse, it sits alongside
 			// real statements and gets confirmed with them — the screen then reports
 			// that the user agreed to the summary *and* to two departures from it.
+			const verdict = options.find((option) => VERDICT_OPTION.test(option.label))
+			if (verdict) {
+				throw new WizardTurnError(
+					`"${verdict.label}" is a verdict, not a statement — every \`assumptions\` option already has its own "Not quite". ` +
+						`Put each finding in its own option, and drop the verdict options.`,
+				)
+			}
+			if (question.question.trim().length > ASSUMPTIONS_QUESTION_MAX) {
+				throw new WizardTurnError(
+					`the assumptions question text is ${question.question.trim().length} characters — it is carrying the statements. ` +
+						`Keep the question to one short sentence and give each statement its own option.`,
+				)
+			}
 			const blanket = options.find((option) => BLANKET_CONFIRM.test(option.label))
 			if (blanket) {
 				throw new WizardTurnError(
@@ -845,7 +992,7 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 		rejectedPayload = JSON.stringify(value ?? null)
 		if (value?.action === "ask" && !force) {
 			if (!value.question) throw new WizardTurnError('action was "ask" but no question was included.')
-			return { action: "ask", question: validateQuestion(value.question, input.history) }
+			return { action: "ask", question: validateQuestion(value.question, input.history, mode) }
 		}
 		if (value?.action === "finish" || force) {
 			if (!value?.foundation) throw new WizardTurnError('action was "finish" but no foundation was included.')
