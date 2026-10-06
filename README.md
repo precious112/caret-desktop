@@ -6,6 +6,7 @@
     <img src="https://img.shields.io/github/downloads/precious112/caret-desktop/total?label=downloads" alt="downloads"/>
     <img src="https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-lightgrey" alt="platforms"/>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="license"/></a>
+    <a href="https://www.opensourcealternatives.to"><img src="https://www.opensourcealternatives.to/badge-osa.svg" alt="Listed on Open Source Alternatives"/></a>
   </p>
   <p>
     <a href="https://github.com/precious112/caret-desktop/releases/latest"><strong>Download</strong></a> ·
