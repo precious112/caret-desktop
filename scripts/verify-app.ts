@@ -4118,7 +4118,9 @@ export default function CatalogDemo() {
 		await chrome.click('[data-testid="ds-edit-color"]')
 
 		// The colour step mounts inline; drive its hex field to a new brand seed.
-		const hexField = chrome.locator('[data-testid="ds-section-color"] input[placeholder="#000000"]')
+		// By testid: the step has a hex field per colour role, so a bare placeholder
+		// selector is ambiguous whenever the foundation carries supporting/accent.
+		const hexField = chrome.locator('[data-testid="ds-section-color"] [data-testid="color-brand-hex"]')
 		await hexField.waitFor({ timeout: 20_000 })
 		await hexField.fill("#7c3aed")
 		await hexField.press("Enter")
