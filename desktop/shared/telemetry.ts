@@ -64,6 +64,7 @@ export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 		props: (args) => ({ backend_id: enumArg(args[0], ["opencode"]) }),
 	},
 	"sync:rollback": { event: "sync_rolled_back" },
+	"import:cancel": { event: "app_import_cancelled" },
 }
 
 /** The only event names the renderer may submit over `analytics:event`. */

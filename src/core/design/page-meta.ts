@@ -34,6 +34,11 @@ export async function readPageMeta(workspacePath: string, pageId: string): Promi
 			// Dropping it in normalization silently disabled all three (found as
 			// ghost check findings for deleted take pages).
 			...(typeof raw.variantOf === "string" && raw.variantOf ? { variantOf: raw.variantOf } : {}),
+			// The import's provenance — the canvas badge and the import survey's
+			// "already brought in" check both read it through this normalizer.
+			...(Array.isArray(raw.importedFrom) && raw.importedFrom.every((entry) => typeof entry === "string")
+				? { importedFrom: raw.importedFrom }
+				: {}),
 		}
 	} catch (err) {
 		Logger.warn(`[design] Page meta ${metaPath} is not valid JSON and will be ignored: ${err}`)

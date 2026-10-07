@@ -184,6 +184,12 @@ export interface PageMeta {
 	 * the sync inventory all exclude them; only the compare surface shows them.
 	 */
 	variantOf?: string
+	/**
+	 * Set on a page imported from the app (code → design): the app files it was
+	 * translated from. Provenance the canvas shows, so it is always clear which
+	 * pages are an AI's translation of existing code rather than designed here.
+	 */
+	importedFrom?: string[]
 }
 
 export interface FlowStep {

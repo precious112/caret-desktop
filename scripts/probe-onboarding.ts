@@ -25,6 +25,7 @@ import * as path from "path"
 import { _electron as electron, type ElectronApplication, type Page } from "playwright"
 
 import { stopOpencodeServer } from "../src/core/design/agent/opencode/server"
+import { computeDrift } from "../src/core/design/sync/drift"
 import { resolveVerifyModel } from "./verify-support"
 
 const SHOTS = path.resolve("release/probe-onboarding")
@@ -42,6 +43,23 @@ async function shot(page: Page, name: string): Promise<void> {
 
 async function surface(page: Page): Promise<string | null> {
 	return page.getByTestId("app-shell").getAttribute("data-surface")
+}
+
+/** Every file's bytes under `root` that `include` admits, as one fingerprint string. */
+async function readTree(root: string, include: (relative: string) => boolean): Promise<string> {
+	const entries = await fs.readdir(root, { withFileTypes: true, recursive: true })
+	const files = entries
+		.filter((entry) => entry.isFile())
+		.map((entry) =>
+			path
+				.relative(root, path.join(entry.parentPath ?? root, entry.name))
+				.split(path.sep)
+				.join("/"),
+		)
+		.filter(include)
+		.sort()
+	const parts = await Promise.all(files.map(async (file) => `${file}\n${await fs.readFile(path.join(root, file), "utf-8")}`))
+	return parts.join("\n")
 }
 
 async function writeFiles(root: string, files: Record<string, string>): Promise<void> {
@@ -90,6 +108,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={inter.className}>{children}</body>
     </html>
+  )
+}
+`,
+		"app/orders/page.tsx": `const orders = await fetch("/api/orders").then((r) => r.json())
+
+export default function Orders() {
+  return (
+    <main className="mx-auto max-w-5xl p-8">
+      <h1 className="text-2xl font-semibold text-slate-900">All orders</h1>
+      <table className="mt-6 w-full text-sm">
+        <thead><tr className="text-left text-slate-500"><th>Order</th><th>Customer</th><th>Total</th></tr></thead>
+        <tbody>{orders.map((o: any) => <tr key={o.id}><td>{o.id}</td><td>{o.customer}</td><td>{o.total}</td></tr>)}</tbody>
+      </table>
+    </main>
+  )
+}
+`,
+		"app/settings/page.tsx": `export default function Settings() {
+  return (
+    <main className="mx-auto max-w-3xl p-8">
+      <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
+      <label className="mt-6 block text-sm text-slate-600">Store name<input className="mt-1 block w-full rounded-lg border px-3 py-2" defaultValue="Acme" /></label>
+      <button className="mt-6 rounded-lg bg-primary px-4 py-2 text-white">Save</button>
+    </main>
   )
 }
 `,
@@ -321,18 +363,116 @@ async function main(): Promise<void> {
 					await chrome.waitForSelector('[data-testid="canvas-setup"]', { timeout: 20_000 })
 					const canvasStep = (await chrome.getByTestId("canvas-setup-continue").textContent()) ?? ""
 					check(
-						"the committed project lands on the canvas's step 2",
-						canvasStep.includes("first page"),
+						"an existing app's step 2 on the canvas is bringing its screens in",
+						canvasStep.includes("app's screens"),
 						canvasStep.trim(),
 					)
 					await shot(chrome, "08-canvas-step-2")
-					await chrome.getByTestId("top-bar").getByRole("button", { name: "Foundation" }).click()
-					await chrome.waitForSelector('[data-testid="first-page-card"]', { timeout: 20_000 })
-					await shot(chrome, "09-ds-first-page-card")
-					await chrome.click('[data-testid="first-page-make"]')
+					await chrome.click('[data-testid="canvas-setup-continue"]')
+					await chrome.waitForSelector('[data-testid="app-import-card"]', { timeout: 20_000 })
+					await shot(chrome, "09-ds-import-card")
+					await chrome.click('[data-testid="app-import-make-page"]')
 					const draft = await chrome.locator('[data-testid="chat-input"]').inputValue({ timeout: 20_000 })
 					check("'Make a page' opens the chat seeded, sending nothing", draft === "Make a ", JSON.stringify(draft))
 					await shot(chrome, "10-chat-seeded")
+					await chrome.getByTestId("top-bar").getByRole("button", { name: "Chat" }).click()
+
+					// ── 5. code → design: the app's screens come in ─────────────────
+					const appBefore = await readTree(appDir, (file) => !file.startsWith(".caret") && !file.startsWith(".git"))
+					await chrome.waitForSelector('[data-testid="app-import-list"]', { timeout: 30_000 })
+					const listed = (await chrome.getByTestId("app-import-list").textContent()) ?? ""
+					check(
+						"the import lists the app's three screens",
+						listed.includes("/orders") && listed.includes("/settings") && listed.includes("Home"),
+						listed.replace(/\s+/g, " ").slice(0, 120),
+					)
+					await shot(chrome, "13-import-offered")
+					await chrome.click('[data-testid="app-import-start"]')
+					await chrome.waitForSelector('[data-testid="import-pill"]', { timeout: 20_000 })
+					check("the top bar says an import is running", true)
+					await shot(chrome, "14-import-running")
+					await chrome.waitForFunction(() => !document.querySelector('[data-testid="import-pill"]'), undefined, {
+						timeout: 900_000,
+					})
+					const rows = await chrome
+						.locator('[data-testid="app-import-rows"] [data-status]')
+						.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-status")))
+					check(
+						"every screen (and the shell) came through",
+						rows.every((status) => status === "done"),
+						rows.join(","),
+					)
+					await shot(chrome, "15-import-finished")
+
+					const pages = ["home", "orders", "settings"]
+					for (const id of pages) {
+						const meta = JSON.parse(
+							await fs.readFile(path.join(appDir, `.caret/pages/${id}/meta.json`), "utf-8").catch(() => "{}"),
+						)
+						check(
+							`page "${id}" landed with its provenance`,
+							Array.isArray(meta.importedFrom) && meta.importedFrom.length > 0,
+							JSON.stringify(meta.importedFrom),
+						)
+					}
+					const shellSource = await fs
+						.readFile(path.join(appDir, ".caret/layouts/AppShell.tsx"), "utf-8")
+						.catch(() => "")
+					check("the shared layout came in once", shellSource.includes("AppShell"))
+					const drift = await computeDrift(appDir)
+					check(
+						"every import reads clean to the sync — nothing would be written back into the app",
+						drift.entries.length === 4 && drift.forward === 0 && drift.conflicts === 0,
+						`${drift.entries.length} mapped, ${drift.forward} forward, ${drift.clean} clean`,
+					)
+					const appAfter = await readTree(appDir, (file) => !file.startsWith(".caret") && !file.startsWith(".git"))
+					check("the app's own files are byte-identical", appAfter === appBefore)
+
+					await chrome.getByTestId("top-bar").getByRole("button", { name: "Foundation" }).click()
+					const badges = await (async () => {
+						const deadline = Date.now() + 60_000
+						while (Date.now() < deadline) {
+							const count = await app.evaluate(async ({ BrowserWindow }) => {
+								for (const win of BrowserWindow.getAllWindows()) {
+									for (const child of win.contentView.children as any[]) {
+										const url = child.webContents?.getURL?.() ?? ""
+										if (!url.startsWith("http://127.0.0.1") && !url.startsWith("http://localhost")) continue
+										return child.webContents.executeJavaScript(
+											"document.querySelectorAll('[data-testid=\"canvas-imported-badge\"]').length",
+										)
+									}
+								}
+								return 0
+							})
+							if (count >= 3) return count
+							await new Promise((resolve) => setTimeout(resolve, 1000))
+						}
+						return 0
+					})()
+					check("the canvas marks imported pages as from your app", badges >= 3, `${badges} badges`)
+
+					// The canvas is a native view chrome screenshots cannot see; capture
+					// it directly so the imported pages themselves can be looked at.
+					await new Promise((resolve) => setTimeout(resolve, 8_000))
+					const png = await app.evaluate(async ({ BrowserWindow }) => {
+						for (const win of BrowserWindow.getAllWindows()) {
+							for (const child of win.contentView.children as any[]) {
+								const url = child.webContents?.getURL?.() ?? ""
+								if (url.startsWith("http://127.0.0.1") || url.startsWith("http://localhost")) {
+									return (await child.webContents.capturePage()).toPNG().toString("base64")
+								}
+							}
+						}
+						return null
+					})
+					if (png) await fs.writeFile(path.join(SHOTS, "15b-canvas-imported.png"), Buffer.from(png, "base64"))
+					for (const id of ["home", "orders", "settings"]) {
+						const source = await fs
+							.readFile(path.join(appDir, `.caret/pages/${id}/index.tsx`), "utf-8")
+							.catch(() => "")
+						await fs.writeFile(path.join(SHOTS, `page-${id}.tsx.txt`), source)
+					}
+					await fs.writeFile(path.join(SHOTS, "AppShell.tsx.txt"), shellSource)
 				}
 			}
 			if (first === "error") await shot(chrome, "06-error")
@@ -363,7 +503,7 @@ async function main(): Promise<void> {
 		)
 		await fresh.fill('[data-testid="foundation-describe"]', "A booking site for a small climbing gym. Friendly, a bit loud.")
 		check("the routes enable once described", !(await fresh.getByTestId("foundation-mode-collaborative").isDisabled()))
-		await shot(fresh, "11-fresh-describe")
+		await shot(fresh, "16-fresh-describe")
 		await fresh.click('[data-testid="foundation-mode-manual"]')
 		const prefilled = await fresh.locator("textarea").first().inputValue({ timeout: 20_000 })
 		check(
@@ -371,7 +511,7 @@ async function main(): Promise<void> {
 			prefilled.includes("climbing gym"),
 			prefilled.slice(0, 50),
 		)
-		await shot(fresh, "12-fresh-manual")
+		await shot(fresh, "17-fresh-manual")
 	} finally {
 		await app.close().catch(() => {})
 		await mainLog.close().catch(() => {})

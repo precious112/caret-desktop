@@ -235,7 +235,7 @@ export function App() {
 			<TopBar
 				chatOpen={chatOpen}
 				exploreOpen={exploreOpen}
-				onSetupClick={() => (setupStepOf(project) === 1 ? requestSurface("foundation") : openFirstPage())}
+				onSetupClick={() => (setupStepOf(project) === 1 || project.app ? requestSurface("foundation") : openFirstPage())}
 				onSurfaceChange={requestSurface}
 				onToggleChat={() => setChatOpen((open) => !open)}
 				project={project}
@@ -249,6 +249,7 @@ export function App() {
 				<div className="relative flex min-w-0 flex-1 flex-col">
 					{surface === "canvas" && !canvasHasContent && (
 						<CanvasSetup
+							hasApp={project.app !== null}
 							onContinueSetup={() => requestSurface("foundation")}
 							onMakeFirstPage={openFirstPage}
 							step={project.hasFoundation ? 2 : 1}

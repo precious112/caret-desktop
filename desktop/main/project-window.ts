@@ -35,6 +35,7 @@ import {
 import { emitDesignEvent } from "../../src/core/design/telemetry-hooks"
 import { Logger } from "../../src/shared/services/Logger"
 import { AgentService } from "./agent-service"
+import { AppImportService } from "./app-import"
 import { CatalogService } from "./catalog-service"
 import { DesignChecksService } from "./design-checks"
 import { createElectronDesignHost } from "./electron-host"
@@ -102,6 +103,8 @@ export class ProjectWindow {
 	 */
 	private appProfile: AppProfile | null | undefined
 	private statePushTimer: ReturnType<typeof setTimeout> | null = null
+	/** Code → design import: the app's screens, brought into the design layer. */
+	readonly appImport: AppImportService
 	/** Watches `.caret/.variants.json` existence so the chrome can badge an open exploration. */
 	private exploreWatcher: fs.FSWatcher | null = null
 	private exploreOpen: boolean | null = null
@@ -180,6 +183,12 @@ export class ProjectWindow {
 				this.checks.afterTurn(conversation, outcome, request)
 				this.overlayVerify.afterTurn(conversation, outcome, request)
 			},
+		})
+
+		this.appImport = new AppImportService({
+			projectPath: this.projectPath,
+			agent: this.agent,
+			onProgress: (progress) => this.sendToChrome("import:progress", this.projectPath, progress),
 		})
 
 		this.session = new DesignSession({

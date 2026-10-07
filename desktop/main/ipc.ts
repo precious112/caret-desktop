@@ -777,6 +777,23 @@ export function registerIpcHandlers(windows: WindowManager): void {
 
 	handle("agent:backends", () => probeBackends())
 
+	handle("import:survey", async (_event, projectPath: string) => {
+		const window = windows.get(projectPath)
+		return window ? window.appImport.survey() : { ok: false, reason: "That project is not open." }
+	})
+
+	handle("import:start", async (_event, projectPath: string, screenIds: string[]) => {
+		const window = windows.get(projectPath)
+		if (!window) return { ok: false, reason: "That project is not open." }
+		return window.appImport.start(Array.isArray(screenIds) ? screenIds.filter((id) => typeof id === "string") : [])
+	})
+
+	handle("import:cancel", async (_event, projectPath: string) => {
+		await windows.get(projectPath)?.appImport.cancel()
+	})
+
+	handle("import:status", (_event, projectPath: string) => windows.get(projectPath)?.appImport.status() ?? null)
+
 	handle("agent:selectBackend", async (_event, id: BackendId | null) => {
 		await setPref("backendId", id)
 		// Every open project re-resolves, so a backend chosen in one window stops

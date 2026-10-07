@@ -70,6 +70,24 @@ describe("readPageMeta", () => {
 		await fs.rm(root, { recursive: true, force: true })
 	})
 
+	it("carries importedFrom through normalization, and drops a malformed one", async () => {
+		const root = await fixture()
+		await writePage(root, "settings", { title: "Settings", importedFrom: ["app/settings/page.tsx"] })
+		await writePage(root, "billing", { title: "Billing", importedFrom: "app/billing/page.tsx" })
+
+		assert.deepEqual(
+			(await readPageMeta(root, "settings"))?.importedFrom,
+			["app/settings/page.tsx"],
+			"importedFrom was dropped — the canvas could no longer say which pages are translations of the app",
+		)
+		assert.equal(
+			(await readPageMeta(root, "billing"))?.importedFrom,
+			undefined,
+			"a non-array importedFrom was passed through",
+		)
+		await fs.rm(root, { recursive: true, force: true })
+	})
+
 	it("returns null on unparseable json rather than inventing a page", async () => {
 		const root = await fixture()
 		const pageDir = path.join(root, ".caret", "pages", "broken")

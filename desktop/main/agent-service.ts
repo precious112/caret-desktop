@@ -48,6 +48,8 @@ export interface AgentServiceOptions {
 	 * session that produced them.
 	 */
 	onTurnComplete?(conversation: AgentConversation, outcome: RunOutcome, request: RunRequest): void
+	/** Narrates each screen of an app import (code → design) as it generates. */
+	onImportStatus?(status: ExploreTakeStatus): void
 }
 
 export class AgentService {
@@ -69,6 +71,18 @@ export class AgentService {
 	 * settled page is checked by the normal flows that write it.
 	 */
 	readonly exploreLane: ExploreLane
+	/**
+	 * App-import turns (code → design): one throwaway conversation per screen,
+	 * like takes, and on their own lane so an import never queues behind — or
+	 * steals slots from — a playground round.
+	 *
+	 * **These conversations can never write the app**, whatever the project's
+	 * app-write setting says. They only translate the app INTO the design
+	 * layer; their app-write policy is pinned to "ask", and an unattended turn
+	 * denies anything that would ask — so an app edit is impossible while
+	 * `.caret/` writes stay auto-allowed.
+	 */
+	readonly importLane: ExploreLane
 
 	constructor(private readonly options: AgentServiceOptions) {
 		this.conversation = new AgentConversation({
@@ -116,6 +130,22 @@ export class AgentService {
 			(status) => options.onExploreStatus(status),
 		)
 
+		this.importLane = new ExploreLane(
+			(onChange) =>
+				new AgentConversation({
+					projectPath: options.projectPath,
+					resolveBackend: () => this.resolveBackend(),
+					model: () => getPrefs().backendModel || undefined,
+					effort: () => getPrefs().backendEffort || undefined,
+					appWrites: () => "ask",
+					setAppWrites: async () => {},
+					systemPrompt: () => this.systemPrompt(),
+					onChange,
+				}),
+			() => this.conversation.getState().ready,
+			(status) => options.onImportStatus?.(status),
+		)
+
 		// The bridge is what every outbound feature already calls. Swapping the
 		// implementation here is the whole of "route AgentBridge through the
 		// backend" — no call site changes.
@@ -136,7 +166,12 @@ export class AgentService {
 	 * polluting provenance and threatening the direct-write notice.
 	 */
 	isWorking(): boolean {
-		return this.conversation.getState().streaming || this.editConversation.getState().streaming || this.exploreLane.busy()
+		return (
+			this.conversation.getState().streaming ||
+			this.editConversation.getState().streaming ||
+			this.exploreLane.busy() ||
+			this.importLane.busy()
+		)
 	}
 
 	/**
@@ -182,6 +217,7 @@ export class AgentService {
 		// Take conversations close themselves as each run settles; cancelAll
 		// waits for that, so nothing leaks past the window.
 		await this.exploreLane.cancelAll()
+		await this.importLane.cancelAll()
 		await this.conversation.close()
 		await this.editConversation.close()
 	}
@@ -193,6 +229,11 @@ export class AgentService {
 	 * would turn a clear "sign in with this command" into a failed turn three
 	 * minutes later.
 	 */
+	/** The backend, if one is configured and ready — for one-off turns outside the lanes. */
+	readyBackend(): Promise<CodingBackend | null> {
+		return this.resolveBackend()
+	}
+
 	private async resolveBackend(): Promise<CodingBackend | null> {
 		const id = getPrefs().backendId
 		if (!id) return null

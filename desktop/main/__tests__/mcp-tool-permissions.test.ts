@@ -34,6 +34,8 @@ const READ_ONLY_OR_INTERACTIVE = new Set([
 	"get_guide",
 	"get_params",
 	"get_drift",
+	// Lists the app's unimported screens; finds files, writes nothing.
+	"get_import_worklist",
 	// Runs analysis and stores derived scratch, but authors nothing a user
 	// would call a change; its findings surface on the canvas either way.
 	"run_design_checks",

@@ -329,6 +329,16 @@ export {
 export { DesignSession, type DesignSessionOptions } from "./session"
 export { computeDrift, type DriftEntry, type DriftReport } from "./sync/drift"
 export { type MappingEntry, pruneManifest, readManifest, recordMappings, type SyncManifest } from "./sync/mapping-manifest"
+export {
+	ImportCancelledError,
+	type ImportProgress,
+	type ImportScreen,
+	type ImportSurvey,
+	runAppImport,
+	SHELL_DESIGN_PATH,
+	surveyAppScreens,
+	surveyScreensWithModel,
+} from "./sync/app-import"
 export { startReverseSyncProposal } from "./sync/reverse-sync"
 export { createSyncWatcher, runSyncInteractive } from "./sync/SyncWatcher"
 export { discardSyncPlan, runSyncApply } from "./sync/sync-backend"

@@ -77,13 +77,17 @@ function StepDot({ n, label, now, done }: { n: number; label: string; now: boole
  */
 export function CanvasSetup({
 	step,
+	hasApp,
 	onContinueSetup,
 	onMakeFirstPage,
 }: {
 	step: 1 | 2
+	/** An existing app's step 2 is bringing its screens in, which lives on Foundation. */
+	hasApp?: boolean
 	onContinueSetup(): void
 	onMakeFirstPage(): void
 }) {
+	const importStep = step === 2 && hasApp
 	return (
 		<div className="flex flex-1 items-center justify-center bg-shell-bg p-6 text-center" data-testid="canvas-setup">
 			<div className="max-w-md">
@@ -96,15 +100,20 @@ export function CanvasSetup({
 				</p>
 				<div className="mx-auto mt-5 inline-flex flex-col items-start gap-2 text-left">
 					<StepDot done={step > 1} label="Set up your design system" n={1} now={step === 1} />
-					<StepDot done={false} label="Make your first page" n={2} now={step === 2} />
+					<StepDot
+						done={false}
+						label={hasApp ? "Bring in your app's screens" : "Make your first page"}
+						n={2}
+						now={step === 2}
+					/>
 				</div>
 				<div className="mt-5">
 					<button
 						className="inline-flex items-center gap-2 rounded-lg bg-caret-accent px-4 py-2 font-medium text-white transition-colors hover:bg-caret-accent-hover"
 						data-testid="canvas-setup-continue"
-						onClick={step === 1 ? onContinueSetup : onMakeFirstPage}
+						onClick={step === 1 || importStep ? onContinueSetup : onMakeFirstPage}
 						type="button">
-						{step === 1 ? "Continue setup" : "Make your first page"}
+						{step === 1 ? "Continue setup" : importStep ? "Bring in your app's screens" : "Make your first page"}
 						<ArrowRight size={14} />
 					</button>
 				</div>

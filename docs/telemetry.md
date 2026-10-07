@@ -90,6 +90,16 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 | `sync_apply_completed` | `ok`; `files_changed` (count) |
 | `sync_rolled_back` | `ok`; `duration_s` |
 
+### App import (bringing an existing app's screens into the design layer)
+
+| Event | Properties |
+|---|---|
+| `app_import_started` | `screens` (count); `shell` (bool: whether a shared layout came in first) |
+| `app_import_finished` | `done`, `failed`, `cancelled` (counts); `duration_s` |
+| `app_import_cancelled` | none |
+
+Screen names, routes and file paths are never sent.
+
 ### Component catalog
 
 | Event | Properties |

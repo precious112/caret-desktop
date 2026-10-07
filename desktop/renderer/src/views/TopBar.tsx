@@ -15,6 +15,7 @@ import type { Surface } from "../App"
 import caretIcon from "../assets/caret-icon.png"
 import { invoke, platform } from "../ipc"
 import { cn } from "../lib/utils"
+import { ImportPill, useImportProgress } from "./AppImport"
 import { SetupPill, setupStepOf } from "./Setup"
 
 interface TopBarProps {
@@ -34,6 +35,7 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
 	ref,
 ) {
 	const setupStep = setupStepOf(project)
+	const importProgress = useImportProgress(project.path)
 	return (
 		<div
 			className={cn(
@@ -55,10 +57,16 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
 
 			<div className="flex-1" />
 
-			{setupStep !== null && (
+			{importProgress?.state === "running" ? (
 				<span className="titlebar-nodrag">
-					<SetupPill onClick={onSetupClick} step={setupStep} />
+					<ImportPill onClick={() => onSurfaceChange("foundation")} progress={importProgress} />
 				</span>
+			) : (
+				setupStep !== null && (
+					<span className="titlebar-nodrag">
+						<SetupPill onClick={onSetupClick} step={setupStep} />
+					</span>
+				)
 			)}
 
 			<div className="titlebar-nodrag flex items-center gap-1">

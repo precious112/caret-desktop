@@ -48,6 +48,8 @@ import {
 	validatePageMeta,
 	writeFoundationTokens,
 	writePageMeta,
+	SHELL_DESIGN_PATH,
+	surveyAppScreens,
 } from "../../../src/core/design"
 import { runExclusive, writeFileAtomic } from "../../../src/core/design/file-mutation-queue"
 import { mutateFlowDefinition, writeFlowDefinition } from "../../../src/core/design/flow-meta"
@@ -147,6 +149,7 @@ export const MUTATING_TOOL_NAMES = [
 	"propose_design_update",
 	"report_sync_mapping",
 	"complete_sync",
+	"write_design_file",
 	// From the interview surface (`interview-tools.ts`): these two write the
 	// foundation and the asset library respectively.
 	"commit_foundation",
@@ -444,6 +447,10 @@ export const TOOLS: ToolDefinition[] = [
 					type: z.string().default("page"),
 					states: z.array(z.string()).default([]),
 					tags: z.array(z.string()).default([]),
+					importedFrom: z
+						.array(z.string())
+						.optional()
+						.describe("When the page is an existing app screen brought in: the app files it was translated from."),
 				})
 				.describe("Page metadata. Always give meaningful tags — the canvas groups by them."),
 		},
@@ -487,6 +494,71 @@ export const TOOLS: ToolDefinition[] = [
 				sizeAfter: args.source.length,
 			})
 			return reply(ctx, { ok: true, pageId: args.pageId })
+		},
+	},
+
+	{
+		name: "write_design_file",
+		title: "Write a shared layout or component",
+		description:
+			"Writes a shared design file — `layouts/<Name>.tsx` or `components/<Name>.tsx` inside the design layer — for " +
+			"chrome or patterns more than one page uses (an imported app's AppShell, a card used on every list). Pages " +
+			"import them as `../../layouts/<Name>` / `../../components/<Name>`. Use this instead of your own file tools: it " +
+			"writes atomically and records the change. Pages go through create_page/write_page; installed catalog " +
+			"components are not writable here.",
+		inputSchema: {
+			path: z.string().describe('Relative to the design layer, e.g. "layouts/AppShell.tsx"'),
+			source: z.string().describe("The full file source"),
+		},
+		async handler(ctx, args: { path: string; source: string }) {
+			const relative = args.path.replace(/^\.caret\//, "").replace(/^\.\//, "")
+			if (!/^(layouts|components)\/[A-Za-z0-9_\-/]+\.tsx$/.test(relative) || relative.startsWith("components/catalog/")) {
+				return fail(
+					`"${args.path}" is not a shared layout or component path — use layouts/<Name>.tsx or components/<Name>.tsx (pages go through create_page).`,
+				)
+			}
+			const target = resolveInCaret(ctx.projectPath, relative)
+			if (!target) return fail(`Invalid path: ${args.path}`)
+			const before = await fs.readFile(target, "utf-8").catch(() => null)
+			await fs.mkdir(path.dirname(target), { recursive: true })
+			await runExclusive(target, () => writeFileAtomic(target, args.source))
+			await recordEdit(ctx.projectPath, {
+				actor: "agent",
+				action: before === null ? "create" : "write",
+				file: target,
+				...(before === null ? {} : { sizeBefore: before.length, sizeAfter: args.source.length }),
+			})
+			return reply(ctx, { ok: true, path: `.caret/${relative}` })
+		},
+	},
+
+	{
+		name: "get_import_worklist",
+		title: "The app's screens not yet in the design layer",
+		description:
+			"For an existing app: lists the screens Caret found that have no design page yet (code → design), the shared " +
+			"layout files every screen sits in, and how to bring them in. Bring the shell in first with " +
+			"write_design_file (layouts/AppShell.tsx), then each screen with create_page (meta.importedFrom = its app " +
+			"files), then record EVERY result with report_sync_mapping — an imported page without a mapping reads as a " +
+			"new design, and the next sync would write a duplicate of the screen into the app.",
+		inputSchema: {},
+		async handler(ctx) {
+			const survey = await surveyAppScreens(ctx.projectPath)
+			return reply(ctx, {
+				ok: true,
+				...survey,
+				...(survey.found === "none"
+					? {
+							note: "This app does not route by file. Find its screens yourself — its router config or top-level views — and bring each in the same way.",
+						}
+					: {}),
+				steps: [
+					`If shell files are listed, read them and write_design_file("${SHELL_DESIGN_PATH.replace(".caret/", "")}") — a default-exported AppShell({ children }) drawing the shared chrome.`,
+					"For each screen: read its app files (follow their imports into the app's own components), then create_page with pageId = the listed id and meta.importedFrom = its appPaths. Wrap it in AppShell when the shell exists.",
+					"Reflect what the app shows, faithfully — sample data in place of fetched data, one concrete example for a dynamic route. Never edit the app's files.",
+					"After each page (and the shell), call report_sync_mapping with designPath = .caret/pages/<id>/index.tsx (or the layout path) and appPaths = the files it came from.",
+				],
+			})
 		},
 	},
 
@@ -773,6 +845,7 @@ export const TOOLS: ToolDefinition[] = [
 		title: "Record which app files a design file translated into",
 		description:
 			"Call this DURING a design→app sync, once per design file, at the moment its app files are written — " +
+			"and after bringing an app screen INTO the design layer (get_import_worklist), once per imported page — " +
 			"you know the correspondence right now, and Caret cannot infer it later. The mapping powers drift " +
 			"detection and incremental sync: skip it and the next sync re-reports everything you just did, and " +
 			"app-side edits to these files become invisible to the design layer. Report every app file the design " +

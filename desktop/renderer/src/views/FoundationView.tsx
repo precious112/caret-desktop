@@ -23,6 +23,7 @@ import { landsInChat, type ProjectState, type WizardModeWire, type WizardStateWi
 import { TokenWizard } from "../components/design-wizard/TokenWizard"
 import { invoke, on } from "../ipc"
 import { setActiveProject } from "../services/design-client"
+import { AppImportCard, useImportProgress } from "./AppImport"
 import { DesignSystemView } from "./DesignSystemView"
 import { FoundationEntry } from "./FoundationEntry"
 import { InterviewView } from "./InterviewView"
@@ -51,6 +52,7 @@ export function FoundationView({
 	const [wizardState, setWizardState] = useState<WizardStateWire | null>(null)
 	const [wizardStart, setWizardStart] = useState<{ mode: WizardModeWire; description: string } | null>(null)
 	const [description, setDescription] = useState("")
+	const importProgress = useImportProgress(project.path)
 	const [blastRadius, setBlastRadius] = useState<{ occurrences: number; files: number } | null>(null)
 
 	// The wizard's data layer is module-scoped to one project per window. Set
@@ -142,7 +144,18 @@ export function FoundationView({
 			{mode === "overview" && (
 				<DesignSystemView
 					header={
-						!project.hasPages && onMakeFirstPage ? (
+						project.app && (!project.hasPages || importProgress) ? (
+							// An existing app's step 2 is its own screens, brought in —
+							// a blank first page is the fallback, not the default.
+							<>
+								{!project.hasPages && <SetupStepper step={2} />}
+								<AppImportCard
+									onMakePageInstead={!project.hasPages ? onMakeFirstPage : undefined}
+									onOpenBackend={onOpenBackend}
+									project={project}
+								/>
+							</>
+						) : !project.hasPages && onMakeFirstPage ? (
 							<>
 								<SetupStepper step={2} />
 								<FirstPageCard onMakePage={onMakeFirstPage} />

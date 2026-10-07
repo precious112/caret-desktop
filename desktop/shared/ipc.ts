@@ -83,6 +83,34 @@ export interface ProjectState {
 	app: AppProfileWire | null
 }
 
+/** Mirror of the core `ImportScreen`. */
+export interface ImportScreenWire {
+	id: string
+	title: string
+	route: string | null
+	appPaths: string[]
+}
+
+export interface ImportSurveyResultWire {
+	ok: boolean
+	reason?: string
+	survey?: {
+		screens: ImportScreenWire[]
+		shell: string[]
+		alreadyImported: number
+		found: "routes" | "model" | "none"
+	}
+}
+
+export type ImportItemStatusWire = "queued" | "working" | "done" | "failed" | "cancelled"
+
+/** Mirror of the core `ImportProgress`. */
+export interface ImportProgressWire {
+	state: "idle" | "running" | "finished"
+	shell: { appPaths: string[]; status: ImportItemStatusWire; error?: string } | null
+	screens: Array<ImportScreenWire & { status: ImportItemStatusWire; error?: string }>
+}
+
 /** Mirror of the core `AppProfile`: what the entry screen can say about existing app code. */
 export interface AppProfileWire {
 	framework: string | null
@@ -1016,6 +1044,13 @@ export interface IpcRequests {
 	"wizard:back": (projectPath: string) => WizardStateWire
 	"wizard:commit": (projectPath: string) => { name: string; rule: string }
 	"wizard:abandon": (projectPath: string) => void
+	/** The app's screens not yet in the design layer (code → design). */
+	"import:survey": (projectPath: string) => ImportSurveyResultWire
+	/** Imports the chosen screens from the last survey, in the background. */
+	"import:start": (projectPath: string, screenIds: string[]) => { ok: boolean; reason?: string }
+	"import:cancel": (projectPath: string) => void
+	/** The running or last import, for a surface mounting mid-run. */
+	"import:status": (projectPath: string) => ImportProgressWire | null
 }
 
 /** Main → renderer. Each entry is an `ipcRenderer.on` channel. */
@@ -1032,6 +1067,8 @@ export interface IpcEvents {
 	"explore:open-changed": (projectPath: string, open: boolean) => void
 	/** The chat moved on: a token streamed, a permission was raised, a turn ended. */
 	"agent:state": (projectPath: string, state: AgentStateWire) => void
+	/** An app import (code → design) moved: a screen started, landed or failed. */
+	"import:progress": (projectPath: string, progress: ImportProgressWire) => void
 	/** A long-running generation job (mark loop, 3D pipeline) moved a step. */
 	"generate:progress": (projectPath: string, update: GenerateProgressWire) => void
 	log: (line: string) => void

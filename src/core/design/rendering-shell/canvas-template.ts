@@ -51,6 +51,8 @@ function generateTypes(): string {
 		  broken?: boolean
 		  /** Set on an exploration take — hidden from the grid, shown only by the playground. */
 		  variantOf?: string
+		  /** Set on a page imported from the app: the app files it was translated from. */
+		  importedFrom?: string[]
 		}
 
 		export interface ExploreNode {
@@ -1394,7 +1396,7 @@ function generateCanvasView(): string {
 		                <div className={"caret-canvas-thumb-wrapper" + entering(page.id)} style={{ position: "absolute", left: x, top: y }}>
 		                  {page.broken
 		                    ? <BrokenPageCard pageId={page.id} title={page.title || page.id} thumbWidth={THUMB_WIDTH} thumbHeight={activeThumbHeight} />
-		                    : <PageThumbnail pageId={page.id} title={page.title || page.id} tags={page.tags || []} frameWidth={activeFrameWidth} frameHeight={FRAME_HEIGHT} thumbWidth={THUMB_WIDTH} live={isLive(x, y)} onClick={hasRoute ? () => onFocus(page.id) : undefined} />}
+		                    : <PageThumbnail pageId={page.id} title={page.title || page.id} tags={page.tags || []} importedFrom={page.importedFrom} frameWidth={activeFrameWidth} frameHeight={FRAME_HEIGHT} thumbWidth={THUMB_WIDTH} live={isLive(x, y)} onClick={hasRoute ? () => onFocus(page.id) : undefined} />}
 		                  {showFlows && (
 		                    <div className="caret-edge-connector" style={{ top: conn.y - y }} onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); log("[edge-drag-start] from=" + page.id); setEdgeDrag({ fromPage: page.id, mouseX: conn.x, mouseY: conn.y, originX: conn.x, originY: conn.y }) }} />
 		                  )}
@@ -1416,7 +1418,7 @@ function generateCanvasView(): string {
 		              >
 		                {page.broken
 		                  ? <BrokenPageCard pageId={page.id} title={page.title || page.id} thumbWidth={THUMB_WIDTH} thumbHeight={activeThumbHeight} />
-		                  : <PageThumbnail pageId={page.id} title={page.title || page.id} tags={page.tags || []} frameWidth={activeFrameWidth} frameHeight={FRAME_HEIGHT} thumbWidth={THUMB_WIDTH}
+		                  : <PageThumbnail pageId={page.id} title={page.title || page.id} tags={page.tags || []} importedFrom={page.importedFrom} frameWidth={activeFrameWidth} frameHeight={FRAME_HEIGHT} thumbWidth={THUMB_WIDTH}
 		                      live={isLive(pos.x, pos.y)}
 		                      onClick={hasRoute && !dragState?.moved ? () => onFocus(page.id) : undefined} />}
 		                {showFlows && (
@@ -1505,6 +1507,8 @@ function generatePageThumbnail(): string {
 		  frameWidth: number
 		  frameHeight: number
 		  thumbWidth: number
+		  /** Shown as provenance: this page is an AI's translation of these app files. */
+		  importedFrom?: string[]
 		  onClick?: () => void
 		  /** Near enough to the viewport to be worth a live iframe (Phase 10.7). */
 		  live?: boolean
@@ -1530,7 +1534,7 @@ function generatePageThumbnail(): string {
 		  )
 		}
 
-		export function PageThumbnail({ pageId, title, tags, frameWidth, frameHeight, thumbWidth, onClick, live = true }: Props) {
+		export function PageThumbnail({ pageId, title, tags, frameWidth, frameHeight, thumbWidth, onClick, live = true, importedFrom }: Props) {
 		  const scale = thumbWidth / frameWidth
 		  const thumbHeight = frameHeight * scale
 
@@ -1550,6 +1554,11 @@ function generatePageThumbnail(): string {
 		    <div className="caret-canvas-frame" onClick={onClick} style={{ cursor: onClick ? "pointer" : "default" }}>
 		      <div className="caret-canvas-frame-label">
 		        <span className="caret-canvas-frame-title">{title}</span>
+		        {importedFrom && importedFrom.length > 0 && (
+		          <span className="caret-canvas-frame-tag imported" data-testid="canvas-imported-badge" title={"Imported from " + importedFrom.join(", ")}>
+		            from your app
+		          </span>
+		        )}
 		        {tags.length > 0 && (
 		          <div className="caret-canvas-frame-tags">
 		            {tags.slice(0, 3).map(tag => (
@@ -2297,6 +2306,10 @@ function generateCanvasCSS(): string {
 		  color: #9ca3af;
 		  font-size: 11px;
 		  margin-top: 6px;
+		}
+		.caret-canvas-frame-tag.imported {
+		  background: rgba(52, 211, 153, 0.14);
+		  color: #6ee7b7;
 		}
 		.caret-canvas-frame-tag.broken {
 		  background: rgba(239, 68, 68, 0.2);

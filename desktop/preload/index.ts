@@ -111,6 +111,10 @@ const REQUEST_CHANNELS: Record<IpcRequestChannel, boolean> = {
 	"wizard:back": true,
 	"wizard:commit": true,
 	"wizard:abandon": true,
+	"import:survey": true,
+	"import:start": true,
+	"import:cancel": true,
+	"import:status": true,
 }
 
 const EVENT_CHANNELS: Record<IpcEventChannel, boolean> = {
@@ -121,6 +125,7 @@ const EVENT_CHANNELS: Record<IpcEventChannel, boolean> = {
 	"wizard:progress": true,
 	"assets:changed": true,
 	"explore:open-changed": true,
+	"import:progress": true,
 	"agent:state": true,
 	"generate:progress": true,
 	log: true,
