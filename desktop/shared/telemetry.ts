@@ -99,29 +99,139 @@ function enumArg(value: unknown, allowed: readonly string[]): string {
 }
 
 /**
- * Strips user content out of a line bound for an error event.
- *
- * Path removal alone is not enough: Logger lines embed arbitrary payloads —
- * the message router stringifies whole canvas messages into its error line, and
- * agent errors quote provider output — so quoted spans and JSON bodies go too.
- * Quotes and braces are removed before paths so a path inside a quoted span
- * cannot survive by being consumed as part of the span's replacement.
+ * Folders whose paths may be NAMED in an error, by a fixed token instead of
+ * their real location. Caret's own data folder is the useful one: a failure on
+ * `<userData>/preferences.json.tmp` says exactly which of Caret's files broke,
+ * and the username in front of it is gone. Supplied by the main process, which
+ * is the only side that knows these paths.
  */
-export function scrubText(text: string): string {
+export interface ScrubContext {
+	roots: ReadonlyArray<{
+		path: string
+		token: string
+		/** Keep the part after the root (Caret-owned names) — or only the token, when it may hold user-chosen names. */
+		keepRest: boolean
+	}>
+}
+
+/**
+ * Where Caret's OWN code lives inside an install. A stack location ending in
+ * one of these is a place in the app, never in the user's files, and its
+ * file:line:col is the whole point of a stack trace. Everything before it (the
+ * install folder, which carries the username) is dropped — read from the
+ * frame's opening `(` or `at `, so an install path with spaces in it
+ * ("C:\Users\First Last\…") is consumed whole.
+ */
+const CODE_LOCATION =
+	/(\(|\bat\s+)[^()\n]*?[\\/](out[\\/](?:main|renderer|preload)[\\/][^\s"'()]*|node_modules[\\/][^\s"'()]*|app\.asar[\\/][^\s"'()]*)/g
+
+/**
+ * Any other absolute path: a file:// URL, a Windows drive, or a POSIX root.
+ * The drive form only counts where a path can START, and the POSIX root not
+ * after a word, a colon or a slash — the old single rule also matched the
+ * `e:/` inside `file:///…`, which shredded every stack frame from Caret's own
+ * code to `fil<path>` (seen in PostHog on a real EXDEV crash: no frame could be
+ * located), and would eat `node:internal/fs/promises` the same way.
+ */
+const ABSOLUTE_PATH =
+	/file:\/\/\/?[^\s"'(){}[\]<>,]*|(?<![A-Za-z0-9])[A-Za-z]:[\\/][^\s"'(){}[\]<>,]*|(?<![\w.:/>-])\/(?!\/)[^\s"'(){}[\]<>,]*/g
+
+/** A quoted span is kept only when ALL of it is something this file produced. */
+const SANITIZED = /^(?:<[a-zA-Z]+>(?:\/[^\s'"]*)?|(?:out|node_modules|app\.asar)\/[^\s'"]+)$/
+
+/**
+ * Relative path fragments left over — e.g. the tail of "/Users/x/My Projects/
+ * app/file.tsx" after its space split it. Two or more segments, not one of the
+ * kept code locations, not after a scheme or a token.
+ */
+const LEFTOVER_PATH = /(?<![\w<>/.:-])(?!(?:out|node_modules|app\.asar)\/)[\w.\-]+(?:\/[\w.\-]+)+/g
+
+/** A placeholder followed by words and then more path — one path broken by spaces. */
+const PATH_CONTINUATION = /(<path>|<[a-zA-Z]+>\/…)(?:(?:\s+[^\s"'()<>/\\]+)*\s+[^\s"'()<>]*[/\\][^\s"'()<>]*)+/g
+
+function forwardSlashes(value: string): string {
+	return value.replace(/\\/g, "/")
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+/** A root as a pattern: either slash direction, optional file:// prefix, any case. */
+function rootPattern(rootPath: string): RegExp {
+	const segments = forwardSlashes(rootPath).replace(/\/+$/, "").split("/").filter(Boolean)
+	const drive = /^[A-Za-z]:$/.test(segments[0] ?? "")
+	const body = segments.map(escapeRegExp).join("[\\\\/]")
+	const prefix = drive ? "(?:file:\\/\\/\\/?)?" : "(?:file:\\/\\/)?[\\\\/]"
+	return new RegExp(`${prefix}${body}((?:[\\\\/][^\\s"'()<>,]*)?)`, "gi")
+}
+
+/**
+ * Strips user content out of a line bound for an error event — and keeps what
+ * makes an error fixable.
+ *
+ * Removed, as before: JSON bodies and quoted spans (Logger lines embed whole
+ * canvas messages and provider output) and every path into the user's files.
+ * Kept, because without them a crash report cannot be acted on: stack frames
+ * in Caret's own code with their file:line:col, and — when the main process
+ * supplies {@link ScrubContext} — paths inside Caret's own folders, by token.
+ *
+ * Paths are tokenized BEFORE quoted spans are judged, so a span is only kept
+ * when its whole content is a token this function produced
+ * (`'<userData>/preferences.json'`); a path inside a span with anything else
+ * in it still goes with the span.
+ */
+export function scrubText(text: string, context?: ScrubContext): string {
+	let out = text
+		// JSON-ish bodies, one nesting level deep — enough for stringified payloads.
+		.replace(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g, "{…}")
+		.replace(CODE_LOCATION, (_match, lead: string, location: string) => `${lead}${forwardSlashes(location)}`)
+
+	for (const root of context?.roots ?? []) {
+		if (!root.path) continue
+		out = out.replace(rootPattern(root.path), (_match, rest: string) => {
+			if (root.keepRest) return `${root.token}${forwardSlashes(rest)}`
+			return rest && rest !== "/" && rest !== "\\" ? `${root.token}/…` : root.token
+		})
+	}
+
 	return (
-		text
-			// JSON-ish bodies, one nesting level deep — enough for stringified payloads.
-			.replace(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g, "{…}")
-			.replace(/"(?:[^"\\]|\\.)*"/g, '"…"')
-			.replace(/'[^']*'/g, "'…'")
-			// Absolute paths, POSIX and Windows drive-letter forms.
-			.replace(/(?:\/(?:Users|home|private|var|tmp|opt|etc)\/|[A-Za-z]:[\\/])[^\s"')\]]*/g, "<path>")
+		out
+			.replace(ABSOLUTE_PATH, (raw) => {
+				const trailing = /[.:;]+$/.exec(raw)?.[0] ?? ""
+				return `<path>${trailing}`
+			})
+			// A folder name with spaces splits a path into pieces; words that lead
+			// into more path ("Secret Launch App/src/page.tsx") are absorbed into
+			// the placeholder before them, so no lone word of a name survives.
+			.replace(PATH_CONTINUATION, "$1")
+			.replace(/"((?:[^"\\]|\\.)*)"/g, (span, inner: string) => (SANITIZED.test(inner) ? span : '"…"'))
+			.replace(/'([^']*)'/g, (span, inner: string) => (SANITIZED.test(inner) ? span : "'…'"))
+			// Spaces inside a Windows path end its token, leaving the rest of it
+			// ("Last\\project\\file.tsx") behind — any leftover backslash path goes.
+			.replace(/[^\s"'()<>]*\\[^\s"'()<>]*/g, "<path>")
+			.replace(LEFTOVER_PATH, "<path>")
 	)
 }
 
+/**
+ * The machine-readable half of a Node error: `code` (EXDEV), `syscall`
+ * (rename), `errno`. Fixed vocabularies, never content — and often the whole
+ * diagnosis, which the message alone (paths scrubbed) cannot carry.
+ */
+export function errorCodeProps(error: unknown): Record<string, string | number> {
+	const props: Record<string, string | number> = {}
+	if (!error || typeof error !== "object") return props
+	const record = error as Record<string, unknown>
+	if (typeof record.code === "string" && /^[A-Z][A-Z0-9_]{1,40}$/.test(record.code)) props.error_code = record.code
+	if (typeof record.syscall === "string" && /^[a-z_]{1,24}$/.test(record.syscall)) props.syscall = record.syscall
+	if (typeof record.errno === "number" && Number.isInteger(record.errno)) props.errno = record.errno
+	return props
+}
+
 /** Scrub plus a hard cap, for event properties with a fixed budget. */
-export function scrubAndTruncate(text: string, max = 200): string {
-	const scrubbed = scrubText(text)
+export function scrubAndTruncate(text: string, max = 200, context?: ScrubContext): string {
+	const scrubbed = scrubText(text, context)
 	return scrubbed.length <= max ? scrubbed : `${scrubbed.slice(0, max)}…`
 }
 

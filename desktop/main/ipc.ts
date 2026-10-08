@@ -42,9 +42,9 @@ import {
 } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
 import type { AssetRequestWire, ComposerImage } from "../shared/ipc"
-import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps, scrubAndTruncate, scrubText } from "../shared/telemetry"
+import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps } from "../shared/telemetry"
 import { buildAgentClientConfigs } from "./agent-configs"
-import { capture, captureError, setTelemetryEnabled } from "./analytics"
+import { capture, captureError, scrubForTelemetry, setTelemetryEnabled } from "./analytics"
 import { acceptMark, authorMark, discardMark, holdMark } from "./authored-marks"
 import { acceptShader, authorShader, discardShader, holdShader, refineHeldShader, type ShaderOutcome } from "./authored-shaders"
 import { resolveNotification } from "./electron-host"
@@ -966,8 +966,8 @@ export function registerIpcHandlers(windows: WindowManager): void {
 	handle("analytics:event", (_event, name: string, props?: Record<string, unknown>) => {
 		if (!RENDERER_EVENTS.has(name)) return
 		if (name === "renderer_exception") {
-			const error = new Error(scrubAndTruncate(String(props?.message ?? "renderer error")))
-			if (typeof props?.stack === "string") error.stack = scrubText(props.stack).slice(0, 4000)
+			const error = new Error(scrubForTelemetry(String(props?.message ?? "renderer error"), 300))
+			if (typeof props?.stack === "string") error.stack = scrubForTelemetry(props.stack).slice(0, 8000)
 			captureError(error, "renderer")
 			return
 		}

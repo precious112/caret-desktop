@@ -13,8 +13,16 @@ import { disposeBackends, setBundledBackendDirectory } from "../../src/core/desi
 import { extendOpencodeServerConfig } from "../../src/core/design/agent/opencode"
 import { subscribeDesignEvents } from "../../src/core/design/telemetry-hooks"
 import { Logger } from "../../src/shared/services/Logger"
-import { hashText, scrubAndTruncate } from "../shared/telemetry"
-import { capture, captureError, captureErrorLine, initAnalytics, sessionDurationSeconds, shutdownAnalytics } from "./analytics"
+import { hashText } from "../shared/telemetry"
+import {
+	capture,
+	captureError,
+	captureErrorLine,
+	initAnalytics,
+	scrubForTelemetry,
+	sessionDurationSeconds,
+	shutdownAnalytics,
+} from "./analytics"
 import { registerIpcHandlers } from "./ipc"
 import { closeLauncherWindow, hasLauncherWindow, type LauncherWindowOptions, openLauncherWindow } from "./launcher-window"
 import { startFileLog } from "./log-file"
@@ -83,7 +91,7 @@ async function main(): Promise<void> {
 	Logger.subscribe((line) => {
 		if (!line.startsWith("ERROR ")) return
 		const source = /^ERROR \[([^\]]+)\]/.exec(line)?.[1] ?? "unknown"
-		const message = scrubAndTruncate(line.slice("ERROR ".length))
+		const message = scrubForTelemetry(line.slice("ERROR ".length), 300)
 		captureErrorLine(hashText(message), source, message)
 	})
 

@@ -20,11 +20,16 @@ A random UUID, generated on this machine the first time an event is sent, stored
 
 - File contents, page contents, or anything you or the AI wrote
 - Prompts, chat messages, or model output
-- File paths, project names, or folder names
+- Paths to your files, project names, or folder names (stack traces keep only locations inside Caret's own code and the names of Caret's own files, as described below)
 - Your name, email, hostname, or any account identifier
 - API keys or secrets (the channels that carry them are structurally excluded from tracking)
 
-Error messages are scrubbed before sending: absolute paths, quoted strings, and JSON bodies are all removed, because log lines can embed content.
+Error messages and stack traces are scrubbed before sending. Quoted strings and JSON bodies are removed, because log lines can embed content, and every path into your own files is replaced with a placeholder (`<path>`, `<home>/…`, `<tmp>/…`). Two things are kept, because without them an error cannot be fixed:
+
+- **Locations in Caret's own code**: a stack frame inside Caret keeps its file, line and column relative to the app, for example `out/main/index.js:5061:5`. The install folder, which contains your username, is removed.
+- **Caret's own files**, named relative to Caret's data folder, for example `<userData>/preferences.json.tmp`. These are files Caret creates; the folder's real location is never sent.
+
+Exceptions also carry the system error code, the operation and its number when the operating system supplies them (for example `EXDEV`, `rename`, `-18`).
 
 ## Where it goes
 
@@ -113,7 +118,7 @@ Screen names, routes and file paths are never sent.
 | Event | Properties |
 |---|---|
 | `error_logged` | `source` (subsystem tag, e.g. `design`, `agent`); `message` (scrubbed, max 200 chars); `message_hash` |
-| exceptions | scrubbed message and stack; `source`: main / renderer |
+| exceptions | scrubbed message and stack (Caret's own frames keep file and line); `source`: main / renderer; `error_code`, `syscall`, `errno` when the operating system supplies them |
 | `telemetry_disabled` | `at`: first_run_notice / settings — the one farewell event when you switch telemetry off, so the opt-out rate itself is measurable |
 
 Errors are deduplicated per session (one send per distinct message) and hard-capped (20 error lines, 10 exceptions per session), so a crash loop cannot flood anything.

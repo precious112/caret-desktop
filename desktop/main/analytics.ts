@@ -14,12 +14,14 @@
  */
 
 import { randomUUID } from "crypto"
+import * as fsSync from "fs"
+import * as os from "os"
 import { app } from "electron"
 import { PostHog, type PostHogOptions } from "posthog-node"
 
 import { fetch } from "../../src/shared/net"
 import { Logger } from "../../src/shared/services/Logger"
-import { createSessionBudget, scrubAndTruncate, scrubText } from "../shared/telemetry"
+import { createSessionBudget, errorCodeProps, type ScrubContext, scrubAndTruncate, scrubText } from "../shared/telemetry"
 import { getPref, setPref } from "./prefs"
 
 /**
@@ -32,6 +34,61 @@ const POSTHOG_HOST = "https://eu.i.posthog.com"
 
 /** Caps chosen against PostHog's free error-tracking allowance; a crash loop stops mattering after this. */
 const budget = createSessionBudget({ errorLines: 20, exceptions: 10 })
+
+/**
+ * The folders an error may name by token. Caret's data folder keeps the names
+ * under it (they are Caret's own files: `<userData>/preferences.json.tmp`);
+ * temp and home keep only the token, because what lies under them is the
+ * user's. Data folder first — it sits inside home. Both the given and the
+ * resolved form of each, since macOS reports /var/… and /private/var/… for
+ * the same place.
+ */
+let scrubContext: ScrubContext | null = null
+function telemetryScrubContext(): ScrubContext {
+	if (scrubContext) return scrubContext
+	const variants = (folder: string): string[] => {
+		try {
+			const real = fsSync.realpathSync(folder)
+			return real === folder ? [folder] : [folder, real]
+		} catch {
+			return [folder]
+		}
+	}
+	const roots: Array<ScrubContext["roots"][number]> = []
+	const add = (folder: string | null, token: string, keepRest: boolean) => {
+		if (folder) for (const variant of variants(folder)) roots.push({ path: variant, token, keepRest })
+	}
+	add(
+		safePath(() => app.getPath("userData")),
+		"<userData>",
+		true,
+	)
+	add(
+		safePath(() => os.tmpdir()),
+		"<tmp>",
+		false,
+	)
+	add(
+		safePath(() => os.homedir()),
+		"<home>",
+		false,
+	)
+	scrubContext = { roots }
+	return scrubContext
+}
+
+function safePath(get: () => string): string | null {
+	try {
+		return get() || null
+	} catch {
+		return null
+	}
+}
+
+/** The scrub every error takes on its way to PostHog — Caret's code and files named, the user's never. */
+export function scrubForTelemetry(text: string, max?: number): string {
+	return max === undefined ? scrubText(text, telemetryScrubContext()) : scrubAndTruncate(text, max, telemetryScrubContext())
+}
 
 let client: PostHog | null = null
 let distinctId = ""
@@ -107,17 +164,23 @@ export function capture(event: string, props?: Record<string, unknown>, set?: Re
 /** Exceptions ride the same consent and a tighter budget; messages arrive pre-scrubbed or get scrubbed here. */
 export function captureError(error: unknown, source: "main" | "renderer"): void {
 	if (!budget.allowException()) return
-	const err = error instanceof Error ? error : new Error(scrubAndTruncate(String(error)))
+	const err = error instanceof Error ? error : new Error(scrubForTelemetry(String(error), 200))
+	const clean = new Error(scrubForTelemetry(err.message, 300))
+	clean.name = err.name
+	// The stack is what makes the report fixable: Caret's own frames keep their
+	// file:line:col (see scrubText). Its first line repeats the message, which
+	// is scrubbed the same way.
+	clean.stack = err.stack ? scrubForTelemetry(err.stack).slice(0, 8000) : undefined
+	const props = { ...commonProps(), source, ...errorCodeProps(err) }
 	if (dryRun) {
-		Logger.debug(`[telemetry] exception (${source}): ${scrubAndTruncate(err.message)}`)
+		// Dev runs show exactly what WOULD be sent, stack included, so the scrub
+		// can be checked without production data.
+		Logger.debug(`[telemetry] exception (${source}) ${JSON.stringify(props)}\n${clean.stack ?? clean.message}`)
 		return
 	}
 	if (!client) return
 	try {
-		const clean = new Error(scrubAndTruncate(err.message))
-		clean.name = err.name
-		clean.stack = err.stack ? scrubText(err.stack) : undefined
-		client.captureException(clean, distinctId, { ...commonProps(), source })
+		client.captureException(clean, distinctId, props)
 	} catch {}
 }
 
