@@ -56,6 +56,7 @@ import { mutateFlowDefinition, writeFlowDefinition } from "../../../src/core/des
 import { resolveParamsFor, spliceParamEdit } from "../../../src/core/design/param/edit"
 import { PANEL_PROPERTIES } from "../../../src/core/design/param/params"
 import { recordEdit } from "../../../src/core/design/provenance"
+import { precomputeAndApply } from "../../../src/core/design/visual-editing/post-generation-hook"
 import { captureUndoStep } from "../../../src/core/design/undo/design-undo"
 import { Logger } from "../../../src/shared/services/Logger"
 import { getDesignLayerChangedFiles, getLatestGitCommitHash } from "../../../src/utils/git"
@@ -90,6 +91,32 @@ async function reply(ctx: ToolContext, payload: unknown): Promise<ToolResult> {
 			{ type: "text", text: JSON.stringify(payload, null, 2) },
 			{ type: "text", text: `<caret_foundation>\n${JSON.stringify(foundation)}\n</caret_foundation>` },
 		],
+	}
+}
+
+/**
+ * Brings a written design file to its settled, healed form NOW rather than when
+ * the watcher gets to it. The healer adds caret-ids a moment after a file
+ * lands; a mapping hashed before that reads as a design change on the next
+ * sync, which would then rewrite the app file the page came from (measured: an
+ * imported page reported over MCP read `forward` six seconds later). The
+ * codemod is idempotent, so the healer's own pass afterwards writes nothing.
+ */
+async function settleDesignFile(projectPath: string, absolutePath: string): Promise<void> {
+	if (!/\.(tsx|jsx)$/.test(absolutePath)) return
+	try {
+		const result = await precomputeAndApply(absolutePath)
+		if (result.modified) {
+			await recordEdit(projectPath, {
+				actor: "caret",
+				action: "heal",
+				file: absolutePath,
+				note: "added caret-ids / converted inline styles",
+			})
+		}
+	} catch {
+		// Unparseable as written: its hash is still the truth, and the healer
+		// will try again on the next save.
 	}
 }
 
@@ -465,6 +492,7 @@ export const TOOLS: ToolDefinition[] = [
 			await fs.mkdir(dir, { recursive: true })
 			const indexPath = path.join(dir, "index.tsx")
 			await runExclusive(indexPath, () => writeFileAtomic(indexPath, args.source))
+			await settleDesignFile(ctx.projectPath, indexPath)
 			await writePageMeta(ctx.projectPath, args.pageId, meta)
 			await recordEdit(ctx.projectPath, { actor: "agent", action: "create", file: indexPath })
 
@@ -486,6 +514,7 @@ export const TOOLS: ToolDefinition[] = [
 
 			const before = await fs.readFile(indexPath, "utf-8").catch(() => "")
 			await runExclusive(indexPath, () => writeFileAtomic(indexPath, args.source))
+			await settleDesignFile(ctx.projectPath, indexPath)
 			await recordEdit(ctx.projectPath, {
 				actor: "agent",
 				action: "write",
@@ -522,6 +551,7 @@ export const TOOLS: ToolDefinition[] = [
 			const before = await fs.readFile(target, "utf-8").catch(() => null)
 			await fs.mkdir(path.dirname(target), { recursive: true })
 			await runExclusive(target, () => writeFileAtomic(target, args.source))
+			await settleDesignFile(ctx.projectPath, target)
 			await recordEdit(ctx.projectPath, {
 				actor: "agent",
 				action: before === null ? "create" : "write",
@@ -863,6 +893,12 @@ export const TOOLS: ToolDefinition[] = [
 		async handler(ctx, args: { mappings: Array<{ designPath: string; appPaths: string[] }> }) {
 			try {
 				const head = await getLatestGitCommitHash(ctx.projectPath)
+				// Hash the healed form: an agent may have written the design file with
+				// its own tools a moment ago, ahead of the watcher.
+				for (const mapping of args.mappings) {
+					const designFile = resolveInCaret(ctx.projectPath, mapping.designPath.replace(/^\.caret\//, ""))
+					if (designFile) await settleDesignFile(ctx.projectPath, designFile)
+				}
 				const result = await recordMappings(ctx.projectPath, args.mappings, head)
 				return reply(ctx, {
 					ok: result.refused.length === 0,
