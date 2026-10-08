@@ -40,12 +40,19 @@ export function buildMenu(windows: WindowManager): void {
 					label: "Open Project…",
 					accelerator: "CmdOrCtrl+O",
 					click: async () => {
-						const result = await dialog.showOpenDialog({
+						// Which window asked is decided BEFORE the dialog: once it closes, no
+						// window may have focus yet, and the open would fall back to a new
+						// window instead of switching this one.
+						const asking = BrowserWindow.getFocusedWindow()
+						const options = {
 							title: "Open a project",
-							properties: ["openDirectory", "createDirectory"],
+							properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory">,
 							buttonLabel: "Open",
-						})
-						if (!result.canceled && result.filePaths[0]) await openFromMenu(windows, result.filePaths[0])
+						}
+						const result = asking
+							? await dialog.showOpenDialog(asking, options)
+							: await dialog.showOpenDialog(options)
+						if (!result.canceled && result.filePaths[0]) await openFromMenu(windows, result.filePaths[0], asking)
 					},
 				},
 				{
@@ -131,9 +138,12 @@ function buildRecentsSubmenu(windows: WindowManager): MenuItemConstructorOptions
 }
 
 /** The menu acts on the focused project window: switch it in place, like the in-window switcher. */
-async function openFromMenu(windows: WindowManager, projectPath: string): Promise<void> {
-	const focused = BrowserWindow.getFocusedWindow()
-	const current = focused ? windows.fromWebContents(focused.webContents.id) : undefined
+async function openFromMenu(
+	windows: WindowManager,
+	projectPath: string,
+	asking: BrowserWindow | null = BrowserWindow.getFocusedWindow(),
+): Promise<void> {
+	const current = asking && !asking.isDestroyed() ? windows.fromWebContents(asking.webContents.id) : undefined
 	if (current) await windows.replace(current, projectPath)
 	else await windows.open(projectPath)
 }

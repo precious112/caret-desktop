@@ -103,6 +103,12 @@ export class CaretMcpServer {
 		await new Promise<void>((resolve) => {
 			if (!this.http) return resolve()
 			this.http.close(() => resolve())
+			// close() only stops NEW connections and then waits for every open one
+			// to end — and a connected agent's session stream never ends on its own.
+			// Without this, stop() hung for as long as an agent stayed connected:
+			// a project switched away from after an import kept its server, its
+			// port and its teardown alive until the app quit.
+			this.http.closeAllConnections()
 		})
 		this.http = null
 		this.port = null

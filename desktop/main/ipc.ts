@@ -6,7 +6,7 @@
  * A handler for a project that is not open returns null rather than falling back
  * to whichever one happens to be focused.
  */
-import { app, dialog, ipcMain, shell } from "electron"
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron"
 import * as fs from "fs/promises"
 import * as path from "path"
 
@@ -177,12 +177,16 @@ function handle(channel: string, listener: (event: Electron.IpcMainInvokeEvent, 
 export function registerIpcHandlers(windows: WindowManager): void {
 	// ── projects ──────────────────────────────────────────────────────────────
 
-	handle("project:pickFolder", async () => {
-		const result = await dialog.showOpenDialog({
+	handle("project:pickFolder", async (event) => {
+		// Attached to the asking window, so the picker is a sheet on it rather
+		// than a free-floating dialog that leaves focus nowhere when it closes.
+		const owner = BrowserWindow.fromWebContents(event.sender)
+		const options = {
 			title: "Open a project",
-			properties: ["openDirectory", "createDirectory"],
+			properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory">,
 			buttonLabel: "Open",
-		})
+		}
+		const result = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options)
 		return result.canceled ? null : (result.filePaths[0] ?? null)
 	})
 

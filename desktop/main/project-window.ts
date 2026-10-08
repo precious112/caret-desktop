@@ -275,13 +275,18 @@ export class ProjectWindow {
 		if (this.closed) return
 		Logger.info(`[window] close() invoked for ${this.projectPath}`)
 		this.closed = true
+		// The window goes FIRST. Teardown below can take a while (an agent turn
+		// being cancelled, a server being stopped), and destroying the window only
+		// after it left the old window on screen — and its canvas reconnected to
+		// the port the next project's preview had just taken, so it showed the NEW
+		// project under the OLD title. Switching projects read as a duplicate window.
+		if (!this.window.isDestroyed()) this.window.destroy()
 		this.exploreWatcher?.close()
 		this.exploreWatcher = null
 		this.checks.close()
 		this.overlayVerify.close()
 		await Promise.allSettled([this.session.stop(), this.mcp.stop(), this.healer.stop(), this.agent.close()])
 		unregisterProjectServices(this.projectPath)
-		if (!this.window.isDestroyed()) this.window.destroy()
 	}
 
 	async getState(): Promise<ProjectState> {
