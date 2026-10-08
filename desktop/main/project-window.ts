@@ -41,11 +41,9 @@ import { DesignChecksService } from "./design-checks"
 import { createElectronDesignHost } from "./electron-host"
 import { ensureMatteModel } from "./matte"
 import { CaretMcpServer } from "./mcp/server"
-import { refreshMenu } from "./menu"
 import { migrateProject } from "./migrate"
 import { OverlayVerifyService } from "./overlay-verify"
 import { EMPTY_SETTLE_REPORT, type SettleReport, settleScript } from "./page-settle"
-import { recordRecentProject } from "./prefs"
 import { regenerateRulesFiles } from "./rules/generate"
 import type { DesignInboundMessage, DesignOutboundMessage, ProjectState, ScreenshotFrame, ScreenshotResult } from "./types"
 import { WatchAndHeal } from "./watch-and-heal"
@@ -233,11 +231,6 @@ export class ProjectWindow {
 
 	/** Boots Vite, the MCP endpoint, the backend and the healer. Safe to call once. */
 	async start(): Promise<void> {
-		await recordRecentProject(this.projectPath)
-		// The menu's recents are a snapshot; without this the list a user reaches
-		// for to switch projects never learns about the one they just opened.
-		refreshMenu()
-
 		// Deliberately not awaited, and deliberately not gated on anything. This
 		// is a 214MB background fetch that wants the whole of someone's first
 		// session to finish in; waiting for a key, or for the asset generator to

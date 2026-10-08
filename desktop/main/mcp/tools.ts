@@ -277,7 +277,14 @@ export const TOOLS: ToolDefinition[] = [
 				return fail(`No page "${pageId}" in this design layer. Available pages: ${available.join(", ") || "none"}.`)
 			}
 
+			// Timed, because a get_screenshot that never answered (verify t, once)
+			// left nothing to say whether it hung capturing or after.
+			const startedAt = Date.now()
+			Logger.info(`[mcp] get_screenshot "${pageId}" part ${part} started`)
 			const result = await ctx.screenshot(pageId, part)
+			Logger.info(
+				`[mcp] get_screenshot "${pageId}" part ${part} ${result.ok ? "captured" : `refused (${result.reason})`} in ${Date.now() - startedAt}ms`,
+			)
 			if (!result.ok) return fail(result.reason)
 
 			// Leading text rather than images alone, so a client that drops image

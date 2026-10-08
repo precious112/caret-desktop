@@ -12,7 +12,8 @@ import * as path from "path"
 import { caretDirectoryExists, detectAppProfile } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
 import { capture } from "./analytics"
-import { getPrefs, setPref } from "./prefs"
+import { refreshMenu } from "./menu"
+import { getPrefs, recordRecentProject, setPref } from "./prefs"
 import { ProjectWindow } from "./project-window"
 import type { ProjectSummary } from "./types"
 
@@ -112,6 +113,12 @@ export class WindowManager {
 		const wasEmpty = this.windows.size === 0
 		this.windows.set(resolved, window)
 		await this.rememberSession()
+		// Recorded before open() returns, not inside the backgrounded start():
+		// there it raced every caller that looks at recents right after opening
+		// (the File menu's Open Recent, and cb, which failed on it). The menu's
+		// recents are a snapshot, so it is rebuilt here too.
+		await recordRecentProject(resolved)
+		refreshMenu()
 		if (wasEmpty) this.options.onFirstProjectOpened?.()
 
 		// Booting installs dependencies on first run, which takes about a minute.

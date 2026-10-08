@@ -130,10 +130,36 @@ class Inconclusive extends Error {}
  */
 let appDiedAt: string | null = null
 
-async function scenario(name: string, run: () => Promise<string>): Promise<void> {
+/** Default wall-clock budget per scenario; inference scenarios get {@link INFERENCE_BUDGET_MS}. */
+const SCENARIO_BUDGET_MS = 8 * 60_000
+const INFERENCE_BUDGET_MS = 25 * 60_000
+
+class ScenarioTimeout extends Error {}
+
+/**
+ * Runs one scenario — bounded, and cleaned up after whatever happened.
+ *
+ * Both halves exist because of one bad night. `cf` hung on an await with no
+ * deadline from 6:50 to 9:29 AM, and when the app was finally quit every
+ * scenario after it failed against a dead process. And a scenario that failed
+ * before its own cleanup (cb) left a second project open, whose canvas every
+ * later "first window" lookup then grabbed — cards "never appeared", assets
+ * 404'd, all of it the harness looking in the wrong project. A failure must
+ * cost one scenario, never the rest of the run.
+ */
+async function scenario(name: string, run: () => Promise<string>, budgetMs = SCENARIO_BUDGET_MS): Promise<void> {
 	if (ONLY && !ONLY.has(name.split(".")[0])) return
+	let timer: ReturnType<typeof setTimeout> | undefined
 	try {
-		const detail = await run()
+		const detail = await Promise.race([
+			run(),
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(
+					() => reject(new ScenarioTimeout(`timed out after ${Math.round(budgetMs / 60_000)} min — the scenario hung`)),
+					budgetMs,
+				)
+			}),
+		])
 		results.push({ name, passed: true, detail })
 		log(`PASS ${name}`)
 	} catch (err) {
@@ -147,6 +173,43 @@ async function scenario(name: string, run: () => Promise<string>): Promise<void>
 		}
 		results.push({ name, passed: false, detail })
 		log(`FAIL ${name} — ${detail}`)
+	} finally {
+		clearTimeout(timer)
+		await settleBetweenScenarios(name)
+	}
+}
+
+/**
+ * Puts the app back to the one state every scenario may assume: the fixture's
+ * window is the only project window, and no agent question is pending (a
+ * pending question vetoes navigation by design — q's timeout once left one
+ * open and a dozen later scenarios could not leave Foundation). Best effort:
+ * a dead app has nothing to settle.
+ */
+async function settleBetweenScenarios(name: string): Promise<void> {
+	if (!app || appDiedAt) return
+	try {
+		const closed: string[] = await app.evaluate(({ BrowserWindow }, fixtureName: string) => {
+			const strays = BrowserWindow.getAllWindows().filter(
+				(w) => !w.isDestroyed() && w.getTitle().endsWith("— Caret") && !w.getTitle().includes(fixtureName),
+			)
+			const titles = strays.map((w) => w.getTitle())
+			for (const w of strays) w.destroy()
+			return titles
+		}, path.basename(fixture))
+		if (closed.length) log(`  (after ${name.split(".")[0]}: closed stray project window(s): ${closed.join(", ")})`)
+
+		const chrome = app.windows().find((page) => page.url().startsWith("file:"))
+		if (chrome && !chrome.isClosed()) {
+			for (let i = 0; i < 10; i++) {
+				const pending = await chrome.evaluate(() => (window as any).caret.invoke("interview:pending")).catch(() => null)
+				if (!pending?.id) break
+				await chrome.evaluate((id: string) => (window as any).caret.invoke("interview:respond", id, null), pending.id)
+				log(`  (after ${name.split(".")[0]}: dismissed a pending agent question it left open)`)
+			}
+		}
+	} catch (err) {
+		log(`  (after ${name.split(".")[0]}: could not settle: ${err instanceof Error ? err.message : String(err)})`)
 	}
 }
 
@@ -158,7 +221,12 @@ async function scenario(name: string, run: () => Promise<string>): Promise<void>
  */
 async function shot(page: Page, name: string): Promise<void> {
 	await fs.mkdir(SHOTS, { recursive: true })
-	await page.screenshot({ path: path.join(SHOTS, `${name}.png`) })
+	// For the eyes, never an assertion: a capture that times out (a busy or
+	// occluded renderer) once failed gg and q after their real checks had run.
+	// The missing picture is logged so the human review notices it.
+	await page.screenshot({ path: path.join(SHOTS, `${name}.png`) }).catch((err) => {
+		log(`  (screenshot "${name}" not captured: ${err instanceof Error ? err.message.split("\n")[0] : String(err)})`)
+	})
 }
 
 /**
@@ -440,6 +508,14 @@ async function main(): Promise<void> {
 		env: { ...process.env, CARET_VERIFY_PROJECT: fixture, NODE_ENV: "test", CARET_DISABLE_TELEMETRY: "1" },
 	})
 
+	// Every helper that needs "the project window" finds it by the fixture's
+	// name, never by position: `getAllWindows()[0]` is whoever happens to be
+	// first — a second project's window, a hidden screenshot window — and a run
+	// once spent twenty scenarios looking at the wrong project's canvas.
+	await app.evaluate((_electron, name: string) => {
+		;(globalThis as any).__caretFixture = name
+	}, path.basename(fixture))
+
 	// Main-process output, kept.
 	//
 	// Playwright reports a dead app as "target page, context or browser has been
@@ -484,7 +560,14 @@ async function main(): Promise<void> {
 		const title = await waitFor(
 			"the window title",
 			async () => {
-				const current = await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getTitle() ?? "")
+				const current = await app!.evaluate(
+					({ BrowserWindow }) =>
+						(
+							BrowserWindow.getAllWindows().find((w) =>
+								w.getTitle().includes((globalThis as any).__caretFixture),
+							) ?? BrowserWindow.getAllWindows()[0]
+						)?.getTitle() ?? "",
+				)
 				return current === expected ? current : null
 			},
 			30_000,
@@ -498,7 +581,9 @@ async function main(): Promise<void> {
 	// closing it. Best-effort: the chrome may retitle on navigation.
 	await app!
 		.evaluate(({ BrowserWindow }) => {
-			const win = BrowserWindow.getAllWindows()[0]
+			const win =
+				BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+				BrowserWindow.getAllWindows()[0]
 			win?.setTitle(`⚠ CERTIFICATION RUN — do not close — ${win.getTitle()}`)
 		})
 		.catch(() => {})
@@ -1050,30 +1135,51 @@ async function main(): Promise<void> {
 		return `3 specimens rendered in ${family.split(",")[0]}; pick returned a candidate id`
 	})
 
-	await scenario("r. the canvas mounts in the window and renders the design pages", async () => {
-		// The canvas is a WebContentsView, not a Playwright page, so it is reached
-		// through the main process. This is the first thing in the suite that
-		// proves the canvas actually runs inside the app rather than in a browser.
-		const result = await waitFor(
-			"the canvas to render pages",
-			async () =>
-				app!.evaluate(async ({ BrowserWindow }) => {
-					const win = BrowserWindow.getAllWindows()[0]
-					const views = (win?.contentView?.children ?? []) as any[]
-					const canvas = views.find((v) => v.webContents && !v.webContents.isDestroyed())
-					if (!canvas) return null
-					const url = canvas.webContents.getURL()
-					if (!url.startsWith("http://127.0.0.1")) return null
-					const frames = await canvas.webContents
-						.executeJavaScript("document.querySelectorAll('iframe').length")
-						.catch(() => 0)
-					return frames > 0 ? { url, frames } : null
-				}),
-			120_000,
-		)
-		await shot(chrome, "06-canvas")
-		return `canvas at ${result.url} rendering ${result.frames} page frame(s)`
-	})
+	await scenario(
+		"r. the canvas mounts in the window and renders the design pages",
+		async () => {
+			// The preview's first boot installs its dependencies — measured at twenty
+			// minutes on a slow network, against a two-minute wait below that then
+			// failed r, t and u for a reason that had nothing to do with the canvas.
+			// The install is waited out first, on the chrome's own status line, and
+			// only the rendering is held to the short deadline.
+			const booted = Date.now()
+			await chrome.waitForFunction(
+				() => document.querySelector('[data-testid="top-bar"]')?.textContent?.includes("Preview running"),
+				undefined,
+				{ timeout: 25 * 60_000, polling: 2_000 },
+			)
+			const bootSeconds = Math.round((Date.now() - booted) / 1000)
+			if (bootSeconds > 60) log(`  (r: the preview took ${bootSeconds}s to boot — first-run install)`)
+
+			// The canvas is a WebContentsView, not a Playwright page, so it is reached
+			// through the main process. This is the first thing in the suite that
+			// proves the canvas actually runs inside the app rather than in a browser.
+			const result = await waitFor(
+				"the canvas to render pages",
+				async () =>
+					app!.evaluate(async ({ BrowserWindow }) => {
+						const win =
+							BrowserWindow.getAllWindows().find((w) =>
+								w.getTitle().includes((globalThis as any).__caretFixture),
+							) ?? BrowserWindow.getAllWindows()[0]
+						const views = (win?.contentView?.children ?? []) as any[]
+						const canvas = views.find((v) => v.webContents && !v.webContents.isDestroyed())
+						if (!canvas) return null
+						const url = canvas.webContents.getURL()
+						if (!url.startsWith("http://127.0.0.1")) return null
+						const frames = await canvas.webContents
+							.executeJavaScript("document.querySelectorAll('iframe').length")
+							.catch(() => 0)
+						return frames > 0 ? { url, frames } : null
+					}),
+				120_000,
+			)
+			await shot(chrome, "06-canvas")
+			return `canvas at ${result.url} rendering ${result.frames} page frame(s)`
+		},
+		30 * 60_000,
+	)
 
 	await scenario("t. get_screenshot returns real pixels of a real page", async () => {
 		// This tool had no coverage anywhere and did not work: it captured through a
@@ -1168,7 +1274,7 @@ async function main(): Promise<void> {
 			60_000,
 		)
 		assert(
-			/CAUTION/.test(shotText) && shotText.includes("does-not-exist.png"),
+			/failed to load/.test(shotText) && shotText.includes("does-not-exist.png"),
 			`the screenshot did not name its hole: ${mcpSaid(shotText).slice(0, 300)}`,
 		)
 
@@ -1274,7 +1380,9 @@ async function main(): Promise<void> {
 			"the design server's URL",
 			async () =>
 				app!.evaluate(({ BrowserWindow }) => {
-					const win = BrowserWindow.getAllWindows()[0]
+					const win =
+						BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+						BrowserWindow.getAllWindows()[0]
 					const views = (win?.contentView?.children ?? []) as any[]
 					const url = views.find((v) => v.webContents && !v.webContents.isDestroyed())?.webContents.getURL() ?? ""
 					return url.startsWith("http://127.0.0.1") ? new URL(url).origin : null
@@ -1596,7 +1704,9 @@ async function main(): Promise<void> {
 			"the design server's URL",
 			async () =>
 				app!.evaluate(({ BrowserWindow }) => {
-					const win = BrowserWindow.getAllWindows()[0]
+					const win =
+						BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+						BrowserWindow.getAllWindows()[0]
 					const views = (win?.contentView?.children ?? []) as any[]
 					const url = views.find((v) => v.webContents && !v.webContents.isDestroyed())?.webContents.getURL() ?? ""
 					return url.startsWith("http://127.0.0.1") ? new URL(url).origin : null
@@ -2163,7 +2273,9 @@ async function main(): Promise<void> {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 120000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -2389,7 +2501,9 @@ async function main(): Promise<void> {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 120000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -2570,7 +2684,9 @@ async function main(): Promise<void> {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 60000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -2670,7 +2786,9 @@ async function main(): Promise<void> {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 60000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -2825,7 +2943,9 @@ async function main(): Promise<void> {
 		// The unified undo, spoken from the page: one keystroke, the whole batch.
 		// The host's undo-result is recorded so a failure names its cause.
 		const undone = await app!.evaluate(async ({ BrowserWindow }) => {
-			const win = BrowserWindow.getAllWindows()[0]
+			const win =
+				BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+				BrowserWindow.getAllWindows()[0]
 			const views = (win?.contentView?.children ?? []) as any[]
 			const canvas = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 			if (!canvas) return false
@@ -2852,7 +2972,9 @@ async function main(): Promise<void> {
 			)
 		} catch (err) {
 			const results = await app!.evaluate(async ({ BrowserWindow }) => {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const canvas = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				const pageFrame = canvas?.webContents.mainFrame.frames.find((f: any) => f.url.includes("mode=focused"))
@@ -2901,7 +3023,9 @@ export default function ListDemo() {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 60000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -3028,7 +3152,9 @@ export default function ListDemo() {
 		// (bo's home edits) must not inherit the list page. This exact pollution
 		// cost a full-suite run.
 		await app!.evaluate(async ({ BrowserWindow }) => {
-			const win = BrowserWindow.getAllWindows()[0]
+			const win =
+				BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+				BrowserWindow.getAllWindows()[0]
 			const views = (win?.contentView?.children ?? []) as any[]
 			const canvas = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 			await canvas?.webContents
@@ -3112,7 +3238,9 @@ export default function ShaderDemo() {
 				app!.evaluate(async ({ BrowserWindow }) => {
 					// The canvas is a WebContentsView CHILD of the window, not a window —
 					// the same trap ce's poll fell into.
-					const win = BrowserWindow.getAllWindows()[0]
+					const win =
+						BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+						BrowserWindow.getAllWindows()[0]
 					const views = (win?.contentView?.children ?? []) as any[]
 					const source = views
 						.map((v) => (v.webContents && !v.webContents.isDestroyed() ? v.webContents.getURL() : ""))
@@ -3338,11 +3466,21 @@ export default function ShaderDemo() {
 		const before = await fs.readFile(pagePath, "utf-8")
 		assert(!/w-\[\d+px\]/.test(before), "the fixture page already carries a pixel width")
 
+		// Certified with the chat open, which narrows the canvas so the focused
+		// 1440px page is shown scaled and fits — handles included. bz used to
+		// inherit that from ca leaving the sidebar open; the one run where
+		// something closed it first, bz measured scale 1.000 and three drags
+		// missed. A scenario establishes the state it needs.
+		await ensureChatOpen(chrome)
+		await chrome.waitForTimeout(800)
+
 		const outcome = await app!.evaluate(async ({ BrowserWindow }) => {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 60000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -3473,7 +3611,7 @@ export default function ShaderDemo() {
 				}
 				if (!dragged)
 					return {
-						error: `three drags on the handle produced no committed width in the DOM (iframe scale ${scale.toFixed(3)}, iframe ${Math.round(offset.w)}px wide showing innerWidth ${innerWidth}px)`,
+						error: `three drags on the handle produced no committed width in the DOM (iframe scale ${scale.toFixed(3)}, iframe ${Math.round(offset.w)}px wide at x=${Math.round(offset.x)} showing innerWidth ${innerWidth}px, in a canvas view ${Math.round(canvas.getBounds().width)}px wide)`,
 					}
 
 				return { ok: true }
@@ -3540,7 +3678,9 @@ export default function ShaderDemo() {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 120000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -3784,7 +3924,9 @@ export default function ShaderDemo() {
 
 		// The canvas chip, unasked: click it, the panel names the page.
 		const chip = await app!.evaluate(async ({ BrowserWindow }) => {
-			const win = BrowserWindow.getAllWindows()[0]
+			const win =
+				BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+				BrowserWindow.getAllWindows()[0]
 			const views = (win?.contentView?.children ?? []) as any[]
 			const canvas = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 			if (!canvas) return { error: "no canvas view" }
@@ -3850,9 +3992,14 @@ export default function CatalogDemo() {
 `,
 			)
 
-			// Consent arrives as a notification in the chrome; the click is real.
-			await chrome.locator('[data-testid="notification-stack"]', { hasText: "Magic UI" }).waitFor({ timeout: 60_000 })
-			await chrome.getByRole("button", { name: "Allow for this project" }).click()
+			// Consent arrives docked in the chat, like every blocking ask — it moved
+			// there from a notification toast after the toast rendered under the
+			// native canvas, invisible, during the very agent turns that raise it.
+			// This scenario kept waiting on the toast and failed every run since.
+			// The click is real.
+			const dock = chrome.locator('[data-testid="chat-interview-dock"]', { hasText: "Magic UI" })
+			await dock.waitFor({ timeout: 60_000 })
+			await dock.locator('[data-testid="interview-choice"]', { hasText: "Allow for this project" }).click()
 
 			await waitFor(
 				"the vendored component to land with its lock entry",
@@ -3961,7 +4108,9 @@ export default function CatalogDemo() {
 		// the way the canvas does and assert the host acted on it — precompute
 		// answers with a precompute-result, which only the host can produce.
 		const replied = await app!.evaluate(async ({ BrowserWindow }) => {
-			const win = BrowserWindow.getAllWindows()[0]
+			const win =
+				BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+				BrowserWindow.getAllWindows()[0]
 			const views = (win?.contentView?.children ?? []) as any[]
 			const canvas = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 			if (!canvas) return "no canvas view"
@@ -4339,7 +4488,9 @@ export default function CatalogDemo() {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 60000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -4485,7 +4636,9 @@ export default function CatalogDemo() {
 			"the clip to land centered on the shirt",
 			async () => {
 				const measured = await app!.evaluate(async ({ BrowserWindow }) => {
-					const win = BrowserWindow.getAllWindows()[0]
+					const win =
+						BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+						BrowserWindow.getAllWindows()[0]
 					const views = (win?.contentView?.children ?? []) as any[]
 					// The URL filter is load-bearing: the first live view is often the
 					// CHROME, whose frame tree never contains the page — a poll without
@@ -4545,7 +4698,9 @@ export default function CatalogDemo() {
 
 		// Leave the canvas on its grid for whoever runs next.
 		await app!.evaluate(async ({ BrowserWindow }) => {
-			const win = BrowserWindow.getAllWindows()[0]
+			const win =
+				BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+				BrowserWindow.getAllWindows()[0]
 			const views = (win?.contentView?.children ?? []) as any[]
 			const canvas = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 			await canvas?.webContents
@@ -4758,7 +4913,9 @@ export default function CatalogDemo() {
 		return "the menu offers both, tagging still types @, a dropped image rides along without joining the library"
 	})
 
-	const inference = model ? scenario : (name: string, _run: () => Promise<string>) => void skip(name, NO_MODEL_REASON)
+	const inference = model
+		? (name: string, run: () => Promise<string>) => scenario(name, run, INFERENCE_BUDGET_MS)
+		: (name: string, _run: () => Promise<string>) => void skip(name, NO_MODEL_REASON)
 
 	await inference("ee. an instruction typed in the chat rewrites the design source to exactly that", async () => {
 		const pagePath = path.join(fixture, ".caret", "pages", "home", "index.tsx")
@@ -5114,7 +5271,9 @@ export default function CatalogDemo() {
 				let canvas: any = null
 				const viewDeadline = Date.now() + 60000
 				while (Date.now() < viewDeadline && !canvas) {
-					const win = BrowserWindow.getAllWindows()[0]
+					const win =
+						BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+						BrowserWindow.getAllWindows()[0]
 					const views = (win?.contentView?.children ?? []) as any[]
 					const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 					if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
@@ -5452,7 +5611,9 @@ export default function CatalogDemo() {
 			let canvas: any = null
 			const viewDeadline = Date.now() + 60000
 			while (Date.now() < viewDeadline && !canvas) {
-				const win = BrowserWindow.getAllWindows()[0]
+				const win =
+					BrowserWindow.getAllWindows().find((w) => w.getTitle().includes((globalThis as any).__caretFixture)) ??
+					BrowserWindow.getAllWindows()[0]
 				const views = (win?.contentView?.children ?? []) as any[]
 				const found = views.find((v) => v.webContents && !v.webContents.isDestroyed())
 				if (found && found.webContents.getURL().startsWith("http://127.0.0.1")) canvas = found
