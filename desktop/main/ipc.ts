@@ -186,8 +186,11 @@ export function registerIpcHandlers(windows: WindowManager): void {
 		return result.canceled ? null : (result.filePaths[0] ?? null)
 	})
 
-	handle("project:open", async (_event, projectPath: string) => {
-		const window = await windows.open(projectPath)
+	// From inside a project window, opening a project switches that window to
+	// it; from anywhere else (the launcher), it opens a window.
+	handle("project:open", async (event, projectPath: string) => {
+		const current = windows.fromWebContents(event.sender.id)
+		const window = current ? await windows.replace(current, projectPath) : await windows.open(projectPath)
 		return window ? window.getState() : null
 	})
 

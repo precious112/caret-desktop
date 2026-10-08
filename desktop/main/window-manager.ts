@@ -41,8 +41,43 @@ export class WindowManager {
 		return this.windows.size === 0
 	}
 
+	/** The project window whose chrome sent an IPC call, if any. */
+	fromWebContents(id: number): ProjectWindow | undefined {
+		return this.list().find((window) => window.ownsWebContents(id))
+	}
+
+	/**
+	 * Opens a project IN PLACE of another: the new project takes the current
+	 * window's spot and the old one closes. Choosing a project from inside a
+	 * window means "switch to it" — opening it as a second window behind the
+	 * first read as the switch doing nothing (field-measured: a user picked a
+	 * folder three times and thought the app was stuck). A project that is
+	 * already open somewhere is focused instead, and nothing closes.
+	 *
+	 * The new window opens BEFORE the old one closes, so a project that fails
+	 * to open leaves the user where they were rather than with no window.
+	 */
+	async replace(current: ProjectWindow, projectPath: string): Promise<ProjectWindow | null> {
+		const resolved = path.resolve(projectPath)
+		if (resolved === current.projectPath) {
+			current.focus()
+			return current
+		}
+		const existing = this.windows.get(resolved)
+		if (existing) {
+			existing.focus()
+			return existing
+		}
+		const opened = await this.open(resolved, current.placement() ?? undefined)
+		if (opened) await this.close(current.projectPath)
+		return opened
+	}
+
 	/** Opens (or focuses) a project. Returns null if the path is not a directory. */
-	async open(projectPath: string): Promise<ProjectWindow | null> {
+	async open(
+		projectPath: string,
+		placement?: ConstructorParameters<typeof ProjectWindow>[0]["placement"],
+	): Promise<ProjectWindow | null> {
 		const resolved = path.resolve(projectPath)
 
 		const existing = this.windows.get(resolved)
@@ -67,6 +102,7 @@ export class WindowManager {
 			chromeEntry: this.options.chromeEntry,
 			preloadChrome: this.options.preloadChrome,
 			preloadCanvas: this.options.preloadCanvas,
+			placement,
 			onClosed: (closedPath) => {
 				this.windows.delete(closedPath)
 				void this.rememberSession()

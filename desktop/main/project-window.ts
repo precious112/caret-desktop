@@ -79,6 +79,8 @@ export interface ProjectWindowOptions {
 	preloadChrome: string
 	preloadCanvas: string
 	onClosed(projectPath: string): void
+	/** Where to put the window — the bounds of the window it replaces, when switching projects in place. */
+	placement?: { bounds: Electron.Rectangle; maximized: boolean; fullScreen: boolean }
 }
 
 export class ProjectWindow {
@@ -114,9 +116,9 @@ export class ProjectWindow {
 	constructor(private readonly options: ProjectWindowOptions) {
 		this.projectPath = options.projectPath
 
+		const placement = options.placement
 		this.window = new BrowserWindow({
-			width: 1440,
-			height: 900,
+			...(placement ? placement.bounds : { width: 1440, height: 900 }),
 			minWidth: 900,
 			minHeight: 600,
 			title: `${path.basename(this.projectPath)} — Caret`,
@@ -219,6 +221,9 @@ export class ProjectWindow {
 				this.schedulePushState()
 			},
 		})
+
+		if (options.placement?.maximized) this.window.maximize()
+		if (options.placement?.fullScreen) this.window.setFullScreen(true)
 
 		this.loadChrome()
 		this.window.on("resize", () => this.layout())
@@ -401,6 +406,21 @@ export class ProjectWindow {
 
 	focus(): void {
 		if (!this.window.isDestroyed()) this.window.focus()
+	}
+
+	/** Whether this project's chrome is the given web contents — how an IPC call finds its window. */
+	ownsWebContents(id: number): boolean {
+		return !this.window.isDestroyed() && this.window.webContents.id === id
+	}
+
+	/** Where this window sits, so a project opened in its place takes the same spot. */
+	placement(): NonNullable<ProjectWindowOptions["placement"]> | null {
+		if (this.window.isDestroyed()) return null
+		return {
+			bounds: this.window.getNormalBounds(),
+			maximized: this.window.isMaximized(),
+			fullScreen: this.window.isFullScreen(),
+		}
 	}
 
 	private loadChrome(): void {

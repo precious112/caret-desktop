@@ -5,7 +5,7 @@
  * shortcuts and for the platform conventions users expect from a real desktop
  * app, not as the only route to anything.
  */
-import { app, dialog, Menu, type MenuItemConstructorOptions, shell } from "electron"
+import { app, BrowserWindow, dialog, Menu, type MenuItemConstructorOptions, shell } from "electron"
 
 import { rollbackSync } from "../../src/core/design"
 import { getPrefs } from "./prefs"
@@ -45,9 +45,7 @@ export function buildMenu(windows: WindowManager): void {
 							properties: ["openDirectory", "createDirectory"],
 							buttonLabel: "Open",
 						})
-						if (!result.canceled && result.filePaths[0]) {
-							await windows.open(result.filePaths[0])
-						}
+						if (!result.canceled && result.filePaths[0]) await openFromMenu(windows, result.filePaths[0])
 					},
 				},
 				{
@@ -128,6 +126,14 @@ function buildRecentsSubmenu(windows: WindowManager): MenuItemConstructorOptions
 	}
 	return recents.map((projectPath) => ({
 		label: projectPath,
-		click: () => void windows.open(projectPath),
+		click: () => void openFromMenu(windows, projectPath),
 	}))
+}
+
+/** The menu acts on the focused project window: switch it in place, like the in-window switcher. */
+async function openFromMenu(windows: WindowManager, projectPath: string): Promise<void> {
+	const focused = BrowserWindow.getFocusedWindow()
+	const current = focused ? windows.fromWebContents(focused.webContents.id) : undefined
+	if (current) await windows.replace(current, projectPath)
+	else await windows.open(projectPath)
 }

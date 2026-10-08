@@ -812,14 +812,24 @@ async function main(): Promise<void> {
 		assert((await menu.getByTestId("project-open-other").count()) === 1, "no way to open another project")
 		await chrome.keyboard.press("Escape")
 
-		// Opening a second project, the way the menu item does it. A bare directory
-		// is enough: the window is what is being tested, not the design layer.
+		// Opening a second project ALONGSIDE this one, the way `caret <path>` from a
+		// terminal does. Not through the chrome's own project:open: from inside a
+		// window that switches the window in place, which here would replace the
+		// fixture every later scenario depends on. A bare directory is enough: the
+		// window is what is being tested, not the design layer.
 		const second = await fs.mkdtemp(path.join(os.tmpdir(), "caret-second-"))
-		const opened = await chrome.evaluate(
-			async (target) => Boolean(await (window as any).caret.invoke("project:open", target)),
-			second,
+		await app!.evaluate(({ app: electronApp }, target: string) => {
+			electronApp.emit("second-instance", {}, ["caret", target], process.cwd())
+		}, second)
+		await waitFor(
+			"the second project's window",
+			async () =>
+				(await app!.evaluate(
+					({ BrowserWindow }, name: string) => BrowserWindow.getAllWindows().some((w) => w.getTitle().includes(name)),
+					path.basename(second),
+				)) || null,
+			30_000,
 		)
-		assert(opened, "opening a second project returned nothing")
 
 		const windowCount = await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
 		assert(windowCount >= 2, `a second project did not get its own window (${windowCount} open)`)
