@@ -576,9 +576,19 @@ export class ProjectWindow {
 			webPreferences: { contextIsolation: true, nodeIntegration: false, offscreen: false, backgroundThrottling: false },
 		})
 
+		// If this window is destroyed out from under the capture, every pending
+		// call on it (loadURL above all) can stay unsettled forever — that is how
+		// a get_screenshot hung instead of failing. Racing each step against the
+		// window's own 'closed' turns that into a reason the agent can act on.
+		const closed = new Promise<never>((_, reject) => {
+			capture.once("closed", () => reject(new Error("the capture window was closed before it finished")))
+		})
+		closed.catch(() => {})
+		const whileOpen = <T>(work: Promise<T>): Promise<T> => Promise.race([work, closed])
+
 		try {
-			await capture.loadURL(`${base}?page=${encodeURIComponent(pageId)}&isolated=1`)
-			const visuals = await this.settle(capture)
+			await whileOpen(capture.loadURL(`${base}?page=${encodeURIComponent(pageId)}&isolated=1`))
+			const visuals = await whileOpen(this.settle(capture))
 
 			const pageHeight = Math.max(visuals.scrollHeight, FRAME_HEIGHT)
 			const totalFrames = Math.ceil(pageHeight / FRAME_HEIGHT)
@@ -601,15 +611,17 @@ export class ProjectWindow {
 				// The beat after scrolling is for scroll-DRIVEN animation: a GSAP
 				// scrub eases toward the new position over ~0.6s, and capturing
 				// sooner photographs the easing, not the state.
-				const top = (await capture.webContents.executeJavaScript(
-					`(async () => {
+				const top = (await whileOpen(
+					capture.webContents.executeJavaScript(
+						`(async () => {
 						scrollTo(0, ${target})
 						await new Promise((r) => setTimeout(r, ${SCRUB_SETTLE_MS}))
 						await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
 						return Math.round(scrollY)
 					})()`,
+					),
 				)) as number
-				const image = await capture.webContents.capturePage()
+				const image = await whileOpen(capture.webContents.capturePage())
 				if (image.isEmpty()) {
 					return { ok: false, reason: `page "${pageId}" rendered nothing at y=${top} — does it render at 1440x900?` }
 				}

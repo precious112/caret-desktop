@@ -187,9 +187,16 @@ export class DesignChecksService {
 		// loadURL forever, and an unbounded await here wedged run_design_checks,
 		// the MCP reply carrying it, and three full certification runs in a row.
 		// A hang is reported the same way a down server is: honestly.
+		// Only the window THIS check opened is cleaned up. The cleanup used to
+		// destroy every window showing `page=<id>&isolated=1` — including the
+		// get_screenshot capture of the same page, whose load then never settled
+		// and left the agent's tool call hanging (verify t, twice). Checks run
+		// after every agent turn, which is exactly when an agent screenshots the
+		// page it just wrote.
+		const owned = new Set<BrowserWindow>()
 		try {
 			return await Promise.race([
-				this.renderAndAudit(pageId, base),
+				this.renderAndAudit(pageId, base, owned),
 				new Promise<CheckFinding[]>((resolve) =>
 					setTimeout(
 						() =>
@@ -210,19 +217,12 @@ export class DesignChecksService {
 				),
 			])
 		} finally {
-			// Whichever branch won, no isolated window may outlive the check.
-			for (const window of BrowserWindow.getAllWindows()) {
-				if (
-					!window.isDestroyed() &&
-					window.webContents.getURL().includes(`page=${encodeURIComponent(pageId)}&isolated=1`)
-				) {
-					window.destroy()
-				}
-			}
+			// Whichever branch won, no window this check opened may outlive it.
+			for (const window of owned) if (!window.isDestroyed()) window.destroy()
 		}
 	}
 
-	private async renderAndAudit(pageId: string, base: string): Promise<CheckFinding[]> {
+	private async renderAndAudit(pageId: string, base: string, owned: Set<BrowserWindow>): Promise<CheckFinding[]> {
 		const window = new BrowserWindow({
 			show: false,
 			width: 1440,
@@ -232,6 +232,7 @@ export class DesignChecksService {
 			// parks rAF in hidden windows — same as every capture window.
 			webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
 		})
+		owned.add(window)
 
 		try {
 			await window.loadURL(`${base}?page=${encodeURIComponent(pageId)}&isolated=1`)

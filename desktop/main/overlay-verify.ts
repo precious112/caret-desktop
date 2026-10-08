@@ -160,20 +160,16 @@ export class OverlayVerifyService {
 		caretIds: string[],
 		viewport: { width: number; height: number },
 	): Promise<{ measurements: OverlayMeasurement[]; screenshotDataUrl: string | null } | null> {
+		// Only the window this pass opened — see design-checks: a sweep by URL
+		// also destroyed a get_screenshot capture of the same page.
+		const owned = new Set<BrowserWindow>()
 		try {
 			return await Promise.race([
-				this.doRenderAndMeasure(pageId, base, caretIds, viewport),
+				this.doRenderAndMeasure(pageId, base, caretIds, viewport, owned),
 				new Promise<null>((resolve) => setTimeout(() => resolve(null), 20_000)),
 			])
 		} finally {
-			for (const window of BrowserWindow.getAllWindows()) {
-				if (
-					!window.isDestroyed() &&
-					window.webContents.getURL().includes(`page=${encodeURIComponent(pageId)}&isolated=1`)
-				) {
-					window.destroy()
-				}
-			}
+			for (const window of owned) if (!window.isDestroyed()) window.destroy()
 		}
 	}
 
@@ -182,6 +178,7 @@ export class OverlayVerifyService {
 		base: string,
 		caretIds: string[],
 		viewport: { width: number; height: number },
+		owned: Set<BrowserWindow>,
 	): Promise<{ measurements: OverlayMeasurement[]; screenshotDataUrl: string | null }> {
 		// The user's viewport, so the layout being measured is the layout they
 		// were looking at — clamped to something a hidden window can be.
@@ -197,6 +194,7 @@ export class OverlayVerifyService {
 			// parks rAF in hidden windows — same as every capture window.
 			webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
 		})
+		owned.add(window)
 
 		try {
 			await window.loadURL(`${base}?page=${encodeURIComponent(pageId)}&isolated=1`)
