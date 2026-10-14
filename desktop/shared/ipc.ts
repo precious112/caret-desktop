@@ -202,6 +202,17 @@ export type InterviewPromptWire =
 			step?: number
 			total?: number
 	  }
+	| {
+			/** The Design pass's questions card. Answered with a JSON array of "keep" / "remove". */
+			kind: "design-questions"
+			id: string
+			title: string
+			subtitle: string
+			items: Array<{ section: string; quote: string; habit: string; reason: string }>
+			place?: "chat"
+			step?: number
+			total?: number
+	  }
 
 /**
  * Where a prompt renders — and therefore which surfaces react to it.
@@ -215,7 +226,11 @@ export type InterviewPromptWire =
  * against.
  */
 export function landsInChat(prompt: InterviewPromptWire): boolean {
-	return prompt.kind === "asset-options" || (prompt.kind !== "options" && prompt.place === "chat")
+	return (
+		prompt.kind === "asset-options" ||
+		prompt.kind === "design-questions" ||
+		(prompt.kind !== "options" && prompt.place === "chat")
+	)
 }
 
 /** One asset, as a pickable option. URLs are Vite-relative like `AssetEntryWire`'s. */
@@ -387,6 +402,15 @@ export type TranscriptEntryWire =
 	  }
 	| { kind: "error"; id: string; message: string }
 	| { kind: "note"; id: string; text: string }
+	| {
+			kind: "design-pass"
+			id: string
+			steps: Array<{
+				step: "plan" | "check" | "questions" | "polish" | "build"
+				state: "pending" | "active" | "done" | "failed"
+				detail?: string
+			}>
+	  }
 
 export interface AgentStateWire {
 	backendId: BackendIdWire | null
@@ -410,6 +434,8 @@ export interface AgentStateWire {
 	appWrites: "ask" | "allow"
 	model: string | null
 	effort: string | null
+	/** Whether the Design pass is on for this project. */
+	designPass: boolean
 }
 
 /** A model and who serves it. Providers are the categories; models are the items. */
@@ -530,6 +556,18 @@ export interface GeneratedProvenanceWire {
 		round?: { calls: number; amount: number }
 		note?: string
 	}
+}
+
+/** One Design pass library's row in the backend tab. */
+export interface DesignLibraryWire {
+	id: "shadcn" | "aceternity" | "lazyweb" | "gummble" | "twentyfirst"
+	name: string
+	gives: string
+	kind: "components" | "inspiration"
+	access: "none" | "free-token" | "sign-in" | "key"
+	site?: string
+	enabled: boolean
+	state: "ready" | "connecting" | "sign-in" | "key" | "resting" | "failed" | "off"
 }
 
 export interface SecretStatusWire {
@@ -954,6 +992,12 @@ export interface IpcRequests {
 	 * the composer only clears the draft it actually spent.
 	 */
 	"agent:setMode": (projectPath: string, mode: "read-only" | "write", steering?: string) => { executed: boolean }
+	"designPass:set": (projectPath: string, on: boolean, where: "composer" | "settings") => void
+	"designPass:libraries": (projectPath: string | null) => DesignLibraryWire[]
+	"designPass:setLibrary": (id: string, on: boolean) => void
+	"designPass:setKey": (projectPath: string | null, id: string, key: string) => WriteResult
+	"designPass:signIn": (projectPath: string, id: string) => WriteResult
+	"designPass:automaticHelper": () => string | null
 	/** The plan card's Discard. Sync plans also clear their pending record. */
 	"agent:discardPlan": (projectPath: string) => void
 	"agent:reset": (projectPath: string) => void
@@ -1059,6 +1103,8 @@ export interface IpcEvents {
 	"canvas:message": (projectPath: string, message: DesignOutboundWire) => void
 	"notification:show": (request: NotificationRequest) => void
 	"interview:prompt": (prompt: InterviewPromptWire) => void
+	/** A prompt its asker gave up on (the user pressed Stop): take it off the screen. */
+	"interview:withdrawn": (id: string) => void
 	/** Wizard retry heartbeat: the UI stays on loading until attempts are spent. */
 	"wizard:progress": (progress: { projectPath: string; attempt: number; max: number }) => void
 	/** The asset index changed — by the UI, an agent, or a file dropped in Finder. */

@@ -63,7 +63,7 @@ export interface InstallResult {
 	alreadyInstalled?: boolean
 }
 
-function catalogDir(workspacePath: string): string {
+export function catalogDir(workspacePath: string): string {
 	return path.join(workspacePath, ".caret", "components", CATALOG_INSTALL_DIR)
 }
 
@@ -84,7 +84,7 @@ export function isInstalled(lock: CatalogLock, libraryId: string, componentId: s
 	return lock.installed.some((entry) => entry.library === libraryId && entry.component === componentId)
 }
 
-async function appendLock(workspacePath: string, entry: CatalogLockEntry): Promise<void> {
+export async function appendLock(workspacePath: string, entry: CatalogLockEntry): Promise<void> {
 	const target = lockPath(workspacePath)
 	await runExclusive(target, async () => {
 		const lock = await readCatalogLock(workspacePath)
@@ -104,7 +104,7 @@ async function appendLock(workspacePath: string, entry: CatalogLockEntry): Promi
  * `--ignore-scripts`: catalog deps are rendering libraries, and none of them
  * has a legitimate reason to run code at install time inside a user's repo.
  */
-async function installDeps(workspacePath: string, deps: string[]): Promise<void> {
+export async function installDeps(workspacePath: string, deps: string[]): Promise<void> {
 	if (deps.length === 0) return
 	const caretDir = path.join(workspacePath, ".caret")
 	const packagePath = path.join(caretDir, "package.json")
@@ -151,7 +151,7 @@ export function rebindHexClasses(source: string, tokenFor: (hex: string) => stri
 	)
 }
 
-async function writeComponentFile(workspacePath: string, relative: string, content: string): Promise<void> {
+export async function writeComponentFile(workspacePath: string, relative: string, content: string): Promise<void> {
 	const target = path.join(catalogDir(workspacePath), relative)
 	await fs.mkdir(path.dirname(target), { recursive: true })
 	await writeFileAtomic(target, content)

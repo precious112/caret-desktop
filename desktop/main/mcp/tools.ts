@@ -43,25 +43,26 @@ import {
 	recordMappings,
 	registerExternalRound,
 	runSync,
+	SHELL_DESIGN_PATH,
 	startReverseSyncProposal,
+	surveyAppScreens,
 	validateFoundationTokens,
 	validatePageMeta,
 	writeFoundationTokens,
 	writePageMeta,
-	SHELL_DESIGN_PATH,
-	surveyAppScreens,
 } from "../../../src/core/design"
 import { runExclusive, writeFileAtomic } from "../../../src/core/design/file-mutation-queue"
 import { mutateFlowDefinition, writeFlowDefinition } from "../../../src/core/design/flow-meta"
 import { resolveParamsFor, spliceParamEdit } from "../../../src/core/design/param/edit"
 import { PANEL_PROPERTIES } from "../../../src/core/design/param/params"
 import { recordEdit } from "../../../src/core/design/provenance"
-import { precomputeAndApply } from "../../../src/core/design/visual-editing/post-generation-hook"
 import { captureUndoStep } from "../../../src/core/design/undo/design-undo"
+import { precomputeAndApply } from "../../../src/core/design/visual-editing/post-generation-hook"
 import { Logger } from "../../../src/shared/services/Logger"
 import { getDesignLayerChangedFiles, getLatestGitCommitHash } from "../../../src/utils/git"
 import { buildFoundationContext, buildGuide } from "../rules/context"
 import type { ScreenshotResult } from "../types"
+import { VIEW_REFERENCE_TOOL } from "./view-reference"
 
 export interface ToolContext {
 	projectPath: string
@@ -184,6 +185,7 @@ export const MUTATING_TOOL_NAMES = [
 ] as const
 
 export const TOOLS: ToolDefinition[] = [
+	VIEW_REFERENCE_TOOL as unknown as ToolDefinition,
 	{
 		name: "get_project",
 		title: "Read the design layer",

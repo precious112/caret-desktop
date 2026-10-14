@@ -23,7 +23,7 @@ import { Logger } from "../../src/shared/services/Logger"
 import { getPrefs, setPref } from "./prefs"
 
 /** Named so a second credential can land here without a schema change. */
-export type SecretName = "geminiApiKey" | "tripoApiKey"
+export type SecretName = "geminiApiKey" | "tripoApiKey" | "lazywebToken" | "twentyfirstApiKey"
 
 export interface SecretStatus {
 	/** Whether the OS can encrypt at all. False means storing is refused. */

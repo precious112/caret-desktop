@@ -23,10 +23,17 @@ import {
 	planSupply,
 	readCatalogLock,
 } from "../../src/core/design"
+import {
+	folderOf,
+	type InstallOutcome,
+	installComponentRef,
+	parseComponentRef,
+} from "../../src/core/design/catalog/registry-install"
 import { Logger } from "../../src/shared/services/Logger"
 import { capture } from "./analytics"
 import { askUser, type InterviewPrompt } from "./interview"
 import { getPrefs, setPref } from "./prefs"
+import { getSecret } from "./secrets"
 
 export interface CatalogServiceOptions {
 	projectPath: string
@@ -62,6 +69,12 @@ export function resolveMirrorDir(): string {
 	return path.join(base, "assets", "catalog")
 }
 
+/** How a consent question names a library that is not in the fixed catalog. */
+interface ConsentText {
+	name: string
+	hint: string
+}
+
 export class CatalogService {
 	/** Libraries declined this session — asked once, not per file save. */
 	private declinedThisSession = new Set<string>()
@@ -81,19 +94,27 @@ export class CatalogService {
 		return `${this.options.projectPath}::${libraryId}`
 	}
 
-	private hasConsent(libraryId: string): Promise<boolean> {
+	private hasConsent(libraryId: string, about?: ConsentText): Promise<boolean> {
 		const pending = this.pendingConsent.get(libraryId)
 		if (pending) return pending
-		const ask = this.askConsent(libraryId).finally(() => this.pendingConsent.delete(libraryId))
+		const ask = this.askConsent(libraryId, about).finally(() => this.pendingConsent.delete(libraryId))
 		this.pendingConsent.set(libraryId, ask)
 		return ask
 	}
 
-	private async askConsent(libraryId: string): Promise<boolean> {
+	private async askConsent(libraryId: string, about?: ConsentText): Promise<boolean> {
 		if (getPrefs().catalogAllowed.includes(this.consentKey(libraryId))) return true
 		if (this.declinedThisSession.has(libraryId)) return false
 
-		const library = findCatalogLibrary(libraryId)
+		const catalogLibrary = findCatalogLibrary(libraryId)
+		const library =
+			about ??
+			(catalogLibrary
+				? {
+						name: catalogLibrary.name,
+						hint: `This design uses ${catalogLibrary.name} (${catalogLibrary.licence}) from the component catalog. Caret writes its vendored source into .caret/components/catalog/ — no network, no npm.`,
+					}
+				: null)
 		if (!library) return false
 
 		// Chat-placed, like every blocking ask (see `sendPrompt` above). The
@@ -104,16 +125,13 @@ export class CatalogService {
 					kind: "question",
 					place: "chat",
 					question: `Install ${library.name} into this project?`,
-					hint:
-						`This design uses ${library.name} (${library.licence}) from the component catalog. ` +
-						`Caret writes its vendored source into .caret/components/catalog/ — no network, no npm.`,
+					hint: library.hint,
 					choices: ["Allow for this project", "Just this once", "Don't install"],
 				})
-			: await hostFor(this.options.projectPath).notify(
-					"info",
-					`This design uses ${library.name} (${library.licence}) from the component catalog. Install it into .caret?`,
-					["Allow for this project", "Just this once"],
-				)
+			: await hostFor(this.options.projectPath).notify("info", `${library.hint} Install it into .caret?`, [
+					"Allow for this project",
+					"Just this once",
+				])
 		if (choice === "Allow for this project") {
 			await setPref("catalogAllowed", [...new Set([...getPrefs().catalogAllowed, this.consentKey(libraryId)])])
 			return true
@@ -139,6 +157,27 @@ export class CatalogService {
 			mirrorDir: resolveMirrorDir(),
 		})
 		if (result.ok) capture("catalog_install_completed", { initiator: "agent", library: this.libraryProp(libraryId) })
+		if (result.ok && !result.alreadyInstalled) this.options.onInstalled?.()
+		return result
+	}
+
+	/**
+	 * Installs a component the Design pass's designer chose and its judge
+	 * approved. Consent is per library, like the catalog's.
+	 */
+	async installChosen(ref: string, why: string): Promise<InstallOutcome> {
+		const parsed = parseComponentRef(ref)
+		if (!parsed) return { ok: false, ref, reason: `"${ref}" is not a component Caret can install` }
+		const libraryId = parsed.kind === "registry" ? folderOf(parsed.registry) : "21st"
+		const name = parsed.kind === "registry" ? parsed.registry : "21st.dev"
+		const allowed = await this.hasConsent(libraryId, {
+			name,
+			hint: `The Design pass chose ${ref} (${why}). Caret downloads its source into .caret/components/catalog/ and adds the npm packages it needs to .caret/package.json.`,
+		})
+		if (!allowed) return { ok: false, ref, reason: `you chose not to install from ${name}` }
+		const result = await installComponentRef(this.options.projectPath, ref, {
+			twentyfirstKey: getSecret("twentyfirstApiKey") || undefined,
+		})
 		if (result.ok && !result.alreadyInstalled) this.options.onInstalled?.()
 		return result
 	}

@@ -28,6 +28,7 @@ export {
 	AgentConversation,
 	type ConversationDeps,
 	type ConversationState,
+	type PrepareApi,
 	type RunOutcome,
 	type RunRequest,
 	type SettledPlan,

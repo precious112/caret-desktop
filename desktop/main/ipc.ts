@@ -40,6 +40,8 @@ import {
 	withDerivedScales,
 	writeFoundationTokens,
 } from "../../src/core/design"
+import { pickHelperModel } from "../../src/core/design/design-pass/helper-model"
+import { type LibraryId, libraryById } from "../../src/core/design/design-pass/libraries"
 import { Logger } from "../../src/shared/services/Logger"
 import type { AssetRequestWire, ComposerImage } from "../shared/ipc"
 import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps } from "../shared/telemetry"
@@ -47,6 +49,7 @@ import { buildAgentClientConfigs } from "./agent-configs"
 import { capture, captureError, scrubForTelemetry, setTelemetryEnabled } from "./analytics"
 import { acceptMark, authorMark, discardMark, holdMark } from "./authored-marks"
 import { acceptShader, authorShader, discardShader, holdShader, refineHeldShader, type ShaderOutcome } from "./authored-shaders"
+import { designLibraries } from "./design-pass/libraries"
 import { resolveNotification } from "./electron-host"
 import { acceptModel3d, discardModel3d, generateModel3d } from "./generate-3d"
 import {
@@ -720,6 +723,11 @@ export function registerIpcHandlers(windows: WindowManager): void {
 	handle("agent:send", (_event, projectPath: string, text: string, images?: string[]) => {
 		const agent = windows.get(projectPath)?.getAgent()
 		if (!agent) return
+		// Library search tools reach the plain chat too (used only when asked);
+		// re-adding what an instance reset dropped is one status read when nothing is missing.
+		void designLibraries()
+			.ensure(projectPath)
+			.catch(() => {})
 		void agent.conversation.sendMessage(text, images).catch((err) => {
 			agent.conversation.note(err instanceof Error ? err.message : String(err))
 		})
@@ -769,6 +777,39 @@ export function registerIpcHandlers(windows: WindowManager): void {
 			await windows.get(projectPath)?.getAgent().conversation.respondToPermission(requestId, decision)
 		},
 	)
+
+	// ── the Design pass ───────────────────────────────────────────────────────
+
+	handle("designPass:set", async (_event, projectPath: string, on: boolean, where: "composer" | "settings") => {
+		const window = windows.get(projectPath)
+		if (!window) return
+		await window.designPass.setOn(on, where)
+		window.getAgent().conversation.touch()
+	})
+
+	handle("designPass:libraries", (_event, projectPath: string | null) => designLibraries().list(projectPath))
+
+	handle("designPass:setLibrary", async (_event, id: string, on: boolean) => {
+		if (!libraryById(id)) return
+		await designLibraries().setEnabled(id as LibraryId, on)
+	})
+
+	handle("designPass:setKey", (_event, projectPath: string | null, id: string, key: string) => {
+		if (!libraryById(id)) return { ok: false as const, error: "Unknown library." }
+		return designLibraries().setKey(projectPath, id as LibraryId, key)
+	})
+
+	handle("designPass:signIn", (_event, projectPath: string, id: string) => {
+		if (!libraryById(id)) return { ok: false as const, error: "Unknown library." }
+		return designLibraries().signIn(projectPath, id as LibraryId)
+	})
+
+	/** What "Automatic (fastest connected)" resolves to right now, for the dropdown's label. */
+	handle("designPass:automaticHelper", async () => {
+		const backend = await catalogueBackend()
+		const groups = (await backend?.listModels?.().catch(() => [])) ?? []
+		return pickHelperModel(groups, "", getPrefs().backendModel || undefined).label
+	})
 
 	handle("agent:setMode", (_event, projectPath: string, mode: "read-only" | "write", steering?: string) => {
 		return windows.get(projectPath)?.getAgent().setChatMode(mode, steering) ?? { executed: false }

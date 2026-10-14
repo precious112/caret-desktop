@@ -21,6 +21,7 @@ import {
 	type BackendSession,
 	type BackendSessionSummary,
 	type CodingBackend,
+	type McpControl,
 	type ModelGroup,
 	type OauthChallenge,
 	type PermissionDecision,
@@ -551,6 +552,32 @@ export class OpencodeBackend implements CodingBackend {
 			// Not fatal, but the user is about to think their sign-in failed.
 			Logger.warn(`[backend] credentials changed but the instance would not reload: ${err}`)
 		})
+	}
+
+	/**
+	 * The project's runtime MCP servers (`POST /mcp` and friends, measured on the
+	 * pinned binary by `scripts/probe-mcp-runtime.ts`). Servers added this way
+	 * belong to one directory's instance and are dropped when that instance is
+	 * disposed (`reloadCredentials`), so callers re-add what is missing before use.
+	 */
+	readonly mcp: McpControl = {
+		status: async (directory) => request(await this.server(), "/mcp", { query: { directory } }),
+		add: async (directory, name, config) =>
+			request(await this.server(), "/mcp", { method: "POST", query: { directory }, body: { name, config } }),
+		connect: async (directory, name) => {
+			await request(await this.server(), `/mcp/${encodeURIComponent(name)}/connect`, {
+				method: "POST",
+				query: { directory },
+			})
+		},
+		disconnect: async (directory, name) => {
+			await request(await this.server(), `/mcp/${encodeURIComponent(name)}/disconnect`, {
+				method: "POST",
+				query: { directory },
+			})
+		},
+		startAuth: async (directory, name) =>
+			request(await this.server(), `/mcp/${encodeURIComponent(name)}/auth`, { method: "POST", query: { directory } }),
 	}
 
 	/**

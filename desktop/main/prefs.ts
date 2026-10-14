@@ -110,6 +110,19 @@ export interface Prefs {
 	 * chain stays built and certified behind it.
 	 */
 	chatAssetGeneration: boolean
+	/**
+	 * Projects where the Design pass is switched off. On is the default — most
+	 * users aren't designers, and the pass is what makes Caret's pages better
+	 * than a plain AI's — so the list records the exception, per project.
+	 */
+	designPassOff: string[]
+	/**
+	 * The model that checks and judges for the Design pass, `provider/model`.
+	 * Empty is "Automatic": the fastest model connected.
+	 */
+	designPassHelperModel: string
+	/** Libraries the user switched off for the Design pass's designer. */
+	designPassLibrariesOff: string[]
 }
 
 const DEFAULTS: Prefs = {
@@ -134,6 +147,9 @@ const DEFAULTS: Prefs = {
 	telemetryId: "",
 	telemetryNoticeShown: false,
 	chatAssetGeneration: false,
+	designPassOff: [],
+	designPassHelperModel: "",
+	designPassLibrariesOff: [],
 }
 
 const MAX_RECENTS = 12

@@ -21,23 +21,28 @@ import * as fs from "fs"
 import * as path from "path"
 
 import {
+	type AgentConversation,
+	type AppProfile,
 	type ConversationState,
 	caretDirectoryExists,
-	type AppProfile,
 	DesignSession,
 	detectAppProfile,
 	hostFor,
 	listPages,
+	type RunOutcome,
 	readFoundationTokens,
 	registerProjectServices,
 	unregisterProjectServices,
 } from "../../src/core/design"
+import { missingImports, missingImportsPrompt } from "../../src/core/design/design-pass/import-check"
 import { emitDesignEvent } from "../../src/core/design/telemetry-hooks"
 import { Logger } from "../../src/shared/services/Logger"
 import { AgentService } from "./agent-service"
 import { AppImportService } from "./app-import"
 import { CatalogService } from "./catalog-service"
 import { DesignChecksService } from "./design-checks"
+import { designLibraries } from "./design-pass/libraries"
+import { DesignPassService } from "./design-pass/service"
 import { createElectronDesignHost } from "./electron-host"
 import { ensureMatteModel } from "./matte"
 import { CaretMcpServer } from "./mcp/server"
@@ -90,6 +95,7 @@ export class ProjectWindow {
 	private checks: DesignChecksService
 	private overlayVerify: OverlayVerifyService
 	private catalog: CatalogService
+	readonly designPass: DesignPassService
 	private session: DesignSession
 	private mcp: CaretMcpServer
 	private healer: WatchAndHeal
@@ -162,6 +168,16 @@ export class ProjectWindow {
 			sendPrompt: (prompt) => this.sendToChrome("interview:prompt", prompt),
 		})
 
+		this.designPass = new DesignPassService({
+			projectPath: this.projectPath,
+			backend: () => this.agent.readyBackend(),
+			libraries: designLibraries(),
+			sendPrompt: (prompt) => this.sendToChrome("interview:prompt", prompt),
+			withdrawPrompt: (id) => this.sendToChrome("interview:withdrawn", id),
+			notify: (body) => this.notifyWaiting(body),
+			installComponent: (ref, why) => this.catalog.installChosen(ref, why),
+		})
+
 		// Constructed before the session, because registering the bridge is what
 		// makes every outbound feature stop refusing.
 		this.agent = new AgentService({
@@ -182,6 +198,11 @@ export class ProjectWindow {
 			onTurnComplete: (conversation, outcome, request) => {
 				this.checks.afterTurn(conversation, outcome, request)
 				this.overlayVerify.afterTurn(conversation, outcome, request)
+				if (conversation === this.agent.conversation) void this.checkDesignPassImports(conversation, outcome)
+			},
+			designPass: {
+				isOn: () => this.designPass.isOn(),
+				prepare: (message, api) => this.designPass.prepare(message, api),
 			},
 		})
 
@@ -341,6 +362,50 @@ export class ProjectWindow {
 			const { requestId, summary } = entry
 			setTimeout(() => this.notifyAsk(requestId, summary), 1_500)
 		}
+	}
+
+	/**
+	 * After a Design pass build: every component the designer chose must be
+	 * imported by the page. If one is not, the builder is told once.
+	 */
+	private async checkDesignPassImports(conversation: AgentConversation, outcome: RunOutcome): Promise<void> {
+		const check = this.designPass.takeImportCheck()
+		if (!check || !outcome.ok) return
+		const pages = outcome.filesChanged.filter((file) => /\.caret\/pages\/[^/]+\/index\.tsx$/.test(file.replace(/\\/g, "/")))
+		const sources = pages.map((file) => {
+			try {
+				return fs.readFileSync(path.isAbsolute(file) ? file : path.join(this.projectPath, file), "utf-8")
+			} catch {
+				return ""
+			}
+		})
+		const missing = missingImports(check.components, sources)
+		if (!missing.length) return
+		const activity = conversation.getState().activity
+		try {
+			await conversation.run({
+				kind: activity?.kind ?? "chat",
+				title: activity?.title ?? "Chat",
+				mode: "write",
+				prompt: missingImportsPrompt(missing),
+				displayPrompt: "The page skipped components the Design pass installed. Asking the agent to use them.",
+				resumeSessionId: activity?.sessionId || outcome.sessionId || undefined,
+			})
+		} catch (err) {
+			Logger.warn(`[design-pass] import follow-up failed: ${err}`)
+		}
+	}
+
+	/** One native notification for something waiting on the user, when the window is not focused. */
+	private notifyWaiting(body: string): void {
+		if (this.closed || this.window.isDestroyed() || this.window.isFocused() || !Notification.isSupported()) return
+		const notification = new Notification({ title: "Caret is waiting on you", body })
+		notification.on("click", () => {
+			if (this.closed || this.window.isDestroyed()) return
+			this.window.show()
+			this.window.focus()
+		})
+		notification.show()
 	}
 
 	private notifyAsk(requestId: string, summary: string): void {

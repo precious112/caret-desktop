@@ -346,3 +346,26 @@ ${
 The plan:
 ${JSON.stringify(plan, null, 1)}`
 }
+
+/**
+ * Does this chat message ask for a page to be built? Only then does the pass
+ * run: a small edit ("make the button blue") goes straight to the chat, as it
+ * would with the pass off.
+ */
+export function pageWorkPrompt(message: string, existingPages: string[]): string {
+	return `A user of a design tool sent this message to its AI:
+"""
+${message}
+"""
+Pages that already exist: ${existingPages.length ? existingPages.join(", ") : "(none)"}
+
+Does the message ask the AI to create a new page, or to redesign an existing page as a whole (its layout, sections or look across the page)?
+Answer false for anything smaller or different: an edit to one element or one section's text, a colour or spacing tweak, a question, a fix, a sync, assets, or tokens.
+Reply with JSON only: {"pageWork": true or false, "page": "the page's id when it is an existing one, else a short id for the new page"}`
+}
+
+export const PAGE_WORK_SCHEMA = {
+	type: "object",
+	properties: { pageWork: { type: "boolean" }, page: { type: "string" } },
+	required: ["pageWork"],
+}

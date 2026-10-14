@@ -23,6 +23,7 @@ import {
 	sessionDurationSeconds,
 	shutdownAnalytics,
 } from "./analytics"
+import { designLibraries } from "./design-pass/libraries"
 import { registerIpcHandlers } from "./ipc"
 import { closeLauncherWindow, hasLauncherWindow, type LauncherWindowOptions, openLauncherWindow } from "./launcher-window"
 import { startFileLog } from "./log-file"
@@ -119,6 +120,9 @@ async function main(): Promise<void> {
 	} catch (err) {
 		Logger.warn(`[main] chat agent will have no Caret tools: ${err}`)
 	}
+	// Installs the per-prompt tool policy before any session exists, so a Design
+	// pass library's tools never reach a prompt unfiltered.
+	designLibraries()
 
 	const launcherOptions: LauncherWindowOptions = {
 		chromeEntry: resolveChromeEntry(),

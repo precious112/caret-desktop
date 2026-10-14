@@ -232,6 +232,25 @@ export interface StructuredRequest {
 	signal?: AbortSignal
 }
 
+/** An MCP server's state on the backend, in the server's own words. */
+export type McpServerStatus =
+	| { status: "connected" }
+	| { status: "disabled" }
+	| { status: "needs_auth" }
+	| { status: "failed"; error: string }
+	| { status: "needs_client_registration"; error: string }
+
+export interface McpControl {
+	/** Every MCP server the project's instance knows, by name. */
+	status(directory: string): Promise<Record<string, McpServerStatus>>
+	/** Adds (or replaces) a server; it connects straight away. */
+	add(directory: string, name: string, config: Record<string, unknown>): Promise<Record<string, McpServerStatus>>
+	connect(directory: string, name: string): Promise<void>
+	disconnect(directory: string, name: string): Promise<void>
+	/** Starts a browser sign-in; the backend receives the callback and keeps the tokens. */
+	startAuth(directory: string, name: string): Promise<{ authorizationUrl: string }>
+}
+
 /** One tool call made while answering, for callers that watch their tools' health. */
 export interface ToolCallRecord {
 	tool: string
@@ -293,6 +312,12 @@ export interface CodingBackend {
 	startSession(options: StartSessionOptions): Promise<BackendSession>
 	/** One-shot, JSON-schema-constrained. Carries the interview and recipe narrowing. */
 	structured<T>(request: StructuredRequest): Promise<StructuredResult<T>>
+
+	/**
+	 * External MCP servers added to a project's instance at runtime (the Design
+	 * pass's libraries). Absent on a backend that cannot add them.
+	 */
+	readonly mcp?: McpControl
 	/**
 	 * Models this backend can reach, grouped by provider.
 	 *

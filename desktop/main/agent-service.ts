@@ -22,6 +22,7 @@ import {
 	ExploreLane,
 	type ExploreTakeStatus,
 	getBackend,
+	type PrepareApi,
 	type RunOutcome,
 	type RunRequest,
 	runSyncApply,
@@ -50,6 +51,11 @@ export interface AgentServiceOptions {
 	onTurnComplete?(conversation: AgentConversation, outcome: RunOutcome, request: RunRequest): void
 	/** Narrates each screen of an app import (code → design) as it generates. */
 	onImportStatus?(status: ExploreTakeStatus): void
+	/** The Design pass for the chat (only the chat: lanes never plan a page). */
+	designPass?: {
+		isOn(): boolean
+		prepare(message: string, api: PrepareApi): Promise<string | null>
+	}
 }
 
 export class AgentService {
@@ -95,6 +101,8 @@ export class AgentService {
 			systemPrompt: () => this.systemPrompt(),
 			onChange: (state) => options.onState(state),
 			onTurnComplete: (outcome, request) => options.onTurnComplete?.(this.conversation, outcome, request),
+			designPassOn: () => options.designPass?.isOn() ?? false,
+			designPass: options.designPass ? (message, api) => options.designPass!.prepare(message, api) : undefined,
 		})
 
 		this.editLane = new EditLaneBridge(

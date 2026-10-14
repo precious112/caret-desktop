@@ -113,6 +113,19 @@ Screen names, routes and file paths are never sent.
 | `catalog_install_completed` | same |
 | `catalog_install_denied` | same |
 
+### Design pass
+
+Counts, habit names from Caret's own slop list, library names, model names and timings. Never your request, the plan, quotes from it, or page content.
+
+| Event | Properties |
+|---|---|
+| `design_pass_toggled` | `on` (bool); `where`: composer / settings |
+| `design_pass_completed` | `ok`; `duration_s`; on success `plan_s`, `check_s`, `questions_s`, `polish_s`, `sections` (count), `rounds` (count), `main_model`, `helper_model`, `libraries` (the library names used), `references` (count), `components` (count); on failure `step`: plan / check / questions / polish |
+| `design_pass_habits` | `banned` and `defended` (slop-list habit ids); `kept_by_user` (slop-list habit names); `removed` (count); `rejected_claims` (count) |
+| `design_pass_questions_answered` | `asked`, `kept`, `removed` (counts); `habits` (slop-list habit names) |
+| `design_pass_component` | `library`: shadcn / magicui / aceternity / smoothui / kokonutui / 21st / other; `installed` (bool) |
+| `design_pass_mcp_failure` | `library`: shadcn / aceternity / lazyweb / gummble / twentyfirst; `kind`: rate-limit / auth / unavailable |
+
 ### Errors
 
 | Event | Properties |

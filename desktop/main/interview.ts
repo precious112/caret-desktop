@@ -104,7 +104,19 @@ export interface AssetOption {
 	posterUrl: string | null
 }
 
-export type InterviewPrompt = QuestionPrompt | OptionsPrompt | TakesPrompt | AssetOptionsPrompt
+/**
+ * The Design pass's questions: parts of a page plan that are common in AI-made
+ * designs, kept only by the AI's own argument. The user keeps or removes each;
+ * the answer is a JSON array of "keep" / "remove", one per item, in order.
+ */
+export interface DesignQuestionsPrompt extends InterviewPromptBase {
+	kind: "design-questions"
+	title: string
+	subtitle: string
+	items: Array<{ section: string; quote: string; habit: string; reason: string }>
+}
+
+export type InterviewPrompt = QuestionPrompt | OptionsPrompt | TakesPrompt | AssetOptionsPrompt | DesignQuestionsPrompt
 
 interface Pending {
 	prompt: InterviewPrompt
@@ -116,13 +128,31 @@ const pending = new Map<string, Pending>()
 /** Sends a prompt to the chrome and resolves with whatever the user picks. */
 export function askUser(
 	send: (prompt: InterviewPrompt) => void,
-	prompt: Omit<QuestionPrompt, "id"> | Omit<OptionsPrompt, "id"> | Omit<TakesPrompt, "id"> | Omit<AssetOptionsPrompt, "id">,
+	prompt:
+		| Omit<QuestionPrompt, "id">
+		| Omit<OptionsPrompt, "id">
+		| Omit<TakesPrompt, "id">
+		| Omit<AssetOptionsPrompt, "id">
+		| Omit<DesignQuestionsPrompt, "id">,
+	options: { signal?: AbortSignal; onWithdrawn?: (id: string) => void } = {},
 ): Promise<string | null> {
 	const id = randomUUID()
 	const full = { ...prompt, id } as InterviewPrompt
 
 	return new Promise<string | null>((resolve) => {
+		if (options.signal?.aborted) return resolve(null)
 		pending.set(id, { prompt: full, resolve })
+		// The asker gave up (the user pressed Stop): the prompt leaves the screen
+		// rather than waiting there for an answer nothing will read.
+		options.signal?.addEventListener(
+			"abort",
+			() => {
+				if (!pending.delete(id)) return
+				resolve(null)
+				options.onWithdrawn?.(id)
+			},
+			{ once: true },
+		)
 		send(full)
 	})
 }

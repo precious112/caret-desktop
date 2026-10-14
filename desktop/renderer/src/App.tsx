@@ -26,6 +26,8 @@ export type Surface = "canvas" | "foundation" | "agent" | "assets"
 export function App() {
 	const [project, setProject] = useState<ProjectState | null>(null)
 	const [surface, setSurface] = useState<Surface>("canvas")
+	/** A backend-tab section to scroll to when it opens (the Design pass popover's link). */
+	const [backendFocus, setBackendFocus] = useState<"design-pass" | null>(null)
 	const [chatOpen, setChatOpen] = useState(false)
 	/** Text to place in the chat composer when it next opens — step 2's "Make a …". */
 	const [chatSeed, setChatSeed] = useState<{ text: string; nonce: number } | null>(null)
@@ -264,7 +266,9 @@ export function App() {
 							project={project}
 						/>
 					)}
-					{surface === "agent" && <BackendPanel onClose={() => requestSurface("canvas")} project={project} />}
+					{surface === "agent" && (
+						<BackendPanel focus={backendFocus} onClose={() => requestSurface("canvas")} project={project} />
+					)}
 					{surface === "assets" &&
 						(!project.hasFoundation && !assetsLookAround ? (
 							<AssetsBeforeSetup
@@ -279,11 +283,14 @@ export function App() {
 
 				{chatOpen && (
 					<ChatSidebar
-						seed={chatSeed}
 						onClose={() => setChatOpen(false)}
-						onOpenBackendSetup={() => requestSurface("agent")}
+						onOpenBackendSetup={(section) => {
+							setBackendFocus(section ?? null)
+							requestSurface("agent")
+						}}
 						onViewAsset={setViewerTag}
 						project={project}
+						seed={chatSeed}
 					/>
 				)}
 			</div>
