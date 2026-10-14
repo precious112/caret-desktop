@@ -40,6 +40,8 @@ export interface DesignPassServiceOptions {
 	/** One native notification when the window is not focused. */
 	notify(body: string): void
 	installComponent(ref: string, why: string): Promise<InstallOutcome>
+	/** The build is about to write this page: the canvas shows a placeholder until it lands. */
+	onBuildStart?(pageId: string): void
 }
 
 /** What the chat's build turn checks afterwards: the components it was told to import. */
@@ -113,12 +115,14 @@ export class DesignPassService {
 
 		// Page work? Asked of the helper, and retried like any step: a failure here
 		// fails the turn rather than quietly building without the pass.
-		let pageWork: { pageWork?: boolean } | null = null
+		let pageWork: { pageWork?: boolean; page?: string } | null = null
 		let lastError: unknown
 		for (let attempt = 0; attempt < 3 && !pageWork; attempt++) {
 			if (api.signal.aborted) throw new Error("Stopped.")
 			try {
-				pageWork = (await ask<{ pageWork?: boolean }>(helper, pageWorkPrompt(message, pageIds), PAGE_WORK_SCHEMA)).value
+				pageWork = (
+					await ask<{ pageWork?: boolean; page?: string }>(helper, pageWorkPrompt(message, pageIds), PAGE_WORK_SCHEMA)
+				).value
 			} catch (err) {
 				lastError = err
 			}
@@ -213,6 +217,8 @@ export class DesignPassService {
 				removed: result.removed.length,
 				rejected_claims: result.stats.rejectedClaims,
 			})
+			const pageId = slugOf(pageWork.page)
+			if (pageId && !pageIds.includes(pageId)) this.options.onBuildStart?.(pageId)
 			// The plan goes in this turn's system text; the user's words stay the prompt.
 			return { system: buildInstructions(result.plan, result.removed, components) }
 		} catch (err) {
@@ -278,6 +284,14 @@ export function libraryProp(ref: string): string {
 	if (ref.startsWith("21st:")) return "21st"
 	const registry = ref.split("/")[0]
 	return REGISTRIES[registry] ? registry.replace(/^@/, "") : "other"
+}
+
+function slugOf(text: string | undefined): string | null {
+	const slug = String(text ?? "")
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-|-$/g, "")
+	return slug || null
 }
 
 function secondsOf(ms: number | undefined): number | undefined {

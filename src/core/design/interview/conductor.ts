@@ -15,6 +15,7 @@
  */
 import { Logger } from "@/shared/services/Logger"
 import type { CodingBackend, ReasoningEffort } from "../agent/backend"
+import { commonValues, commonValuesComplaint, foundationCandidates, type UserChoices } from "../design-pass/foundation-check"
 import { PALETTE_RECIPES, TYPEFACE_PAIRINGS } from "../foundation-library"
 import { searchGoogleFonts } from "../google-fonts"
 import { finalizeProposal } from "./finalize"
@@ -547,7 +548,13 @@ function slug(value: string, fallback: string): string {
  * option silently would show the user a two-card question the model believed
  * had four.
  */
-export function validateQuestion(raw: WizardQuestion, history: StoredQA[], mode: WizardMode = "ai-led"): WizardQuestion {
+export function validateQuestion(
+	raw: WizardQuestion,
+	history: StoredQA[],
+	mode: WizardMode = "ai-led",
+	/** When given, colour and font options that are common AI defaults the user did not choose are refused. */
+	slopCheck?: UserChoices,
+): WizardQuestion {
 	const question: WizardQuestion = { ...raw, id: slug(raw.id, `q${history.length + 1}`) }
 	if (history.some((qa) => qa.question.id === question.id)) question.id = `${question.id}-${history.length + 1}`
 	if (!question.question?.trim()) throw new WizardTurnError("the question text is empty.")
@@ -670,6 +677,16 @@ export function validateQuestion(raw: WizardQuestion, history: StoredQA[], mode:
 			if (withHex === 0) {
 				throw new WizardTurnError(`a colour question needs at least one option with a hex.`)
 			}
+		}
+		if (slopCheck && (question.kind === "color" || question.kind === "font")) {
+			const found = commonValues(
+				{
+					colours: question.kind === "color" ? options.map((o) => o.hex).filter((h): h is string => !!h) : [],
+					fonts: question.kind === "font" ? options.map((o) => o.label) : [],
+				},
+				slopCheck,
+			)
+			if (found.length) throw new WizardTurnError(commonValuesComplaint(found))
 		}
 
 		if (question.kind === "assumptions") {
@@ -964,6 +981,16 @@ export async function bindSettledValues(foundation: FoundationProposal, settled:
 	}
 }
 
+/** What the user chose or said: exempt from the common-defaults check. */
+function userChoicesOf(description: string, history: StoredQA[], settled: SettledValue[]): UserChoices {
+	const typed = history.map((qa) => [qa.answer.label, qa.answer.value].filter(Boolean).join(" ")).join("\n")
+	return {
+		words: `${description}\n${typed}`,
+		colours: settled.flatMap((v) => (v.kind === "hex" ? [v.value] : [])),
+		fonts: settled.flatMap((v) => (v.kind === "family" ? [v.value] : [])),
+	}
+}
+
 export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn> {
 	const mode = input.mode ?? "ai-led"
 	const force = input.force === "finish" || input.history.length >= questionCapFor(mode)
@@ -992,7 +1019,9 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 		rejectedPayload = JSON.stringify(value ?? null)
 		if (value?.action === "ask" && !force) {
 			if (!value.question) throw new WizardTurnError('action was "ask" but no question was included.')
-			return { action: "ask", question: validateQuestion(value.question, input.history, mode) }
+			// Common AI defaults go back once: the first attempt is checked, a retry is not.
+			const check = repair ? undefined : userChoicesOf(input.description, input.history, settled)
+			return { action: "ask", question: validateQuestion(value.question, input.history, mode, check) }
 		}
 		if (value?.action === "finish" || force) {
 			if (!value?.foundation) throw new WizardTurnError('action was "finish" but no foundation was included.')
@@ -1008,7 +1037,16 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 			else checkValueEcho(value.foundation, settled)
 			// Finalize is the validator: it throws ProposalError with a quotable
 			// sentence, and its success proves the proposal derives cleanly.
-			finalizeProposal(value.foundation, input.description)
+			const finalized = finalizeProposal(value.foundation, input.description)
+			// Before the user sees it: a common pairing goes back once, like a
+			// malformed question. A forced finish is never bounced.
+			if (!repair && !force) {
+				const found = commonValues(
+					foundationCandidates(finalized.tokens),
+					userChoicesOf(input.description, input.history, settled),
+				)
+				if (found.length) throw new WizardTurnError(commonValuesComplaint(found))
+			}
 			return { action: "finish", foundation: value.foundation }
 		}
 		throw new WizardTurnError(`action was "${value?.action}", expected "ask" or "finish".`)

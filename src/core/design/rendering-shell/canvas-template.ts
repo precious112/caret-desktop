@@ -780,6 +780,37 @@ function generateCanvasView(): string {
 		import { BrokenPageCard, PageThumbnail } from "./PageThumbnail"
 		import type { PageInfo, CanvasTransform, CanvasLayout, LayoutMode, ViewportPreset, FlowDefinition } from "./types"
 		import { VIEWPORT_PRESETS } from "./types"
+		import { bridge } from "../bridge"
+
+		/* Pages an agent is writing right now, before their file exists, so the
+		   canvas never sits blank through a build. The host says when one starts
+		   and when the turn ends; a page that lands needs no placeholder. */
+		function useWritingPages(pages: PageInfo[]) {
+		  const [writing, setWriting] = useState<Array<{ pageId: string; title: string }>>([])
+		  useEffect(() => bridge.on("page-writing", (payload: any) => {
+		    if (payload?.active && payload.pageId) {
+		      setWriting(list => list.some(w => w.pageId === payload.pageId) ? list : [...list, { pageId: payload.pageId, title: payload.title || payload.pageId }])
+		    } else {
+		      setWriting(list => payload?.pageId ? list.filter(w => w.pageId !== payload.pageId) : [])
+		    }
+		  }), [])
+		  const known = new Set(pages.map(p => p.id))
+		  return writing.filter(w => !known.has(w.pageId))
+		}
+
+		function WritingCards({ writing }: { writing: Array<{ pageId: string; title: string }> }) {
+		  if (writing.length === 0) return null
+		  return (
+		    <div className="caret-writing-stack">
+		      {writing.map(w => (
+		        <div key={w.pageId} className="caret-writing-card" data-testid={"page-writing-" + w.pageId}>
+		          <span className="caret-writing-spinner" />
+		          <span>Writing {w.title}…</span>
+		        </div>
+		      ))}
+		    </div>
+		  )
+		}
 
 		/* Ids the canvas has already shown this session — see the entrance note in
 		   CanvasView. Module scope on purpose: HMR of the router re-renders the view
@@ -871,6 +902,7 @@ function generateCanvasView(): string {
 		  if (!seenPageIdsPrimed) { pages.forEach(p => seenPageIds.add(p.id)); seenPageIdsPrimed = true }
 		  const entering = (id: string) => (seenPageIds.has(id) ? "" : " entering")
 		  useEffect(() => { pages.forEach(p => seenPageIds.add(p.id)) })
+		  const writing = useWritingPages(pages)
 		  const [transform, setTransform] = useState<CanvasTransform>({ x: 40, y: 40, scale: 1 })
 		  const [showFlows, setShowFlows] = useState(false)
 		  const [activeFlowId, setActiveFlowId] = useState<string | null>(null)
@@ -1275,9 +1307,13 @@ function generateCanvasView(): string {
 		  if (pages.length === 0) {
 		    return (
 		      <div className="caret-canvas-empty">
-		        <div className="caret-canvas-empty-icon">◇</div>
-		        <h2>No pages yet</h2>
-		        <p>Use Caret in design mode to create pages.</p>
+		        {writing.length > 0 ? <WritingCards writing={writing} /> : (
+		          <>
+		            <div className="caret-canvas-empty-icon">◇</div>
+		            <h2>No pages yet</h2>
+		            <p>Use Caret in design mode to create pages.</p>
+		          </>
+		        )}
 		      </div>
 		    )
 		  }
@@ -1374,6 +1410,7 @@ function generateCanvasView(): string {
 		          ))}
 		        </div>
 		      )}
+		      <WritingCards writing={writing} />
 		      <div
 		        ref={contentRef}
 		        className="caret-canvas-content"
@@ -2232,6 +2269,11 @@ function generateCanvasCSS(): string {
 		  color: #666;
 		}
 		.caret-canvas-empty-icon { font-size: 48px; margin-bottom: 16px; }
+		.caret-writing-stack { position: absolute; top: 56px; left: 16px; z-index: 30; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+		.caret-canvas-empty .caret-writing-stack { position: static; }
+		.caret-writing-card { width: 280px; height: 172px; border-radius: 10px; border: 1px dashed rgba(255,255,255,0.18); background: rgba(20,20,29,0.92); display: flex; align-items: center; justify-content: center; gap: 10px; color: #bbb; font-size: 13px; }
+		.caret-writing-spinner { display: inline-block; width: 12px; height: 12px; border: 2px dotted rgba(11,122,255,0.8); border-radius: 50%; animation: caret-writing-spin 1.6s linear infinite; flex-shrink: 0; }
+		@keyframes caret-writing-spin { to { transform: rotate(360deg) } }
 		.caret-canvas-empty h2 { font-size: 20px; color: #999; margin-bottom: 8px; }
 		.caret-canvas-empty p { font-size: 14px; }
 

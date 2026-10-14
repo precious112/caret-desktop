@@ -176,6 +176,7 @@ export class ProjectWindow {
 			withdrawPrompt: (id) => this.sendToChrome("interview:withdrawn", id),
 			notify: (body) => this.notifyWaiting(body),
 			installComponent: (ref, why) => this.catalog.installChosen(ref, why),
+			onBuildStart: (pageId) => this.notePageWriting(pageId),
 		})
 
 		// Constructed before the session, because registering the bridge is what
@@ -185,6 +186,7 @@ export class ProjectWindow {
 			onState: (state) => {
 				this.sendToChrome("agent:state", this.projectPath, state)
 				this.noticeAskWaiting(state)
+				this.noticePagesBeingWritten(state)
 			},
 			// The pill lives where the intent was expressed: in the canvas, not the
 			// chat. This is the entire live surface a canvas edit gets.
@@ -198,7 +200,10 @@ export class ProjectWindow {
 			onTurnComplete: (conversation, outcome, request) => {
 				this.checks.afterTurn(conversation, outcome, request)
 				this.overlayVerify.afterTurn(conversation, outcome, request)
-				if (conversation === this.agent.conversation) void this.checkDesignPassImports(conversation, outcome)
+				if (conversation === this.agent.conversation) {
+					this.clearPagesWriting()
+					void this.checkDesignPassImports(conversation, outcome)
+				}
 			},
 			designPass: {
 				isOn: () => this.designPass.isOn(),
@@ -393,6 +398,32 @@ export class ProjectWindow {
 			})
 		} catch (err) {
 			Logger.warn(`[design-pass] import follow-up failed: ${err}`)
+		}
+	}
+
+	/** Pages the canvas is showing a "writing" placeholder for. */
+	private readonly pagesWriting = new Set<string>()
+
+	/** The canvas shows a placeholder for a page until its file lands (or the turn ends). */
+	private notePageWriting(pageId: string): void {
+		if (this.pagesWriting.has(pageId)) return
+		if (fs.existsSync(path.join(this.projectPath, ".caret", "pages", pageId, "index.tsx"))) return
+		this.pagesWriting.add(pageId)
+		this.sendToCanvas({ source: "caret-host", type: "page-writing", payload: { pageId, active: true } })
+	}
+
+	private clearPagesWriting(): void {
+		if (this.pagesWriting.size === 0) return
+		this.pagesWriting.clear()
+		this.sendToCanvas({ source: "caret-host", type: "page-writing", payload: { active: false } })
+	}
+
+	/** A running write to a page that does not exist yet is a page being written. */
+	private noticePagesBeingWritten(state: ConversationState): void {
+		for (const entry of state.transcript.entries) {
+			if (entry.kind !== "tool" || entry.status !== "running") continue
+			const match = /\.caret[\\/]pages[\\/]([a-z0-9][\w-]*)[\\/]index\.tsx/i.exec(entry.summary)
+			if (match && !match[1].includes("--v")) this.notePageWriting(match[1])
 		}
 	}
 

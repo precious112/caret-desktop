@@ -207,6 +207,37 @@ describe("validateQuestion", () => {
 		)
 	})
 
+	it("sends common AI defaults back once, unless the user chose them", () => {
+		const cream = () =>
+			question({
+				kind: "color",
+				covers: ["brand-color"],
+				options: [
+					{ id: "a", label: "Warm cream", hex: "#F5F0E6" },
+					{ id: "b", label: "Harbour blue", hex: "#1F5FA8" },
+				],
+			})
+		const nobody = { words: "A ferry booking app", colours: [], fonts: [] }
+		assert.throws(
+			() => validateQuestion(cream(), [], "ai-led", nobody),
+			(err: unknown) => err instanceof WizardTurnError && /#f5f0e6 \(Warm cream background\)/i.test(err.message),
+		)
+		// The retry is not checked: the AI was told once.
+		assert.doesNotThrow(() => validateQuestion(cream(), []))
+		// The user's own words make it theirs.
+		assert.doesNotThrow(() => validateQuestion(cream(), [], "ai-led", { ...nobody, words: "Our brand cream is #F5F0E6" }))
+
+		const fonts = question({
+			kind: "font",
+			covers: ["display-type"],
+			options: [
+				{ id: "a", label: "Fraunces" },
+				{ id: "b", label: "Recoleta" },
+			],
+		})
+		assert.throws(() => validateQuestion(fonts, [], "ai-led", nobody), WizardTurnError)
+	})
+
 	it("rejects a 'you decide' option — Skip and the recommendation carry delegation", () => {
 		// Field-measured (test4): the delegate option was the only escape when
 		// the user's value was not on offer, and clicking it sealed the area.

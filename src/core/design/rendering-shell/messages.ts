@@ -360,6 +360,9 @@ export interface ExploreStatusPayload {
 	error?: string
 }
 
+/** A page an agent is writing (placeholder card on the canvas), or the turn ended (clear them all). */
+export type PageWritingPayload = { pageId: string; active: true } | { active: false; pageId?: string }
+
 export type DesignOutboundMessage =
 	| { source: "caret-host"; type: "edit-result"; payload: EditResultPayload }
 	| { source: "caret-host"; type: "param-resolve-result"; payload: ParamResolveResultPayload }
@@ -367,5 +370,6 @@ export type DesignOutboundMessage =
 	| { source: "caret-host"; type: "edit-status"; payload: EditStatusPayload }
 	| { source: "caret-host"; type: "explore-status"; payload: ExploreStatusPayload }
 	| { source: "caret-host"; type: "precompute-result"; payload: PrecomputeResultPayload }
+	| { source: "caret-host"; type: "page-writing"; payload: PageWritingPayload }
 
 export type DesignMessage = DesignInboundMessage | DesignOutboundMessage
