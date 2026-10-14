@@ -6088,6 +6088,18 @@ export default function CatalogDemo() {
 		"dq. a page request runs the Design pass: named steps, the questions card, then a build from the plan",
 		async () => {
 			await ensureChatOpen(chrome)
+			// A page request in a fresh chat, in Act: a message typed while a sync
+			// conversation is current continues that sync, and a Plan-mode turn
+			// builds nothing, so neither runs the pass.
+			await chrome.getByRole("button", { name: "New chat" }).click()
+			if ((await chrome.getByTestId("chat-mode-act").getAttribute("aria-pressed")) !== "true") {
+				await chrome.getByTestId("chat-mode-act").click()
+			}
+			await waitFor(
+				"the chat to be ready",
+				async () => ((await chrome.getByTestId("chat-input").isDisabled()) ? null : true),
+				30_000,
+			)
 			const pagesBefore = new Set(await fs.readdir(path.join(fixture, ".caret", "pages")))
 			const request =
 				"Create a new page called ferries: a landing page for Ferrylink, a booking app for the small passenger ferries between the Greek islands, showing live departures and which boats still have seats."
@@ -6124,14 +6136,18 @@ export default function CatalogDemo() {
 						const text = (await card.textContent()) ?? ""
 						assert(text.includes("Possible AI slop spotted"), `the questions card is misheaded: ${text.slice(0, 80)}`)
 						assert(text.includes("Keep them anyway?"), "the questions card does not ask")
-						const working =
-							(await chrome
-								.getByTestId("chat-working")
-								.textContent()
-								.catch(() => "")) ?? ""
-						assert(
-							working.includes("Waiting for you:"),
-							`the working row does not say the pass is waiting on the user: ${working}`,
+						// The card is an instant event; the row rides the next (coalesced) state push.
+						await waitFor(
+							"the working row to say the pass is waiting on the user",
+							async () => {
+								const working =
+									(await chrome
+										.getByTestId("chat-working")
+										.textContent()
+										.catch(() => "")) ?? ""
+								return working.includes("Waiting for you:") ? true : null
+							},
+							10_000,
 						)
 						questioned = await chrome.getByTestId("design-question").count()
 						await shot(chrome, "dq-design-questions")

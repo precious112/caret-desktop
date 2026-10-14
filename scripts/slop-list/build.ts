@@ -31,7 +31,7 @@ const HERE = path.dirname(new URL(import.meta.url).pathname)
 const OUT = path.resolve(HERE, "../../src/core/design/design-pass/slop-list.json")
 
 /** Habits about corner radius: a foundation radius the user approved exempts them. */
-const RADIUS_HABITS = new Set(["pill-buttons", "over-rounded-surfaces"])
+const RADIUS_HABITS = new Set(["pill-buttons", "over-rounded-surfaces", "untouched-component-defaults"])
 
 /**
  * Few-option patterns are never slop signs: with two or three sensible ways to

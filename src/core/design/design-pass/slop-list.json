@@ -1191,7 +1191,7 @@
 			"description": "Stock shadcn/ui components and Tailwind default tokens left as shipped.",
 			"colours": [],
 			"fonts": [],
-			"radius": false,
+			"radius": true,
 			"fewOptions": false
 		},
 		{

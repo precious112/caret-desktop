@@ -45,8 +45,10 @@ export function DesignPassSwitch({
 		}
 	}, [confirming])
 
+	// Not positioned itself: the popover anchors to the composer's row, which
+	// spans the sidebar, so it can never run past the window's edge.
 	return (
-		<div className="relative">
+		<div>
 			<button
 				aria-pressed={on}
 				className={cn(
@@ -65,7 +67,7 @@ export function DesignPassSwitch({
 			</button>
 			{confirming && (
 				<div
-					className="absolute bottom-full left-0 z-20 mb-2 w-[300px] rounded-xl border border-shell-border bg-shell-panel p-3.5 shadow-2xl"
+					className="absolute right-0 bottom-full left-0 z-20 mb-2 rounded-xl border border-shell-border bg-shell-panel p-3.5 shadow-2xl"
 					data-testid="design-pass-confirm"
 					ref={popover}>
 					<p className="font-medium">Turn off the Design pass?</p>

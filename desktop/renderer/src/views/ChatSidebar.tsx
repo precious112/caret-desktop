@@ -518,7 +518,7 @@ function Composer(props: ComposerProps) {
 			    and the in-box row is already spent on per-message controls. It also
 			    stopped fitting — the toggle inside the row squeezed the model pill
 			    into the effort pill at this width. */}
-			<div className="mt-1.5 flex items-center gap-2 px-1">
+			<div className="relative mt-1.5 flex items-center gap-2 px-1">
 				<ModeToggle disabled={!props.ready} flipMode={props.flipMode} mode={props.mode} />
 				<DesignPassSwitch
 					disabled={!props.ready}

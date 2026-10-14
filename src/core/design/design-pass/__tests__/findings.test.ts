@@ -80,6 +80,25 @@ describe("design pass · verifying checker claims", () => {
 		}).findings[0].userChose.should.be.false()
 	})
 
+	it("treats 'untouched component defaults' as the user's choice when the radius is the foundation's own", () => {
+		const section = { ...hero, components: [{ term: "button", looks: "rounded-sm 2px.", content: "Book" }] }
+		const twoPx = { ...NOTHING_APPROVED, radii: [2, 4, 8] }
+		verifyMatches(
+			section,
+			[{ id: "untouched-component-defaults", quote: "rounded-sm 2px." }],
+			twoPx,
+		).findings[0].userChose.should.be.true()
+		const defaults = {
+			...hero,
+			components: [{ term: "card", looks: "rounded-2xl, shadow-lg, slate-500 text", content: "x" }],
+		}
+		verifyMatches(
+			defaults,
+			[{ id: "untouched-component-defaults", quote: "rounded-2xl, shadow-lg" }],
+			twoPx,
+		).findings[0].userChose.should.be.false()
+	})
+
 	it("treats a font habit described in words as the user's choice when the font is the approved one", () => {
 		const approved = { ...NOTHING_APPROVED, fonts: ["fraunces"] }
 		verifyMatches(
