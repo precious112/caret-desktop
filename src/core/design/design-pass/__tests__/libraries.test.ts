@@ -1,6 +1,6 @@
 import should from "should"
 
-import { toolsFor } from "../../agent/opencode"
+import { setOpencodeToolPolicy, toolsFor } from "../../agent/opencode"
 import {
 	isLibraryOutage,
 	LIBRARIES,
@@ -79,6 +79,8 @@ describe("design pass · libraries", () => {
 })
 
 describe("design pass · tool switches per prompt", () => {
+	beforeEach(() => setOpencodeToolPolicy(() => ({})))
+
 	it("lets a later layer's key win and also come later", () => {
 		const merged = toolsFor("/p", { "lazyweb_*": false, bash: false }, { bash: true, "lazyweb_*": true })
 		merged.should.eql({ "lazyweb_*": true, bash: true })

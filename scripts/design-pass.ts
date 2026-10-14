@@ -182,7 +182,8 @@ async function regression(): Promise<void> {
 			}
 			if (plants[key].got === 99) plants[key].got = 0
 		}
-		const extra = items.filter((i) => !explained.has(i))
+		// A level-0 item is the user's own choice: never acted on, so not a false catch.
+		const extra = items.filter((i) => !explained.has(i) && i.level !== 0)
 		fs.writeFileSync(
 			path.join(out, `${variant.id}.json`),
 			JSON.stringify({ variant: variant.id, plants, extra, items }, null, 1),

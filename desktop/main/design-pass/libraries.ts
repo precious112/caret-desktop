@@ -49,7 +49,11 @@ export class DesignLibraries {
 	/** A free Lazyweb token when the keychain cannot store one: good for this run. */
 	private lazywebInMemory = ""
 
-	constructor(private readonly backend: () => Promise<CodingBackend | null>) {
+	constructor(
+		private readonly backend: () => Promise<CodingBackend | null>,
+		/** Caret's own data folder, where the shadcn registry list lives. */
+		private readonly dataDir: () => string = () => app.getPath("userData"),
+	) {
 		setOpencodeToolPolicy((directory) => libraryToolPolicy(this.usable(directory)))
 	}
 
@@ -257,7 +261,7 @@ export class DesignLibraries {
 
 	private async configContext() {
 		if (!this.shadcnDir) {
-			this.shadcnDir = path.join(app.getPath("userData"), "design-pass", "shadcn")
+			this.shadcnDir = path.join(this.dataDir(), "design-pass", "shadcn")
 			await fs.mkdir(this.shadcnDir, { recursive: true })
 			await fs.writeFile(path.join(this.shadcnDir, "components.json"), shadcnComponentsJson(), "utf-8")
 		}
