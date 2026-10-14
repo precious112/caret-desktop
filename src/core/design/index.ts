@@ -42,6 +42,7 @@ export type { TranscriptEntry, TranscriptState } from "./agent/transcript"
 // Imported from the lane's own modules rather than through the asset-library
 // barrel, which stays free of node-only code so the generators remain portable.
 export { probeVision, solidPng, type VisionVerdict } from "./agent/vision"
+export { type AppProfile, detectAppProfile } from "./app-profile"
 export {
 	ASPECTS,
 	ASSET_RECIPES,
@@ -159,31 +160,24 @@ export {
 } from "./assets"
 export { CARET_ID_RULES, INLINE_EDITING_RULES } from "./authoring/design-rules"
 export {
-	CATALOG,
 	CATALOG_INSTALL_DIR,
-	type CatalogComponent,
-	type CatalogLibrary,
-	type CatalogTier,
-	catalogImportPath,
-	type EditableGrade,
-	findCatalogComponent,
-	findCatalogLibrary,
-	parseCatalogImport,
-} from "./catalog/catalog"
-export {
 	type CatalogLock,
 	type CatalogLockEntry,
-	type InstallResult,
-	installCatalogComponent,
 	isInstalled,
 	readCatalogLock,
 	rebindHexClasses,
 } from "./catalog/install"
 export {
+	type ComponentRef,
+	type InstallOutcome,
+	installComponentRef,
+	parseComponentRef,
+} from "./catalog/registry-install"
+export {
 	type CatalogImportRef,
 	catalogFindings,
 	planSupply,
-	SIGNATURE_BUDGET_PER_PAGE,
+	registryRefFor,
 	type SupplyPlan,
 	scanCatalogImports,
 } from "./catalog/supply"
@@ -272,13 +266,13 @@ export {
 	ProposalError,
 	QUESTION_CAP,
 	questionCapFor,
-	tracksCoverage,
 	readWizardScratch,
 	type SpecimenParams,
 	type StepId,
 	type StoredQA,
 	settledValues,
 	tagsFromDescription,
+	tracksCoverage,
 	validateQuestion,
 	type WidgetKind,
 	type WizardAnswer,
@@ -290,7 +284,6 @@ export {
 	WizardTurnError,
 	writeWizardScratch,
 } from "./interview"
-export { type AppProfile, detectAppProfile } from "./app-profile"
 export { listPages, readPageMeta, validatePageMeta, writePageMeta } from "./page-meta"
 export {
 	addPromotedRule,
@@ -328,8 +321,6 @@ export {
 	unregisterProjectServices,
 } from "./services"
 export { DesignSession, type DesignSessionOptions } from "./session"
-export { computeDrift, type DriftEntry, type DriftReport } from "./sync/drift"
-export { type MappingEntry, pruneManifest, readManifest, recordMappings, type SyncManifest } from "./sync/mapping-manifest"
 export {
 	ImportCancelledError,
 	type ImportProgress,
@@ -340,6 +331,8 @@ export {
 	surveyAppScreens,
 	surveyScreensWithModel,
 } from "./sync/app-import"
+export { computeDrift, type DriftEntry, type DriftReport } from "./sync/drift"
+export { type MappingEntry, pruneManifest, readManifest, recordMappings, type SyncManifest } from "./sync/mapping-manifest"
 export { startReverseSyncProposal } from "./sync/reverse-sync"
 export { createSyncWatcher, runSyncInteractive } from "./sync/SyncWatcher"
 export { discardSyncPlan, runSyncApply } from "./sync/sync-backend"

@@ -105,11 +105,11 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 
 Screen names, routes and file paths are never sent.
 
-### Component catalog
+### Components
 
 | Event | Properties |
 |---|---|
-| `catalog_install_requested` | `initiator`: agent / auto; `library` (fixed catalog id, or "unknown") |
+| `catalog_install_requested` | `initiator`: agent / auto / design-pass; `library`: shadcn / magicui / aceternity / smoothui / kokonutui / 21st / other |
 | `catalog_install_completed` | same |
 | `catalog_install_denied` | same |
 

@@ -15,7 +15,6 @@ import * as path from "path"
 
 import {
 	CARET_ID_RULES,
-	CATALOG,
 	type FoundationTokens,
 	INLINE_EDITING_RULES,
 	listFlows,
@@ -90,29 +89,19 @@ export async function buildFoundationContext(projectPath: string): Promise<Found
 export type GuideAudience = "mcp" | "embedded"
 
 /**
- * The catalog index: one line per component, with editability and the
- * signature marker visible — the data the restraint rules refer to. Installed
- * components are marked so the agent reuses them instead of re-choosing.
+ * Components this project already installed, so an agent reuses them instead
+ * of choosing again. Only what is installed: what could be installed is
+ * searched for on purpose (the libraries' tools), never listed here.
  */
-async function catalogIndexLines(projectPath: string): Promise<string> {
+async function installedComponentLines(projectPath: string): Promise<string> {
 	const lock = await readCatalogLock(projectPath).catch(() => ({ version: 1 as const, installed: [] }))
-	const lines: string[] = []
-	for (const library of CATALOG) {
-		lines.push(`**${library.name}** (${library.licence}) — ${library.useWhen}`)
-		for (const component of library.components) {
-			const installed = lock.installed.some((entry) => entry.library === library.id && entry.component === component.id)
-			const marks = [
-				component.signature ? "⚡" : "",
-				component.editable === "full" ? "[full]" : "[props]",
-				installed ? "(installed)" : "",
-			]
-				.filter(Boolean)
-				.join(" ")
-			lines.push(`- \`${library.id}/${component.id}\` ${marks} — ${component.useWhen}`)
-		}
-		lines.push("")
-	}
-	return lines.join("\n")
+	if (lock.installed.length === 0) return "None installed yet."
+	return lock.installed
+		.map(
+			(entry) =>
+				`- \`${(entry.files[0] ?? `${entry.library}/${entry.component}`).replace(/\.tsx?$/, "")}\` (${entry.library}/${entry.component})`,
+		)
+		.join("\n")
 }
 
 export async function buildGuide(projectPath: string, audience: GuideAudience = "mcp"): Promise<string> {
@@ -323,34 +312,19 @@ npm install --prefix .caret <package> --ignore-scripts
 \`\`\`
 
 Run it from the project root, exactly in that shape. Mid-session installs are fine and take
-effect immediately; nothing needs restarting. UI *components* are different — those come
-only from the catalog below, never from npm.
+effect immediately; nothing needs restarting. UI *components* are different — never from npm.
 
-## The component catalog
+## Ready-made components
 
-A curated set of animated components you may use — **and the only external components you may
-use**: never install or hand-roll an equivalent of something below, and never import a
-component that is not listed. Import the documented path and Caret installs the source
-automatically after your write lands (into \`.caret/components/catalog/\`, where you can read
-and edit it like any other file).
+Pages are composed from the foundation first: type, colour, spacing. A ready-made component
+is for a job plain HTML and CSS cannot do as well, or one the user asked for by name. Never
+decoration for its own sake. Install one with \`install_component\` ("@registry/name" from
+@shadcn, @magicui, @aceternity, @smoothui or @kokonutui, or "21st:<id>"), import the path it
+returns, and fill it with this page's real content, never the component's sample data. The
+source lands in \`.caret/components/catalog/\`, where you can read and edit it like any other file.
 
-**Restraint rules, enforced mechanically — not suggestions:**
-- The catalog is NOT a default ingredient. Pages are composed from the foundation (type,
-  colour, spacing). Reach for the catalog only when the user's own words ask for that kind of
-  thing, or a declared page state needs it (a loader for \`loading\`).
-- **One signature move per page.** Components marked ⚡ below are signature pieces. A second
-  ⚡ import on a page will NOT be supplied — the import stays visibly broken and the design
-  checks flag it. The reference designs this product is measured against won by being
-  restrained everywhere except one move.
-- Prefer the most editable thing that does the job: [full] components are plain source the
-  visual editor can restyle; [props] components have a sealed canvas/WebGL interior — every
-  one you use is a place the user cannot correct with the editor, so it needs a reason.
-- Unsure whether a signature piece helps? Offer it as ONE take in a playground round
-  (\`propose_variants\`), never as the default.
-
-Import shape: \`import X from "../../components/catalog/<library>/<component>"\` (from a page).
-
-${await catalogIndexLines(projectPath)}
+Installed in this project (import from \`../../components/catalog/<path>\` in a page):
+${await installedComponentLines(projectPath)}
 
 ${
 	audience === "mcp"

@@ -222,7 +222,7 @@ export class ProjectWindow {
 			onAgentConnectionChanged: () => void this.pushState(),
 			screenshot: (pageId, part) => this.screenshotPage(pageId, part),
 			runChecks: (pageId) => this.checks.run(pageId ? [pageId] : undefined),
-			installComponent: (libraryId, componentId) => this.catalog.install(libraryId, componentId),
+			installComponent: (ref) => this.catalog.install(ref),
 			onInterviewPrompt: (prompt) => this.sendToChrome("interview:prompt", prompt),
 		})
 

@@ -29,6 +29,7 @@ import {
 	type Finding,
 	type Item,
 	isBanned,
+	normalize,
 	valueFindings,
 	verifyMatches,
 } from "./findings"
@@ -339,6 +340,11 @@ class DesignPass {
 		const changes = Array.isArray(answer?.changes) ? answer.changes : []
 		flagged.forEach((item, index) => {
 			const change = changes.find((c) => Number(c.n) === index + 1)
+			// A part flagged again in a later round is still one part: the latest
+			// rewrite of it is what the user's record shows.
+			const key = `${item.section}|${normalize(item.quote)}`
+			const earlier = this.removed.findIndex((r) => `${r.section}|${normalize(r.was)}` === key)
+			if (earlier >= 0) this.removed.splice(earlier, 1)
 			this.removed.push({
 				section: item.section,
 				was: item.quote,

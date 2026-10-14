@@ -14,7 +14,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "http"
 import type { AddressInfo } from "net"
-import type { InstallResult, PageCheckResult } from "../../../src/core/design"
+import type { PageCheckResult } from "../../../src/core/design"
+import type { InstallOutcome } from "../../../src/core/design/catalog/registry-install"
 import { Logger } from "../../../src/shared/services/Logger"
 import { capture } from "../analytics"
 import { cancelInterviewPrompts, type InterviewPrompt } from "../interview"
@@ -38,7 +39,7 @@ export interface CaretMcpServerOptions {
 	/** Runs the deterministic design checks on one page (or all), returning findings. */
 	runChecks?(pageId?: string): Promise<PageCheckResult[]>
 	/** Installs an allowlisted catalog component into the project (consent-gated). */
-	installComponent?(libraryId: string, componentId: string): Promise<InstallResult>
+	installComponent?(ref: string): Promise<InstallOutcome>
 	/** Sends an interview question or option set to the chrome renderer. */
 	onInterviewPrompt?(prompt: InterviewPrompt): void
 }
@@ -123,9 +124,9 @@ export class CaretMcpServer {
 				Promise.resolve({ ok: false as const, reason: "this project has no window to render pages in" }),
 			runChecks: (pageId) =>
 				this.options.runChecks?.(pageId) ?? Promise.reject(new Error("this project has no window to render pages in")),
-			installComponent: (libraryId, componentId) =>
-				this.options.installComponent?.(libraryId, componentId) ??
-				Promise.resolve({ ok: false as const, reason: "this project has no window to install into" }),
+			installComponent: (ref) =>
+				this.options.installComponent?.(ref) ??
+				Promise.resolve({ ok: false as const, ref, reason: "this project has no window to install into" }),
 		}
 
 		const tools = [...TOOLS, ...buildInterviewTools({ send: (prompt) => this.options.onInterviewPrompt?.(prompt) })]

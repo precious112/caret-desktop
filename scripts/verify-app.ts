@@ -3963,15 +3963,18 @@ export default function ShaderDemo() {
 	})
 
 	await scenario(
-		"bs. a catalog import is auto-supplied on consent, and the budget refuses a second signature piece",
+		"bs. a registry import is auto-supplied on consent, with no per-page cap, and an unsupplied import is named",
 		async () => {
-			// The 7.5 loop end to end: an externally written page imports a catalog
-			// component by its documented path; the healer routes it to auto-supply;
-			// the consent prompt is answered with a real click; the vendored source
-			// lands with its licence, lock entry and deps; the rules index marks it
-			// installed. Then the restraint budget: two signature imports on one page
-			// — the first is supplied, the second is refused and flagged as an error.
+			// The supply loop end to end: an externally written page imports a
+			// registry component by its catalog path; the healer routes it to
+			// auto-supply; the consent prompt is answered with a real click; the
+			// source lands from the registry with its lock entry, the `cn` helper
+			// and its deps; the rules list it as installed. Then a second write with
+			// two more imports: the registry one is supplied (there is no per-page
+			// budget any more — component choice is the Design pass judge's call),
+			// and the one no registry supplies is named by the design checks.
 			const caretDir = path.join(fixture, ".caret")
+			const catalog = path.join(caretDir, "components", "catalog")
 			const pageDir = path.join(caretDir, "pages", "catalogdemo")
 			await fs.mkdir(pageDir, { recursive: true })
 			await fs.writeFile(
@@ -3992,52 +3995,47 @@ export default function CatalogDemo() {
 `,
 			)
 
-			// Consent arrives docked in the chat, like every blocking ask — it moved
-			// there from a notification toast after the toast rendered under the
-			// native canvas, invisible, during the very agent turns that raise it.
-			// This scenario kept waiting on the toast and failed every run since.
-			// The click is real.
-			const dock = chrome.locator('[data-testid="chat-interview-dock"]', { hasText: "Magic UI" })
+			// Consent arrives docked in the chat, like every blocking ask. The click is real.
+			const dock = chrome.locator('[data-testid="chat-interview-dock"]', { hasText: "@magicui" })
 			await dock.waitFor({ timeout: 60_000 })
 			await dock.locator('[data-testid="interview-choice"]', { hasText: "Allow for this project" }).click()
 
 			await waitFor(
-				"the vendored component to land with its lock entry",
+				"the registry component to land with its lock entry",
 				async () => {
-					const component = await fs
-						.readFile(path.join(caretDir, "components", "catalog", "magicui", "marquee.tsx"), "utf-8")
-						.catch(() => "")
-					const lock = JSON.parse(
-						await fs
-							.readFile(path.join(caretDir, "components", "catalog", "catalog-lock.json"), "utf-8")
-							.catch(() => "{}"),
-					)
+					const component = await fs.readFile(path.join(catalog, "magicui", "marquee.tsx"), "utf-8").catch(() => "")
+					const lock = JSON.parse(await fs.readFile(path.join(catalog, "catalog-lock.json"), "utf-8").catch(() => "{}"))
 					const entry = (lock.installed ?? []).find(
 						(e: { library: string; component: string }) => e.library === "magicui" && e.component === "marquee",
 					)
-					return component.length > 100 && entry && entry.origin.includes("magicuidesign/magicui@") ? true : null
+					return component.length > 100 && entry && entry.origin.includes("magicui.design/r/marquee.json") ? true : null
 				},
 				120_000,
 			)
 
-			// The licence rides with the install, and the dep landed in the design layer.
-			const licence = await fs.readFile(path.join(caretDir, "components", "catalog", "magicui", "LICENSE"), "utf-8")
-			assert(licence.includes("MIT"), "the licence did not travel with the vendored source")
+			// Its alias import points at the shared helper, which landed with its deps.
+			const marquee = await fs.readFile(path.join(catalog, "magicui", "marquee.tsx"), "utf-8")
+			assert(marquee.includes('from "../lib/utils"'), "the registry's @/lib/utils import was not rewritten")
+			assert(
+				(await fs.readFile(path.join(catalog, "lib", "utils.ts"), "utf-8")).includes("twMerge"),
+				"the cn helper did not land",
+			)
 			const caretPkg = JSON.parse(await fs.readFile(path.join(caretDir, "package.json"), "utf-8"))
-			assert(caretPkg.dependencies?.motion, "the component's dep was not added to the design layer")
+			assert(caretPkg.dependencies?.["tailwind-merge"], "the component's deps were not added to the design layer")
 
-			// The rules index knows.
+			// The rules list what is installed, so the next agent reuses it.
 			await waitFor(
-				"the rules index to mark it installed",
-				async () => {
-					const agents = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-					return agents.includes("`magicui/marquee`") && agents.includes("(installed)") ? true : null
-				},
+				"the rules to list it as installed",
+				async () =>
+					(await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")).includes("`magicui/marquee`")
+						? true
+						: null,
 				30_000,
 			)
 
-			// The budget: two signature imports; the consented library needs no second
-			// prompt, the first signature piece is supplied, the second refused.
+			// No budget: a second registry piece on the same page is supplied (the
+			// library is already consented, so no second prompt); an import nothing
+			// supplies stays unresolved and is named.
 			await fs.writeFile(
 				path.join(pageDir, "index.tsx"),
 				`import { Marquee } from "../../components/catalog/magicui/marquee"
@@ -4057,29 +4055,23 @@ export default function CatalogDemo() {
 			)
 
 			await waitFor(
-				"the first signature component to be supplied",
+				"the second registry component to be supplied too",
 				async () =>
-					(await fs
-						.readFile(path.join(caretDir, "components", "catalog", "magicui", "particles.tsx"), "utf-8")
-						.catch(() => "")) !== ""
+					(await fs.readFile(path.join(catalog, "magicui", "particles.tsx"), "utf-8").catch(() => "")) !== ""
 						? true
 						: null,
 				120_000,
 			)
-
-			// pixel-trail must NOT be supplied — the page already carries particles.
-			// (fancy has never been consented either, but the budget check fires first
-			// and is the thing this pins.)
 			const pixelTrailLanded = await fs
-				.access(path.join(caretDir, "components", "catalog", "fancy", "pixel-trail.tsx"))
+				.access(path.join(catalog, "fancy", "pixel-trail.tsx"))
 				.then(() => true)
 				.catch(() => false)
-			assert(!pixelTrailLanded, "the budget did not stop a second signature component")
+			assert(!pixelTrailLanded, "an import no registry supplies was somehow installed")
 
 			// And the checker names it, over the same MCP surface an agent uses.
 			assert(discovery, "no MCP discovery record")
 			const findings = await waitFor(
-				"run_design_checks to flag the budget breach",
+				"run_design_checks to name the unsupplied import",
 				async () => {
 					const response = await callMcp(discovery!.url, discovery!.token, {
 						jsonrpc: "2.0",
@@ -4092,13 +4084,14 @@ export default function CatalogDemo() {
 					if (!payloadMatch) return null
 					const parsed = JSON.parse(JSON.parse(`"${payloadMatch[1]}"`))
 					const checks = new Set((parsed.findings ?? []).map((f: { check: string }) => f.check))
-					return checks.has("restraint-budget") ? [...checks] : null
+					return checks.has("catalog-unknown") ? [...checks] : null
 				},
 				60_000,
 			)
+			assert(!findings.includes("restraint-budget"), "the retired per-page budget still fires")
 
 			await fs.rm(pageDir, { recursive: true, force: true })
-			return `marquee auto-supplied on a real consent click (licence + lock + deps + rules index); second signature piece refused; checker flagged restraint-budget (findings: ${findings.join(", ")})`
+			return `marquee supplied from the registry on a real consent click (lock + cn helper + deps + rules); particles supplied too, no budget; fancy/pixel-trail named (findings: ${findings.join(", ")})`
 		},
 	)
 
@@ -4390,6 +4383,97 @@ export default function CatalogDemo() {
 			"the history list survived returning to the chat",
 		)
 		return "history replaced the chat, and back restored it"
+	})
+
+	await scenario("dp. the Design pass is on by default, says so, and turning it off is one confirmed click", async () => {
+		await ensureChatOpen(chrome)
+		const toggle = chrome.getByTestId("design-pass-switch")
+		const line = chrome.getByTestId("design-pass-line")
+		await toggle.waitFor({ timeout: 10_000 })
+
+		// On by default, and visibly so: the pass is slower, so the user must
+		// always be able to see why.
+		assert((await toggle.getAttribute("aria-pressed")) === "true", "the Design pass is not on by default")
+		assert(
+			(await line.textContent())?.includes("Design pass is on"),
+			`the line under the composer does not say it is on: ${await line.textContent()}`,
+		)
+
+		// Turning it off asks first, and says what is lost. "Keep it on" changes nothing.
+		await toggle.click()
+		const confirm = chrome.getByTestId("design-pass-confirm")
+		await confirm.waitFor({ timeout: 5_000 })
+		assert((await confirm.textContent())?.includes("Turn off the Design pass?"), "the confirmation does not ask")
+		await shot(chrome, "dp-design-pass-confirm")
+		await chrome.getByTestId("design-pass-keep").click()
+		assert((await toggle.getAttribute("aria-pressed")) === "true", "Keep it on turned it off")
+
+		// Off, for this project, remembered in preferences.
+		await toggle.click()
+		await chrome.getByTestId("design-pass-turn-off").click()
+		await waitFor(
+			"the switch to read off",
+			async () => ((await toggle.getAttribute("aria-pressed")) === "false" ? true : null),
+			10_000,
+		)
+		assert((await line.textContent())?.includes("Design pass is off"), "the line does not say it is off")
+		const prefs = JSON.parse(await fs.readFile(path.join(userData, "preferences.json"), "utf-8")) as {
+			designPassOff?: string[]
+		}
+		assert(
+			prefs.designPassOff?.some((p) => p.endsWith(path.basename(fixture))),
+			"turning it off was not remembered for this project",
+		)
+
+		// Back on is one click: there is nothing to warn about.
+		await toggle.click()
+		await waitFor(
+			"the switch to read on again",
+			async () => ((await toggle.getAttribute("aria-pressed")) === "true" ? true : null),
+			10_000,
+		)
+
+		// The popover's settings link lands on the backend tab's Design pass section.
+		await toggle.click()
+		await chrome.getByTestId("design-pass-settings").click()
+		const section = chrome.getByTestId("design-pass-section")
+		await section.waitFor({ timeout: 15_000 })
+		const helper = chrome.getByTestId("design-pass-helper")
+		assert((await helper.inputValue()) === "", "the helper model does not start on Automatic")
+		assert(
+			(await helper.locator("option").first().textContent())?.startsWith("Automatic (fastest connected)"),
+			"the Automatic option is misnamed",
+		)
+		await waitFor(
+			"the five libraries to be listed",
+			async () => ((await chrome.getByTestId("design-pass-library").count()) === 5 ? true : null),
+			60_000,
+		)
+		const names = await chrome
+			.getByTestId("design-pass-library")
+			.evaluateAll((rows) => rows.map((row) => row.getAttribute("data-library")))
+		assert(names.join(",") === "shadcn,aceternity,lazyweb,gummble,twentyfirst", `unexpected libraries: ${names.join(",")}`)
+		// 21st.dev needs a key until one is pasted; nothing to install, nothing to configure.
+		const twentyfirst = chrome.locator('[data-library="twentyfirst"]')
+		assert((await twentyfirst.getByTestId("design-pass-library-key").count()) === 1, "21st.dev does not offer to take a key")
+
+		// A library can be switched off, and it is remembered.
+		await twentyfirst.getByTestId("design-pass-library-toggle").click()
+		await waitFor(
+			"21st.dev to read off",
+			async () => ((await twentyfirst.getByTestId("design-pass-library-toggle").textContent()) === "Off" ? true : null),
+			15_000,
+		)
+		const afterToggle = JSON.parse(await fs.readFile(path.join(userData, "preferences.json"), "utf-8")) as {
+			designPassLibrariesOff?: string[]
+		}
+		assert(afterToggle.designPassLibrariesOff?.includes("twentyfirst"), "switching a library off was not remembered")
+		await twentyfirst.getByTestId("design-pass-library-toggle").click()
+		await shot(chrome, "dp-design-pass-settings")
+
+		await chrome.getByTestId("top-bar").getByRole("button", { name: "Backend" }).click()
+		await ensureChatOpen(chrome)
+		return "on by default with its line, off only after confirming, remembered per project; settings section lists the five libraries"
 	})
 
 	await scenario("ce. an overlay move edit gets measured geometry and lands centered, verified by re-measure", async () => {
@@ -5962,6 +6046,116 @@ export default function CatalogDemo() {
 
 		return `app drift → model-written proposal → accepted by click → mapping refreshed, home reads clean`
 	})
+
+	// The pass has no time limit by design (a limit would make results depend on
+	// a provider's speed that day), so its scenario budget is the build's plus the
+	// pass's, not the shared inference budget.
+	const DESIGN_PASS_BUDGET_MS = 60 * 60_000
+	const designPassScenario = model
+		? (name: string, run: () => Promise<string>) => scenario(name, run, DESIGN_PASS_BUDGET_MS)
+		: (name: string, _run: () => Promise<string>) => void skip(name, NO_MODEL_REASON)
+
+	await designPassScenario(
+		"dq. a page request runs the Design pass: named steps, the questions card, then a build from the plan",
+		async () => {
+			await ensureChatOpen(chrome)
+			const pagesBefore = new Set(await fs.readdir(path.join(fixture, ".caret", "pages")))
+			const request =
+				"Create a new page called ferries: a landing page for Ferrylink, a booking app for the small passenger ferries between the Greek islands, showing live departures and which boats still have seats."
+			await chrome.getByTestId("chat-input").fill(request)
+			await chrome.getByTestId("chat-send").click()
+
+			// The steps appear once the request is read as page work. A model that
+			// reads it as something else is model behaviour, not Caret's: inconclusive.
+			const steps = chrome.getByTestId("design-pass-steps").last()
+			await steps.waitFor({ timeout: 300_000 }).catch(() => {
+				throw new Inconclusive("the helper model did not read a new-page request as page work")
+			})
+			const stepState = async (step: string) =>
+				(await steps
+					.locator(`[data-step="${step}"]`)
+					.getAttribute("data-state")
+					.catch(() => null)) ?? "missing"
+			assert((await stepState("build")) === "pending", "the build started before the pass finished")
+
+			// The user's words stay what the chat shows; the plan only ever goes to the model.
+			const transcript = chrome.getByTestId("chat-transcript")
+			assert(
+				(await transcript.textContent())?.includes("Create a new page called ferries"),
+				"the chat does not show the request as typed",
+			)
+
+			// Walk the pass: answer the questions card if it comes (Remove all), until the build starts.
+			let questioned = 0
+			await waitFor(
+				"the pass to reach the build",
+				async () => {
+					const card = chrome.getByTestId("design-questions")
+					if ((await card.count()) > 0) {
+						const text = (await card.textContent()) ?? ""
+						assert(text.includes("Possible AI slop spotted"), `the questions card is misheaded: ${text.slice(0, 80)}`)
+						assert(text.includes("Keep them anyway?"), "the questions card does not ask")
+						const working =
+							(await chrome
+								.getByTestId("chat-working")
+								.textContent()
+								.catch(() => "")) ?? ""
+						assert(
+							working.includes("Waiting for you:"),
+							`the working row does not say the pass is waiting on the user: ${working}`,
+						)
+						questioned = await chrome.getByTestId("design-question").count()
+						await shot(chrome, "dq-design-questions")
+						await chrome.getByTestId("design-questions-remove-all").click()
+					}
+					for (const step of ["plan", "check", "polish"]) {
+						if ((await stepState(step)) === "failed") {
+							const tail = ((await transcript.textContent()) ?? "").slice(-400)
+							throw new Inconclusive(`the pass stopped at "${step}": ${tail}`)
+						}
+					}
+					const build = await stepState("build")
+					return build === "active" || build === "done" ? true : null
+				},
+				1_200_000,
+			)
+			for (const step of ["plan", "check", "polish"])
+				assert((await stepState(step)) === "done", `step ${step} did not finish before the build`)
+			await shot(chrome, "dq-design-pass-steps")
+
+			// The build writes a new page; its steps row settles.
+			const newPage = await waitFor(
+				"the build to write a new page",
+				async () => {
+					const now = await fs.readdir(path.join(fixture, ".caret", "pages"))
+					const added = now.filter((id) => !pagesBefore.has(id) && !id.includes("--v"))
+					for (const id of added) {
+						const file = path.join(fixture, ".caret", "pages", id, "index.tsx")
+						if ((await fs.readFile(file, "utf-8").catch(() => "")).length > 200) return id
+					}
+					return null
+				},
+				900_000,
+			)
+			await waitFor("the build step to settle", async () => ((await stepState("build")) === "done" ? true : null), 600_000)
+
+			// Every component the page imports resolves to something installed.
+			const source = await fs.readFile(path.join(fixture, ".caret", "pages", newPage, "index.tsx"), "utf-8")
+			const lock = JSON.parse(
+				await fs
+					.readFile(path.join(fixture, ".caret", "components", "catalog", "catalog-lock.json"), "utf-8")
+					.catch(() => '{"installed":[]}'),
+			) as { installed: Array<{ files: string[] }> }
+			const installed = new Set(lock.installed.flatMap((e) => e.files.map((f) => f.replace(/\.tsx?$/, ""))))
+			for (const m of source.matchAll(/components\/catalog\/([\w./-]+)["']/g)) {
+				assert(
+					installed.has(m[1].replace(/\.tsx?$/, "")),
+					`the page imports a catalog component that was never installed: ${m[1]}`,
+				)
+			}
+			return `steps ran in order${questioned ? `, ${questioned} question(s) answered` : ", no questions"}, page "${newPage}" built from the plan`
+		},
+	)
 
 	// ── the authored and 3D lanes, for real ────────────────────────────────────
 	// Both spend someone's money or credits, so both are gated on the credentials

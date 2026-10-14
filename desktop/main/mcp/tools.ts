@@ -29,7 +29,6 @@ import {
 	describeAsset,
 	type FlowDefinition,
 	findAsset,
-	type InstallResult,
 	isViewable,
 	listFlows,
 	listPages,
@@ -51,6 +50,7 @@ import {
 	writeFoundationTokens,
 	writePageMeta,
 } from "../../../src/core/design"
+import type { InstallOutcome } from "../../../src/core/design/catalog/registry-install"
 import { runExclusive, writeFileAtomic } from "../../../src/core/design/file-mutation-queue"
 import { mutateFlowDefinition, writeFlowDefinition } from "../../../src/core/design/flow-meta"
 import { resolveParamsFor, spliceParamEdit } from "../../../src/core/design/param/edit"
@@ -70,8 +70,8 @@ export interface ToolContext {
 	screenshot(pageId: string, part?: number): Promise<ScreenshotResult>
 	/** Runs the deterministic design checks on one page (or all). */
 	runChecks(pageId?: string): Promise<PageCheckResult[]>
-	/** Installs an allowlisted catalog component (consent-gated). */
-	installComponent(libraryId: string, componentId: string): Promise<InstallResult>
+	/** Installs a registry or 21st.dev component (consent-gated). */
+	installComponent(ref: string): Promise<InstallOutcome>
 }
 
 export interface ToolResult {
@@ -666,23 +666,25 @@ export const TOOLS: ToolDefinition[] = [
 
 	{
 		name: "install_component",
-		title: "Install a catalog component",
+		title: "Install a component",
 		description:
-			"Installs an allowlisted component from Caret's curated catalog into .caret/components/catalog/. " +
-			"Only catalog ids install — the catalog index (names + use-when) is in the rules files. " +
-			"Prefer simply IMPORTING the documented path in your page source: Caret auto-supplies missing catalog " +
-			"imports after every write, budget permitting. Call this only when you want the source present before writing.",
+			"Installs a ready-made component into .caret/components/catalog/ and returns the path a page imports it from. " +
+			'Use "@registry/name" for shadcn-style registries (@shadcn, @magicui, @aceternity, @smoothui, @kokonutui) or ' +
+			'"21st:<id>" for a 21st.dev component. Plain markup comes first: install a component only when it does a job ' +
+			"HTML and CSS cannot do as well, or the user asked for it. Fill it with the page's real content, never its sample data. " +
+			"Importing a registry path a page needs also works: Caret supplies missing registry imports after every write. " +
+			"The user is asked once per library before anything is downloaded.",
 		inputSchema: {
-			libraryId: z.string().describe("Catalog library id, e.g. 'magicui'"),
-			componentId: z.string().describe("Component id within the library, e.g. 'marquee'"),
+			component: z.string().describe('The component, e.g. "@magicui/marquee" or "21st:10635"'),
 		},
-		async handler(ctx, args: { libraryId: string; componentId: string }) {
-			const result = await ctx.installComponent(args.libraryId, args.componentId)
-			if (!result.ok) return fail(result.reason ?? "install failed")
+		async handler(ctx, args: { component: string }) {
+			const result = await ctx.installComponent(args.component)
+			if (!result.ok) return fail(result.reason)
 			return reply(ctx, {
 				ok: true,
-				installed: `${args.libraryId}/${args.componentId}`,
-				importPath: `../../components/catalog/${args.libraryId}/${args.componentId}`,
+				installed: args.component,
+				importPath: result.importPath,
+				...(result.namedExport ? { namedExport: result.namedExport } : {}),
 				alreadyInstalled: result.alreadyInstalled ?? false,
 			})
 		},

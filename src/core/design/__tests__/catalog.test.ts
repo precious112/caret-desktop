@@ -4,135 +4,90 @@ import * as path from "path"
 
 import should from "should"
 
-import { CATALOG, catalogImportPath, findCatalogComponent, parseCatalogImport } from "../catalog/catalog"
 import { type CatalogLock, readCatalogLock, rebindHexClasses } from "../catalog/install"
-import { catalogFindings, planSupply, scanCatalogImports } from "../catalog/supply"
+import { catalogFindings, planSupply, registryRefFor, scanCatalogImports } from "../catalog/supply"
 
 const EMPTY_LOCK: CatalogLock = { version: 1, installed: [] }
 
-function lockWith(...pairs: Array<[string, string]>): CatalogLock {
+function lockWith(...files: string[]): CatalogLock {
 	return {
 		version: 1,
-		installed: pairs.map(([library, component]) => ({
-			library,
-			component,
+		installed: files.map((file) => ({
+			library: file.split("/")[0],
+			component: file.split("/")[1],
 			origin: "test",
 			licence: "MIT",
 			installedAt: "t",
-			files: [],
+			files: [file],
 			deps: [],
 		})),
 	}
 }
 
-describe("catalog data", () => {
-	it("has unique library ids and unique component ids within each library", () => {
-		const libraryIds = CATALOG.map((library) => library.id)
-		new Set(libraryIds).size.should.equal(libraryIds.length)
-		for (const library of CATALOG) {
-			const ids = library.components.map((component) => component.id)
-			new Set(ids).size.should.equal(ids.length, `${library.id} repeats a component id`)
-		}
+describe("component supply", () => {
+	it("maps a known registry's folder to its ref, and nothing else", () => {
+		should(registryRefFor("magicui/marquee")).equal("@magicui/marquee")
+		should(registryRefFor("ui/button")).equal("@shadcn/button")
+		should(registryRefFor("aceternity/world-map")).equal("@aceternity/world-map")
+		should(registryRefFor("fancy/text-scramble")).be.null()
+		should(registryRefFor("21st/10635/logs-table")).be.null()
+		should(registryRefFor("marquee")).be.null()
 	})
 
-	it("declares only clean licences — the user's ruling, encoded", () => {
-		for (const library of CATALOG) {
-			;["MIT", "Apache-2.0"].should.containEql(library.licence)
-		}
+	it("finds each catalog import once, with or without an extension", () => {
+		const source = [
+			'import { Marquee } from "../../components/catalog/magicui/marquee"',
+			"import Map from '../../components/catalog/aceternity/world-map.tsx'",
+			'import { Marquee as M2 } from "../../components/catalog/magicui/marquee"',
+			'import Card from "../../components/Card"',
+		].join("\n")
+		scanCatalogImports(source, EMPTY_LOCK)
+			.map((r) => r.target)
+			.should.eql(["magicui/marquee", "aceternity/world-map"])
 	})
 
-	it("every vendored component in the catalog exists in the shipped mirror", async () => {
-		const manifest = JSON.parse(await fs.readFile(path.resolve("assets/catalog/manifest.json"), "utf-8"))
-		for (const library of CATALOG) {
-			if (library.tier !== "vendored") continue
-			for (const component of library.components) {
-				const entry = manifest.libraries?.[library.id]?.components?.[component.id]
-				should(entry).not.be.undefined() // missing → re-run vendor-catalog for this id
-				const file = path.resolve("assets/catalog", library.id, entry.file)
-				;(await fs.readFile(file, "utf-8")).length.should.be.above(100)
-			}
-			// The licence must ride with the mirror.
-			;(await fs.readFile(path.resolve("assets/catalog", library.id, "LICENSE"), "utf-8")).length.should.be.above(100)
-		}
+	it("installs what a registry supplies, reports what nothing supplies, and leaves installed imports alone", () => {
+		const source = [
+			'import { Marquee } from "../../components/catalog/magicui/marquee"',
+			'import X from "../../components/catalog/fancy/text-scramble"',
+			'import Logs from "../../components/catalog/21st/10635/logs-table"',
+		].join("\n")
+		planSupply(source, EMPTY_LOCK).should.eql({
+			install: ["@magicui/marquee"],
+			unknown: ["fancy/text-scramble", "21st/10635/logs-table"],
+		})
+		planSupply(source, lockWith("magicui/marquee.tsx", "21st/10635/logs-table.tsx")).should.eql({
+			install: [],
+			unknown: ["fancy/text-scramble"],
+		})
 	})
 
-	it("import paths round-trip through the parser", () => {
-		const importPath = catalogImportPath("magicui", "marquee")
-		importPath.should.equal("../../components/catalog/magicui/marquee")
-		parseCatalogImport(importPath)?.should.eql({ libraryId: "magicui", componentId: "marquee" })
-		should(parseCatalogImport("../../components/Button")).be.null()
-	})
-})
-
-describe("supply planning", () => {
-	const page = (imports: string[]) => imports.map((spec, i) => `import C${i} from "${spec}"`).join("\n")
-
-	it("finds catalog imports and marks unknown ones", () => {
-		const refs = scanCatalogImports(
-			page([
-				"../../components/catalog/magicui/marquee",
-				"../../components/catalog/nope/nothing",
-				"../../components/Button",
-			]),
-		)
-		refs.should.have.length(2)
-		refs[0].known.should.be.true()
-		refs[1].known.should.be.false()
+	it("has no per-page budget: any number of components can be supplied", () => {
+		const source = ["magicui/particles", "magicui/marquee", "aceternity/sparkles"]
+			.map((t, i) => `import C${i} from "../../components/catalog/${t}"`)
+			.join("\n")
+		planSupply(source, EMPTY_LOCK).install.length.should.equal(3)
+		catalogFindings(source, "home", EMPTY_LOCK).should.eql([])
 	})
 
-	it("installs within budget: the first signature import wins the slot", () => {
-		const source = page([
-			"../../components/catalog/magicui/particles", // signature
-			"../../components/catalog/magicui/marquee", // not signature
-			"../../components/catalog/fancy/pixel-trail", // signature — over budget
-		])
-		const plan = planSupply(source, EMPTY_LOCK)
-		plan.install.map((r) => r.componentId).should.eql(["particles", "marquee"])
-		plan.overBudget.map((r) => r.componentId).should.eql(["pixel-trail"])
+	it("names an unresolvable import as a design-check finding", () => {
+		const findings = catalogFindings('import X from "../../components/catalog/fancy/x"', "home", EMPTY_LOCK)
+		findings.map((f) => f.check).should.eql(["catalog-unknown"])
+		findings[0].pageId.should.equal("home")
 	})
 
-	it("does not reinstall what the lock already has", () => {
-		const source = page(["../../components/catalog/magicui/marquee"])
-		planSupply(source, lockWith(["magicui", "marquee"])).install.should.have.length(0)
+	it("rebinds an arbitrary hex class to a foundation token when one matches exactly", () => {
+		rebindHexClasses('<div className="bg-[#0b7aff] text-[#123456]" />', (hex) =>
+			hex === "#0b7aff" ? "brand-500" : null,
+		).should.equal('<div className="bg-brand-500 text-[#123456]" />')
 	})
 
-	it("budget findings are errors the checker can feed back", () => {
-		const source = page([
-			"../../components/catalog/magicui/particles",
-			"../../components/catalog/fancy/pixel-trail",
-			"../../components/catalog/wrong/thing",
-		])
-		const findings = catalogFindings(source, "home", EMPTY_LOCK)
-		findings
-			.map((f) => f.check)
-			.sort()
-			.should.eql(["catalog-unknown", "restraint-budget"])
-		findings.every((f) => f.severity === "error").should.be.true()
-	})
-
-	it("signature status comes from the catalog, not the import", () => {
-		const found = findCatalogComponent("magicui", "particles")
-		found?.component.signature.should.be.true()
-		findCatalogComponent("magicui", "marquee")?.component.signature.should.be.false()
-	})
-})
-
-describe("rebindHexClasses", () => {
-	it("rebinds exact token matches and leaves everything else", () => {
-		const out = rebindHexClasses('className="bg-[#0b7aff] text-[#123456] p-4"', (hex) =>
-			hex.toLowerCase() === "#0b7aff" ? "brand-500" : null,
-		)
-		out.should.equal('className="bg-brand-500 text-[#123456] p-4"')
-	})
-})
-
-describe("catalog lock", () => {
-	it("reads an absent lock as empty", async () => {
-		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "lock-"))
-		try {
-			;(await readCatalogLock(dir)).installed.should.have.length(0)
-		} finally {
-			await fs.rm(dir, { recursive: true, force: true })
-		}
+	it("reads a missing or broken lock as empty", async () => {
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "caret-lock-"))
+		;(await readCatalogLock(dir)).should.eql(EMPTY_LOCK)
+		await fs.mkdir(path.join(dir, ".caret", "components", "catalog"), { recursive: true })
+		await fs.writeFile(path.join(dir, ".caret", "components", "catalog", "catalog-lock.json"), "{not json")
+		;(await readCatalogLock(dir)).should.eql(EMPTY_LOCK)
+		await fs.rm(dir, { recursive: true, force: true })
 	})
 })

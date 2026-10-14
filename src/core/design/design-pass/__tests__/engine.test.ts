@@ -220,8 +220,10 @@ describe("design pass · the whole loop", () => {
 			// A planner that never really removes the habit.
 			revise: () => ({ changes: [{ n: 1, action: "replaced" }], sections: [HERO] }),
 		})
-		await runDesignPass(deps(models))
+		const result = await runDesignPass(deps(models))
 		calls.filter((c) => c === "revise").length.should.equal(2)
+		// The same part flagged in both rounds is one removed part, not two.
+		result.removed.length.should.equal(1)
 	})
 })
 

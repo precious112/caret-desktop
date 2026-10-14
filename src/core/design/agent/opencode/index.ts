@@ -304,7 +304,9 @@ export class OpencodeBackend implements CodingBackend {
 				signal: req.signal,
 			})
 
-			const toolCalls = toolCallsOf(response.parts)
+			// The answer is the LAST step's message; tool calls made on the way
+			// there live in earlier messages of the same session, so read them all.
+			const toolCalls = await this.sessionToolCalls(server, created.id, req.workingDirectory, response.parts)
 			if (response.info.error) {
 				throw new StructuredOutputError(response.info.error.data?.message ?? response.info.error.name)
 			}
@@ -552,6 +554,24 @@ export class OpencodeBackend implements CodingBackend {
 			// Not fatal, but the user is about to think their sign-in failed.
 			Logger.warn(`[backend] credentials changed but the instance would not reload: ${err}`)
 		})
+	}
+
+	private async sessionToolCalls(
+		server: RunningServer,
+		sessionId: string,
+		directory: string,
+		fallback: OpencodePart[],
+	): Promise<ToolCallRecord[]> {
+		try {
+			const messages = await request<Array<{ info: { role?: string }; parts: OpencodePart[] }>>(
+				server,
+				`/session/${sessionId}/message`,
+				{ query: { directory } },
+			)
+			return toolCallsOf(messages.filter((m) => m.info.role === "assistant").flatMap((m) => m.parts))
+		} catch {
+			return toolCallsOf(fallback)
+		}
 	}
 
 	/**
