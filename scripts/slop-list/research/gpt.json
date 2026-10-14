@@ -1,0 +1,2400 @@
+[
+	{
+		"id": "gpt-purple-indigo-gradient-default",
+		"family": "gpt",
+		"models": [
+			"GPT-5",
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "foundation",
+		"name": "Purple / indigo / purple-blue gradient as the default look",
+		"description": "Unprompted GPT-family pages fall back to purple or indigo accents and purple-to-blue gradients (hero backgrounds, pricing backgrounds, buttons). OpenAI's own GPT-5.4 and GPT-5.5 guidance tells the model to avoid it. Design Arena (CLIP/UMAP analysis of 1,000 sites) found a whole cluster of purple-gradient sites from GPT-5.5 that GPT-5.6 Sol stopped producing, so it is mainly a GPT-5.x-through-5.5 tell.",
+		"detect": {
+			"type": "color",
+			"hint": "Compute dominant hues of background-image gradients and accent colors (buttons, links, active states). Flag when hue is in roughly 240-290 deg (indigo/violet) or a gradient runs purple->blue/pink. Tailwind classes: from-indigo-*, via-purple-*, to-pink-*, bg-indigo-500, bg-violet-*.",
+			"values": [
+				"purple",
+				"indigo",
+				"purple-blue gradient",
+				"indigo-500",
+				"purple-500",
+				"pink-500"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "avoid purple-on-white defaults. No purple bias or dark mode bias.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "limit dominant purple/purple-blue gradients",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://notes.designarena.ai/how-openais-sol-finally-learned-design-taste/",
+				"date": "2026-07-15",
+				"author": "Design Arena",
+				"quote": "These design smells included large typefaces instead of hero images, unusual layout decisions, and overused purple gradients.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://www.banani.co/blog/gpt-5.4-ui-frontend-design",
+				"date": "2026-06-18",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "Also has the classic purple design problem",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "dark blue/purple gradient background, three tiers",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+				"date": "2026-04-28",
+				"author": "Sailop Blog",
+				"quote": "GPT-5 Indigo-violet, gradient meshes, glass morphism residue",
+				"model_named": "GPT-5"
+			},
+			{
+				"url": "https://note.com/cotapon/n/n1991ab1331d6",
+				"date": "2026-03-27",
+				"author": "こたぽん (note.com)",
+				"quote": "紫背景にInterフォント、カードが並ぶSaaS風レイアウト。「AIが作りました」感が丸出し。",
+				"model_named": "GPT-5.4 (context)"
+			},
+			{
+				"url": "https://open-design.ai/agents/codex-design/",
+				"date": "2026-09-11",
+				"author": "OpenDesign (Powerformer, Inc.); date = 'References checked' stamp",
+				"quote": "an Inter-and-purple vibe that “screams an AI made this.”",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48858053",
+				"date": "2026-07-10",
+				"author": "torginus (Hacker News)",
+				"quote": "it gave me a CSS-animated purple-blue interface with embossed buttons, gradient backgrounds and dropshadows",
+				"model_named": "GPT-5"
+			},
+			{
+				"url": "https://www.reddit.com/r/ClaudeCode/comments/1wu9e5a/how_do_you_get_claude_code_codex_to_actually/",
+				"date": "2026-09-30",
+				"author": "u/NoTutor4458 (r/ClaudeCode)",
+				"quote": "avoid generic purple gradients, huge texts and other ai slop",
+				"model_named": "Codex (GPT-6 Astra), also Claude Opus 5.5"
+			}
+		],
+		"independent_sources": 9,
+		"newest_source_date": "2026-09-30",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-dark-saas-theme-one-accent",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"GPT-5.6 Luna"
+		],
+		"kind": "foundation",
+		"name": "Dark 'dev-tool' SaaS theme with a single bright accent",
+		"description": "Landing pages, pricing and app screens default to a dark background with one saturated accent (blue/purple on GPT-5.5; coral/pink, mint/green or teal on GPT-5.6). OpenAI explicitly warns against 'dark mode bias'. Design Arena calls the dark SaaS aesthetic a recurring GPT-5.6 tendency.",
+		"detect": {
+			"type": "color",
+			"hint": "Body/section background luminance < 0.1 across most sections, plus exactly one high-chroma accent hue used for CTAs, active nav and chart lines. Flag dark-on-dark repetition across 5+ sections.",
+			"values": [
+				"dark background",
+				"blue accent",
+				"purple accent",
+				"coral/pink accent",
+				"mint/green accent",
+				"teal accent"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "No purple bias or dark mode bias.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "Every output uses sans-serif type at two weights, soft card shadows, a blue or purple accent on a dark background, and default Tailwind UI button and card styling.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "GPT-5.5 went with a dark dev-tool look",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "Sol also leaned into a specific dark SaaS aesthetic that Design Arena has documented as a recurring GPT-5.6 tendency",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "The color treatment (dark theme, teal-ish accents) felt like a default rather than a decision.",
+				"model_named": "GPT-5.6 Luna"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "beige/cream/sand/tan, dark blue/slate, and brown/orange/espresso palettes",
+				"model_named": "GPT-5.5"
+			}
+		],
+		"independent_sources": 3,
+		"newest_source_date": "2026-08-05",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-one-note-palette-cream-slate-espresso",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6 Luna",
+			"GPT-6",
+			"Codex"
+		],
+		"kind": "foundation",
+		"name": "One-hue palettes: beige/cream/sand, dark blue/slate, brown/orange/espresso",
+		"description": "OpenAI's GPT-5.5 frontend prompt names the single-hue-family palettes the model drifts into and tells it to scan CSS colours and revise. OpenAI's Codex frontend skill separately forbids swapping a white background for cream/ivory/beige. Testers saw GPT-5.6 Luna go cream + green and GPT-5.4 go terracotta/orange on an off-white base.",
+		"detect": {
+			"type": "color",
+			"hint": "Cluster all CSS colours by hue; flag when >70% of non-neutral colours fall in one hue family (beige/cream/tan, slate/navy, brown/orange). Flag page background in warm off-white range when the brief or design says white.",
+			"values": [
+				"beige",
+				"cream",
+				"sand",
+				"tan",
+				"dark blue/slate",
+				"brown/orange/espresso",
+				"terracotta",
+				"ivory",
+				"off-white"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "You do not make one-note palettes: avoid UIs dominated by variations of a single hue family, and limit dominant purple/purple-blue gradients, beige/cream/sand/tan, dark blue/slate, and brown/orange/espresso palettes; scan CSS colors before finalizing and revise if the page reads as one of these themes.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "if the design uses a white background, use white rather than cream, ivory, beige, warm gray, or any softened off-white substitute.",
+				"model_named": "Codex (frontend-app-builder skill)"
+			},
+			{
+				"url": "https://github.com/microsoft/vscode/blob/main/extensions/copilot/src/extension/prompts/node/agent/openai/gpt6Prompt.tsx",
+				"date": "2026-09-16",
+				"author": "Microsoft VS Code Copilot GPT-6 prompt (ships OpenAI's frontend guidance text)",
+				"quote": "beige/cream/sand/tan, dark blue/slate, and brown/orange/espresso palettes",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "Luna went light and warm — cream backgrounds, green accents",
+				"model_named": "GPT-5.6 Luna"
+			},
+			{
+				"url": "https://www.banani.co/blog/gpt-5.4-ui-frontend-design",
+				"date": "2026-06-18",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "Shift palette from terracotta/orange to soft pastels",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://mowgli.ai/blog/codex-frontend-design",
+				"date": "2026-09-23",
+				"author": "Mowgli",
+				"quote": "One-hue palettes (all slate, all beige)",
+				"model_named": "Codex"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-baby-blue-bright-blue-accent",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6 Sol"
+		],
+		"kind": "foundation",
+		"name": "Baby-blue / bright-blue accent and single muted-blue charts",
+		"description": "A plain blue used as the only accent: baby blue with rounded corners in app UIs, a heavy bright-blue active sidebar item, one muted blue tone for every chart series.",
+		"detect": {
+			"type": "color",
+			"hint": "Accent/active-state colour in the light-to-medium blue range (hue ~200-225 deg), used for sidebar active item, primary button and all chart series; flag charts whose every series is the same blue.",
+			"values": [
+				"baby blue",
+				"bright blue",
+				"muted blue"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://www.reddit.com/r/OpenAI/comments/1us2t1t/already_disappointed_with_gpt_56_sol_frontend/owsopzt/",
+				"date": "2026-07-10",
+				"author": "u/AppealSame4367 (r/OpenAI)",
+				"quote": "idiotic GPT designs with baby blue colors and rounded corners",
+				"model_named": "GPT (5.5/5.6)"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "The active sidebar item is a heavy bright blue.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://www.banani.co/blog/gpt-5.4-ui-frontend-design",
+				"date": "2026-06-18",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "using 3 distinct vivid colors instead of one muted blue tone",
+				"model_named": "GPT-5.4"
+			}
+		],
+		"independent_sources": 3,
+		"newest_source_date": "2026-07-10",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-inter-default-sans",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"GPT-5.6 Luna",
+			"GPT-6",
+			"Codex"
+		],
+		"kind": "foundation",
+		"name": "Inter / default sans stack, one family at one or two weights",
+		"description": "The baseline typeface is Inter or a system/Roboto/Arial stack, often with no display face, and the type system is one sans family at one or two weights with one size scale (no serif accent, italic or display cut). OpenAI's GPT-5.4 guidance (still shipped in GPT-6-era prompts) names these stacks as the defaults to avoid; the GPT/Codex-specific taste skill bans Inter outright.",
+		"detect": {
+			"type": "font",
+			"hint": "Read computed font-family of h1, h2, body. Flag when the first family is Inter, Roboto, Arial, system-ui/-apple-system, or when headings and body share one sans family; also count distinct font-weight values (flag <= 2 with no italic/serif).",
+			"values": [
+				"Inter",
+				"Roboto",
+				"Arial",
+				"system-ui"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Use expressive, purposeful fonts and avoid default stacks (Inter, Roboto, Arial, system).",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://github.com/microsoft/vscode/blob/main/extensions/copilot/src/extension/prompts/node/agent/openai/gpt6Prompt.tsx",
+				"date": "2026-09-16",
+				"author": "Microsoft VS Code Copilot GPT-6 prompt (ships OpenAI's frontend guidance text)",
+				"quote": "Typography: Use expressive, purposeful fonts and avoid default stacks (Inter, Roboto, Arial, system).",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "1 Typography Stack (Satoshi, Cabinet Grotesk, Outfit, or Geist. NEVER Inter)",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://open-design.ai/agents/codex-design/",
+				"date": "2026-09-11",
+				"author": "OpenDesign (Powerformer, Inc.); date = 'References checked' stamp",
+				"quote": "instead of defaulting to the generic Inter-and-purple look",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://note.com/cotapon/n/n1991ab1331d6",
+				"date": "2026-03-27",
+				"author": "こたぽん (note.com)",
+				"quote": "紫背景にInterフォント",
+				"model_named": "GPT-5.4 (context)"
+			},
+			{
+				"url": "https://www.banani.co/blog/gpt-5.4-ui-frontend-design",
+				"date": "2026-06-18",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "paired with a bold, expressive display typeface for headlines instead of the current safe sans",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://www.reddit.com/r/OpenAI/comments/1us2t1t/already_disappointed_with_gpt_56_sol_frontend/owksd9x/",
+				"date": "2026-07-09",
+				"author": "u/ReporterCalm6238 (r/OpenAI)",
+				"quote": "I have seen that font thousands of times",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "Every output uses sans-serif type at two weights",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "The typography was safe — one weight, one size scale, no editorial choices.",
+				"model_named": "GPT-5.6 Luna"
+			},
+			{
+				"url": "https://www.reddit.com/r/vibecoding/comments/1v8agij/i_got_tired_of_ai_generating_the_same_purple/",
+				"date": "2026-07-27",
+				"author": "u/Many-Wedding8384 (r/vibecoding)",
+				"quote": "generic Inter typography",
+				"model_named": "Codex and Claude"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47668467",
+				"date": "2026-04-06",
+				"author": "EForEndeavour (Hacker News)",
+				"quote": "this website has strong AI smells",
+				"model_named": "Claude Code, Cursor, Codex (not separated)"
+			}
+		],
+		"independent_sources": 10,
+		"newest_source_date": "2026-09-16",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-massive-display-serif-hero",
+		"family": "gpt",
+		"models": [
+			"GPT-5.6 Sol",
+			"GPT-5.6 Terra"
+		],
+		"kind": "foundation",
+		"name": "Massive display-serif (or serif-italic + sans) hero headline",
+		"description": "Newer GPT-5.6 outputs swing to a huge editorial serif hero ('publication energy') or a serif italic word mixed into a large sans headline. Reviewers praised it, but it is a recurring move on the newer models. Inferred: it may be the GPT-5.6 replacement for the old Inter default.",
+		"detect": {
+			"type": "font",
+			"hint": "h1 font-family is a serif/display serif, font-size >= ~72px, or an <em>/<i> serif-italic span inside a sans h1.",
+			"values": [
+				"display serif",
+				"serif italic + sans"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://www.xda-developers.com/built-website-with-fable-5-and-gpt-56-sol-winner-wasnt-who-i-expected/",
+				"date": "2026-08-03",
+				"author": "Nolen Jonker (XDA)",
+				"quote": "massive display serif hero, publication energy",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "The hero mixed a serif italic (“flow”) with a clean sans-serif at large scale",
+				"model_named": "GPT-5.6 Terra"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-08-05",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-oversized-hero-headline",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "treatment",
+		"name": "Oversized hero headline (huge text, viewport-scaled type, many-line wraps)",
+		"description": "The hero is carried by enormous type rather than an image: 'massive' left-aligned headlines, giant text, viewport-width font scaling, headings that wrap to many lines in a narrow container. The same oversized display type also shows up in dashboards. Design Arena lists 'large typefaces instead of hero images' and 'oversized hero text' as GPT-5.5 smells.",
+		"detect": {
+			"type": "css",
+			"hint": "h1 computed font-size > ~80px on 1440px viewport, font-size using vw/clamp() with vw term, h1 wrapping to >=4 lines, or hero with no <img>/<video>/canvas. In app/dashboard pages, any heading > 40px.",
+			"values": [
+				"vw font-size",
+				"clamp()"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://notes.designarena.ai/how-openais-sol-finally-learned-design-taste/",
+				"date": "2026-07-15",
+				"author": "Design Arena",
+				"quote": "its design space contains clear gaps where GPT-5.5 produces purple gradients , bento-box layouts, oversized hero text, and offset compositions",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "massive left-aligned headline (it’s huge)",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "GPT-5.5 leaned into hero typography and decoration, while Opus prioritized data legibility.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "You do not scale font size with viewport width.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "reserve hero-scale type for true heroes, and use smaller, tighter headings inside compact panels, cards, sidebars, dashboards, and tool surfaces.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "they generate massive 6-line wrapped headings by using narrow containers",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://www.reddit.com/r/ClaudeCode/comments/1wu9e5a/how_do_you_get_claude_code_codex_to_actually/",
+				"date": "2026-09-30",
+				"author": "u/NoTutor4458 (r/ClaudeCode)",
+				"quote": "avoid generic purple gradients, huge texts and other ai slop",
+				"model_named": "Codex (GPT-6 Astra)"
+			},
+			{
+				"url": "https://www.reddit.com/r/OpenAI/comments/1us2t1t/already_disappointed_with_gpt_56_sol_frontend/",
+				"date": "2026-07-09",
+				"author": "u/ReporterCalm6238 (r/OpenAI)",
+				"quote": "making certain elements too big or too small given their importance",
+				"model_named": "GPT-5.5 / GPT-5.6 Sol"
+			},
+			{
+				"url": "https://www.xda-developers.com/built-website-with-fable-5-and-gpt-56-sol-winner-wasnt-who-i-expected/",
+				"date": "2026-08-03",
+				"author": "Nolen Jonker (XDA)",
+				"quote": "Everything was a little bigger and bolder than Fable's",
+				"model_named": "GPT-5.6 Sol"
+			}
+		],
+		"independent_sources": 7,
+		"newest_source_date": "2026-09-30",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-negative-letter-spacing",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"GPT-6",
+			"Codex"
+		],
+		"kind": "treatment",
+		"name": "Negative letter-spacing (tight tracking) on headings",
+		"description": "OpenAI's GPT-5.5 frontend prompt has to tell the model letter spacing must be 0, not negative. That implies tight negative tracking on display type is a habit; this is inferred from the instruction, not seen directly in screenshots.",
+		"detect": {
+			"type": "css",
+			"hint": "Any element with computed letter-spacing < 0 (Tailwind tracking-tight / tracking-tighter / tracking-[-0.0Xem]).",
+			"values": [
+				"tracking-tight",
+				"tracking-tighter",
+				"letter-spacing < 0"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "Letter spacing must be 0, not negative.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/microsoft/vscode/blob/main/extensions/copilot/src/extension/prompts/node/agent/openai/gpt6Prompt.tsx",
+				"date": "2026-09-16",
+				"author": "Microsoft VS Code Copilot GPT-6 prompt (ships OpenAI's frontend guidance text)",
+				"quote": "Letter spacing must be 0, not negative.",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://mowgli.ai/blog/codex-frontend-design",
+				"date": "2026-09-23",
+				"author": "Mowgli",
+				"quote": "Letter spacing 0.",
+				"model_named": "Codex"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-09-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-cards-everywhere",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6",
+			"GPT-6",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "element",
+		"name": "Cards everywhere / default card grids",
+		"description": "Content goes into cards by reflex: uniform card grids, stacked-card feeds, feature cards, 'card-stuffed' layouts. OpenAI's own rule for GPT-5.4 starts with 'Default: no cards', and the GPT-6-era prompt still has to say it.",
+		"detect": {
+			"type": "dom",
+			"hint": "Count elements with border + border-radius + background/shadow that wrap content (Tailwind rounded-xl/2xl + border/shadow + p-6). Flag when >50% of top-level section children are cards or a section is a grid of same-shape cards.",
+			"values": [
+				"rounded-2xl",
+				"shadow-lg",
+				"p-6"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Cards: Default: no cards. Never use cards in the hero.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Generic SaaS card grid as the first impression",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "avoid oversized hero sections, decorative card-heavy layouts, and marketing-style composition",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/references/imagegen-website-concepts.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins)",
+				"quote": "no default card grids",
+				"model_named": "Codex (frontend-app-builder)"
+			},
+			{
+				"url": "https://dev.to/pranavbobde/maybe-gpt-wasnt-the-ui-problem-38ag",
+				"date": "2026-07-22",
+				"author": "Pranav Bobde (dev.to)",
+				"quote": "cards everywhere",
+				"model_named": "Codex / GPT"
+			},
+			{
+				"url": "https://www.banani.co/blog/gpt-5.6-ui-design-review",
+				"date": "2026-07-10",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "some on Reddit call out GPT 5.6’s repetitive card-stuffed layouts",
+				"model_named": "GPT-5.6"
+			},
+			{
+				"url": "https://www.banani.co/blog/gpt-5.4-ui-frontend-design",
+				"date": "2026-06-18",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "Break the listing feed out of the uniform stacked-card grid",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "default Tailwind UI button and card styling",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49996909",
+				"date": "2026-10-07",
+				"author": "kingstnap (Hacker News)",
+				"quote": "Less taglines, eyebrow text, subheadings, decorative spacing, pills, cards.",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://github.com/Enixes/astra-frontend-design",
+				"date": "2026-09-12",
+				"author": "Enixes (astra-frontend-design skill for GPT-6 Astra / Codex)",
+				"quote": "Examples include repeated equal cards, decorative gradients, universal pill shapes, an eyebrow above every heading, arbitrary monospace labels, interchangeable copy, and motion on every element.",
+				"model_named": "GPT-6 Astra"
+			}
+		],
+		"independent_sources": 6,
+		"newest_source_date": "2026-10-07",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-nested-cards-floating-sections",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"GPT-6",
+			"Codex"
+		],
+		"kind": "layout",
+		"name": "Cards inside cards; whole page sections styled as floating cards",
+		"description": "The most-reported GPT-specific card habit: a card inside a card inside a card, and full-width sections wrapped in rounded floating containers instead of bands. Users call it 'card syndrome'.",
+		"detect": {
+			"type": "dom",
+			"hint": "Find card-like elements (border/shadow + radius + bg) whose ancestor is also card-like; flag depth >= 2. Flag <section> children that are a single rounded, shadowed container with margin from the viewport edge.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://www.reddit.com/r/OpenAI/comments/1us2t1t/already_disappointed_with_gpt_56_sol_frontend/",
+				"date": "2026-07-09",
+				"author": "u/ReporterCalm6238 (r/OpenAI)",
+				"quote": "overuse of cards: a card, inside a card, inside another card",
+				"model_named": "GPT-5.5 / GPT-5.6 Sol"
+			},
+			{
+				"url": "https://www.reddit.com/r/technepal/comments/1txf2r9/is_antigravity_paid_mode_worth_it_compared_to/",
+				"date": "2026-06-05",
+				"author": "u/DudPro (r/technepal)",
+				"quote": "The GPT model has \"card syndrome\"—it constantly puts cards inside cards.",
+				"model_named": "GPT (Codex)"
+			},
+			{
+				"url": "https://www.reddit.com/r/ClaudeCode/comments/1u3ln1w/how_to_use_claude_35_fabel_for_a_ui_redesign/",
+				"date": "2026-06-12",
+				"author": "u/DudPro (r/ClaudeCode)",
+				"quote": "gradient backgrounds, overly rounded buttons, endless cards inside cards",
+				"model_named": "GPT"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "You do not put UI cards inside other cards. Do not style page sections as floating cards.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/microsoft/vscode/blob/main/extensions/copilot/src/extension/prompts/node/agent/openai/gpt6Prompt.tsx",
+				"date": "2026-09-16",
+				"author": "Microsoft VS Code Copilot GPT-6 prompt (ships OpenAI's frontend guidance text)",
+				"quote": "You do not put UI cards inside other cards. Do not style page sections as floating cards.",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "avoid nested cards, giant rounded wrappers around every section, default bento/card grids, and over-framed dashboards",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://mowgli.ai/blog/codex-frontend-design",
+				"date": "2026-09-23",
+				"author": "Mowgli",
+				"quote": "Cards inside cards; page sections styled as floating cards",
+				"model_named": "Codex"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-three-equal-feature-cards",
+		"family": "gpt",
+		"models": [
+			"GPT-5",
+			"GPT-5 Pro",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "layout",
+		"name": "Centered hero + two buttons + three equal feature cards skeleton",
+		"description": "The landing-page skeleton: centered headline, two CTAs, then a row of three identical rounded feature cards (grid-cols-3), often followed by a three-tier pricing table. Sailop's 1,200-prompt test (GPT-5 and GPT-5 Pro among the models) found eight of nine models returned it.",
+		"detect": {
+			"type": "structure",
+			"hint": "Section containing exactly 3 sibling cards with equal width (grid-cols-3 / repeat(3,1fr)), each with icon + h3 + short p, directly after the hero.",
+			"values": [
+				"grid-cols-3",
+				"rounded-2xl"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+				"date": "2026-04-28",
+				"author": "Sailop Blog",
+				"quote": "Eight of nine frontier models returned the same indigo gradient and three-card grid from one prompt.",
+				"model_named": "GPT-5, GPT-5 Pro (among nine)"
+			},
+			{
+				"url": "https://github.com/Enixes/astra-frontend-design",
+				"date": "2026-09-12",
+				"author": "Enixes (astra-frontend-design skill for GPT-6 Astra / Codex)",
+				"quote": "Avoid forcing every brief into a centered headline, two buttons, and three feature cards.",
+				"model_named": "GPT-6 Astra"
+			},
+			{
+				"url": "https://www.reddit.com/r/vibecoding/comments/1v8agij/i_got_tired_of_ai_generating_the_same_purple/",
+				"date": "2026-07-27",
+				"author": "u/Many-Wedding8384 (r/vibecoding)",
+				"quote": "three rounded feature cards",
+				"model_named": "Codex and Claude"
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-05-30",
+				"author": "funboy322 (avoid-ai-design)",
+				"quote": "a centered hero over three rounded feature cards",
+				"model_named": "Claude, Codex, any model"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-12",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-hero-floating-preview-card",
+		"family": "gpt",
+		"models": [
+			"GPT-5",
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6 Sol"
+		],
+		"kind": "layout",
+		"name": "Hero with a floating product-preview card or dashboard mock",
+		"description": "Split hero: text on one side and a floating product-preview card, dashboard mock or 'pack' preview card on the other side (or under the hero). The same move appears on sign-up screens as a generic UI-mockup side panel. OpenAI's prompts ban hero cards, split card/text heroes and 'floating dashboards' outright.",
+		"detect": {
+			"type": "structure",
+			"hint": "Within first viewport: a card-like element or fake app screenshot/dashboard (div with mini charts, KPI tiles) positioned beside or below the h1; or two-column hero where one column is a bordered/shadowed card.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "No hero cards, stat strips, logo clouds, pill soup, or floating dashboards by default.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "never use a split text/media layout where a card is one side and text is on another side, never put hero text or the primary experience in a card",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "product preview card floating to the right",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "The right-side panel is a generic UI mockup.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://www.xda-developers.com/built-website-with-fable-5-and-gpt-56-sol-winner-wasnt-who-i-expected/",
+				"date": "2026-08-03",
+				"author": "Nolen Jonker (XDA)",
+				"quote": "There was a small \"Precision Dark / Priming Pack\" preview card at the bottom of the hero",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "The hero embedded a dashboard UI mock",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+				"date": "2026-04-28",
+				"author": "Sailop Blog",
+				"quote": "a 3D mockup of a fake dashboard floating to the right",
+				"model_named": "GPT-5 (among nine models)"
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-08-05",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-eyebrow-kicker-above-heading",
+		"family": "gpt",
+		"models": [
+			"GPT-5.3",
+			"GPT-5.6 Sol",
+			"GPT-6",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "element",
+		"name": "Eyebrow / kicker / pretitle label above headings",
+		"description": "A small label, badge or pill above the H1 and above section headings. OpenAI's own Codex frontend skill makes it 'prohibited by default'. HN commenters on the GPT-6 launch (Oct 2026) call it the tell: 'Everything has an eyebrow.'",
+		"detect": {
+			"type": "dom",
+			"hint": "An element immediately preceding an h1/h2 inside the same container with font-size <= 14px, often uppercase, letter-spacing > 0, or pill/badge styling (rounded-full + bg/border). Count per page; flag if >= 2 headings have one.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "Hero eyebrow, kicker, pretitle, badge, or pill labels above the main heading are prohibited by default.",
+				"model_named": "Codex (frontend-app-builder)"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "the brand or product name must be a hero-level signal, not just nav text or an eyebrow.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49996909",
+				"date": "2026-10-07",
+				"author": "kingstnap (Hacker News)",
+				"quote": "GPT-6's design sense is kind of ridiculous imo. I have explicit instructions to tone it down. Less taglines, eyebrow text, subheadings, decorative spacing, pills, cards.",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49998031",
+				"date": "2026-10-07",
+				"author": "apsurd (Hacker News, reply about GPT-6)",
+				"quote": "Everything has an eyebrow. It is ridiculous but at least it is an AI smoking gun.",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49808888",
+				"date": "2026-09-22",
+				"author": "sm-silversight (Hacker News)",
+				"quote": "none of the design cruft (\"eyebrows\") that LLMs like. But the last design I let it do was from opus 4.7 or gpt 5.3.",
+				"model_named": "GPT-5.3 (or Opus 4.7)"
+			},
+			{
+				"url": "https://www.xda-developers.com/built-website-with-fable-5-and-gpt-56-sol-winner-wasnt-who-i-expected/",
+				"date": "2026-08-03",
+				"author": "Nolen Jonker (XDA)",
+				"quote": "The section badge read \"Reference packs for AI design.\"",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://mowgli.ai/blog/codex-frontend-design",
+				"date": "2026-09-23",
+				"author": "Mowgli",
+				"quote": "Eyebrow pills above headings",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://github.com/Enixes/astra-frontend-design",
+				"date": "2026-09-12",
+				"author": "Enixes (astra-frontend-design skill for GPT-6 Astra / Codex)",
+				"quote": "an eyebrow above every heading",
+				"model_named": "GPT-6 Astra"
+			}
+		],
+		"independent_sources": 7,
+		"newest_source_date": "2026-10-07",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-pill-chip-badge-clutter",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.6 Sol",
+			"GPT-6",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "element",
+		"name": "Pill clusters, chips, floating badges and stickers in the hero",
+		"description": "Rows of pills/chips under the hero, floating badges or 'stamp' icons on hero media, utility pills and pseudo-system markers. OpenAI calls the result 'pill soup'.",
+		"detect": {
+			"type": "dom",
+			"hint": "Count rounded-full inline elements with border/bg and short text in the first viewport; flag >= 3 in a row, or absolutely-positioned badges overlapping hero images.",
+			"values": [
+				"rounded-full"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Avoid pill clusters, stat strips, icon rows, boxed promos, schedule snippets, and multiple competing text blocks.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Do not place detached labels, floating badges, promo stickers, info chips, or callout boxes on top of hero media.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "small labels, utility pills, pseudo-system markers, fake metrics, and decorative dashboard jargon are allowed only when they clarify the product.",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "Do NOT use arbitrary floating stamp/badge icons on the text. Do NOT use pill-tags under the hero.",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://www.xda-developers.com/built-website-with-fable-5-and-gpt-56-sol-winner-wasnt-who-i-expected/",
+				"date": "2026-08-03",
+				"author": "Nolen Jonker (XDA)",
+				"quote": "The pack chips named actual AI design tools like v0, Claude, Lovable, Bolt, and ChatGPT.",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49996909",
+				"date": "2026-10-07",
+				"author": "kingstnap (Hacker News)",
+				"quote": "Less taglines, eyebrow text, subheadings, decorative spacing, pills, cards.",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://github.com/Enixes/astra-frontend-design",
+				"date": "2026-09-12",
+				"author": "Enixes (astra-frontend-design skill for GPT-6 Astra / Codex)",
+				"quote": "universal pill shapes",
+				"model_named": "GPT-6 Astra"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47668467",
+				"date": "2026-04-06",
+				"author": "EForEndeavour (Hacker News)",
+				"quote": "bubble status badges (of course with all-caps \"IN PROGRESS\" and \"COMING SOON\" that mean the same thing)",
+				"model_named": "Claude Code, Cursor, Codex (not separated)"
+			}
+		],
+		"independent_sources": 6,
+		"newest_source_date": "2026-10-07",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-stat-strip-fake-metrics",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "element",
+		"name": "Stat strips and invented metrics (in the hero and on dashboards)",
+		"description": "A strip of big numbers ('10k+ teams', '99.9%') in or under the hero, and inflated KPI numbers on dashboards. OpenAI's skills name 'fake metrics' and 'stat strips' explicitly.",
+		"detect": {
+			"type": "text",
+			"hint": "First-viewport elements matching /^\\s*[\\d.,]+\\s*(%|k\\+?|M\\+?|x|\\+)\\s*$/ grouped 3-4 in a row with small captions; on dashboards, metric font-size > 40px.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Do not place stats, schedules, event listings, address blocks, promos, \"this week\" callouts, metadata rows, or secondary marketing content in the first viewport.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "Do not overcrowd the opening view with stats, chips, badges, fake controls, or competing mini-panels.",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "Do NOT place raw data/stats in the hero.",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "inflated the metric numbers",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/Enixes/astra-frontend-design",
+				"date": "2026-09-12",
+				"author": "Enixes (astra-frontend-design skill for GPT-6 Astra / Codex)",
+				"quote": "A dark blurred image or a fake dashboard rectangle is not a substitute for evidence.",
+				"model_named": "GPT-6 Astra"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-12",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-numbered-meta-labels",
+		"family": "gpt",
+		"models": [
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "copy",
+		"name": "Numbered meta-labels and all-caps/mono section markers ('SECTION 01', '01 / 02 / 03')",
+		"description": "Section headers carry decorative numbering or meta labels ('SECTION 01', 'QUESTION 05'), features numbered 01/02/03, all-caps or monospace micro-labels. The GPT/Codex taste skill bans these 'forever'.",
+		"detect": {
+			"type": "text",
+			"hint": "Regex on small labels: /^(section|step|question|chapter)?\\s*0\\d\\b/i, /\\b0[1-9]\\s*\\/\\s*0[1-9]\\b/; elements with text-transform: uppercase + monospace font-family + font-size <= 13px.",
+			"values": [
+				"SECTION 01",
+				"QUESTION 05",
+				"01 / 02 / 03"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "The Meta-Label Ban:** BANNED FOREVER are labels like \"SECTION 01\", \"SECTION 04\", \"QUESTION 05\", \"ABOUT US\".",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "use cheap meta-labels (\"QUESTION 05\", \"SECTION 01\")",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://github.com/Enixes/astra-frontend-design",
+				"date": "2026-09-12",
+				"author": "Enixes (astra-frontend-design skill for GPT-6 Astra / Codex)",
+				"quote": "Use borders, numbering, labels, and cards only when they encode hierarchy, grouping, sequence, status, or interactivity.",
+				"model_named": "GPT-6 Astra"
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-05-30",
+				"author": "funboy322 (avoid-ai-design)",
+				"quote": "all-caps monospace labels, one colored word in the headline, features numbered 01 / 02 / 03",
+				"model_named": "Claude, Codex, any model"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47668467",
+				"date": "2026-04-06",
+				"author": "EForEndeavour (Hacker News)",
+				"quote": "all caps section headers",
+				"model_named": "Claude Code, Cursor, Codex (not separated)"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-12",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-gradient-orbs-bokeh-glow",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"GPT-6",
+			"Codex"
+		],
+		"kind": "treatment",
+		"name": "Gradient orbs, bokeh blobs and glow effects as decoration",
+		"description": "Blurred coloured blobs/orbs behind the hero, bokeh, random glows. OpenAI's GPT-5.5 prompt (still in the GPT-6 prompt) and its data-viz design contract both ban them by name.",
+		"detect": {
+			"type": "css",
+			"hint": "Absolutely-positioned elements with border-radius: 50% + filter: blur(>=40px) or radial-gradient backgrounds; box-shadow glows with large blur and coloured spread; 'blob'/'orb' class names.",
+			"values": [
+				"filter: blur()",
+				"radial-gradient",
+				"orb",
+				"bokeh"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "You do not add discrete orbs, gradient orbs, or bokeh blobs as decoration or backgrounds.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/microsoft/vscode/blob/main/extensions/copilot/src/extension/prompts/node/agent/openai/gpt6Prompt.tsx",
+				"date": "2026-09-16",
+				"author": "Microsoft VS Code Copilot GPT-6 prompt (ships OpenAI's frontend guidance text)",
+				"quote": "You do not add discrete orbs, gradient orbs, or bokeh blobs as decoration or backgrounds.",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-data-visualization/assets/templates/human-visual-review-checklist.md",
+				"date": "2026-05-26",
+				"author": "OpenAI (openai/plugins, data-visualization review checklist)",
+				"quote": "Does the design avoid generic AI atmosphere such as broad brush strokes, wispy ribbons, bokeh/orbs, cinematic wallpaper, stock-photo haze, and decorative gradients?",
+				"model_named": "Codex (data-viz plugin)"
+			},
+			{
+				"url": "https://mowgli.ai/blog/codex-frontend-design",
+				"date": "2026-09-23",
+				"author": "Mowgli",
+				"quote": "Purple or indigo gradients, gradient text, orbs or bokeh blobs",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://www.reddit.com/r/vibecoding/comments/1v8agij/i_got_tired_of_ai_generating_the_same_purple/",
+				"date": "2026-07-27",
+				"author": "u/Many-Wedding8384 (r/vibecoding)",
+				"quote": "random glow effects",
+				"model_named": "Codex and Claude"
+			}
+		],
+		"independent_sources": 3,
+		"newest_source_date": "2026-09-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-decorative-gradients-product-ui",
+		"family": "gpt",
+		"models": [
+			"GPT-5",
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "treatment",
+		"name": "Decorative gradients on routine product UI (metric widgets, pricing backgrounds, panels)",
+		"description": "Gradients used as decoration where they carry no meaning: on KPI widgets, dark blue/purple pricing backgrounds, soft gradient panels in app UI. Note the tension: OpenAI's GPT-5.4 skill also tells the model not to use flat single-colour backgrounds and to use gradients for atmosphere, which may reinforce the habit.",
+		"detect": {
+			"type": "css",
+			"hint": "background-image: linear-gradient/radial-gradient on cards, KPI tiles, sidebars or full app pages (not just the marketing hero).",
+			"values": [
+				"linear-gradient",
+				"radial-gradient"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "decorative gradients behind routine product UI",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "gradients on the metric widgets",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://open-design.ai/agents/codex-design/",
+				"date": "2026-09-11",
+				"author": "OpenDesign (Powerformer, Inc.); date = 'References checked' stamp",
+				"quote": "soft gradients, floating panels, oversized rounded corners, dramatic shadows",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://www.reddit.com/r/ClaudeCode/comments/1u3ln1w/how_to_use_claude_35_fabel_for_a_ui_redesign/",
+				"date": "2026-06-12",
+				"author": "u/DudPro (r/ClaudeCode)",
+				"quote": "gradient backgrounds, overly rounded buttons, endless cards inside cards",
+				"model_named": "GPT"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48858053",
+				"date": "2026-07-10",
+				"author": "torginus (Hacker News)",
+				"quote": "gradient backgrounds and dropshadows",
+				"model_named": "GPT-5"
+			},
+			{
+				"url": "https://github.com/Enixes/astra-frontend-design",
+				"date": "2026-09-12",
+				"author": "Enixes (astra-frontend-design skill for GPT-6 Astra / Codex)",
+				"quote": "arbitrary gradients, repetitive cards",
+				"model_named": "GPT-6 Astra"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Don't rely on flat, single-color backgrounds; use gradients, images, or subtle patterns to build atmosphere.",
+				"model_named": "GPT-5.4 (instruction that may cause it)"
+			}
+		],
+		"independent_sources": 6,
+		"newest_source_date": "2026-09-12",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-abstract-svg-hero-not-imagery",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"GPT-5.6 Luna",
+			"Codex"
+		],
+		"kind": "element",
+		"name": "Abstract gradient / SVG illustration hero instead of real imagery",
+		"description": "The hero's visual is a gradient, an abstract background, a hand-drawn SVG illustration or fake 3D object rather than the actual product, place or person. Users describe the hero illustration as 'nonsense'; testers found generic illustration styles.",
+		"detect": {
+			"type": "dom",
+			"hint": "First viewport has no <img>/<video>/<picture>/canvas with real content; the main visual is an inline <svg> with many paths, a CSS gradient, or decorative shapes.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Decorative gradients and abstract backgrounds do not count as the main visual idea.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Prefer in-situ photography over abstract gradients or fake 3D objects.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "never use a gradient/SVG hero page, and do not create an SVG hero illustration when a real or generated image can carry the subject.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "Do not replace concept assets with rough CSS drawings, generic gradients, placeholder SVGs, or stock-like crops.",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://www.reddit.com/r/OpenAI/comments/1us2t1t/already_disappointed_with_gpt_56_sol_frontend/owksd9x/",
+				"date": "2026-07-09",
+				"author": "u/ReporterCalm6238 (r/OpenAI)",
+				"quote": "the illustration in the hero is nonsense",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "the drawing style looked generic rather than branded",
+				"model_named": "GPT-5.6 Luna"
+			},
+			{
+				"url": "https://notes.designarena.ai/how-openais-sol-finally-learned-design-taste/",
+				"date": "2026-07-15",
+				"author": "Design Arena",
+				"quote": "large typefaces instead of hero images",
+				"model_named": "GPT-5.5"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-08-05",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-dark-blurred-atmospheric-media",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"GPT-6 Astra",
+			"Codex"
+		],
+		"kind": "treatment",
+		"name": "Dark, blurred, tinted 'atmospheric' media and colour washes over hero images",
+		"description": "Imagery that sets a mood but shows nothing: dark or blurred photos, stock-photo haze, cinematic wallpaper, colour overlays tinting the hero image.",
+		"detect": {
+			"type": "css",
+			"hint": "Hero <img>/background with filter: blur()/brightness(<0.6), or an overlay element with semi-transparent coloured background over the hero image.",
+			"values": [
+				"filter: blur()",
+				"brightness()",
+				"overlay"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "you refrain from dark, blurred, cropped, stock-like, or purely atmospheric media when the user needs to inspect the real thing.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "If the accepted hero image has no color overlay, do not add a translucent tint, wash, or colored layer over it.",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-data-visualization/assets/templates/human-visual-review-checklist.md",
+				"date": "2026-05-26",
+				"author": "OpenAI (openai/plugins, data-visualization review checklist)",
+				"quote": "cinematic wallpaper, stock-photo haze, and decorative gradients",
+				"model_named": "Codex (data-viz plugin)"
+			},
+			{
+				"url": "https://github.com/Enixes/astra-frontend-design",
+				"date": "2026-09-12",
+				"author": "Enixes (astra-frontend-design skill for GPT-6 Astra / Codex)",
+				"quote": "A dark blurred image or a fake dashboard rectangle is not a substitute for evidence.",
+				"model_named": "GPT-6 Astra"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-09-12",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-glassmorphism-glass-nav",
+		"family": "gpt",
+		"models": [
+			"GPT-5",
+			"ChatGPT",
+			"Codex"
+		],
+		"kind": "treatment",
+		"name": "Glassmorphism panels and a glassy navbar",
+		"description": "Frosted-glass panels and a glass navbar. Sailop lists 'glass morphism residue' in GPT-5's signature. Most other sources lump it with Claude/ChatGPT/Codex output generally.",
+		"detect": {
+			"type": "css",
+			"hint": "backdrop-filter: blur() on nav/cards with semi-transparent background (rgba/hsla alpha < 0.9) and a 1px light border.",
+			"values": [
+				"backdrop-filter: blur()",
+				"bg-white/10",
+				"backdrop-blur"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+				"date": "2026-04-28",
+				"author": "Sailop Blog",
+				"quote": "GPT-5 Indigo-violet, gradient meshes, glass morphism residue",
+				"model_named": "GPT-5"
+			},
+			{
+				"url": "https://www.reddit.com/r/ClaudeCoding/comments/1vwe61s/tldr_i_finally_figured_out_why_every_aicoded_site/",
+				"date": "2026-08-23",
+				"author": "u/AudienceNo2554 (crossposted from r/ClaudeCode)",
+				"quote": "purple gradient hero, rounded cards, glassmorphism everything, \"Transform your workflow\" headline",
+				"model_named": "Claude / ChatGPT"
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-05-30",
+				"author": "funboy322 (avoid-ai-design)",
+				"quote": "a glassy navbar",
+				"model_named": "Claude, Codex, any model"
+			},
+			{
+				"url": "https://github.com/LeoStehlik/no-slop-ui",
+				"date": "2026-03-30",
+				"author": "LeoStehlik (no-slop-ui, design guardrail for Codex and other agents)",
+				"quote": "Glassmorphism and frosted panels",
+				"model_named": "Codex (listed agent surface)"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-08-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-over-rounded-corners",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"Codex"
+		],
+		"kind": "treatment",
+		"name": "Over-rounded corners on cards, buttons and section wrappers",
+		"description": "Big radii everywhere: rounded-2xl/3xl cards, very round buttons, rounded wrappers around whole sections. OpenAI's GPT-5.5 prompt caps cards at 8px, which suggests the model's default is well above that.",
+		"detect": {
+			"type": "css",
+			"hint": "Computed border-radius > 8px on cards/panels, or >= 16px on section-level containers; rounded-full on non-pill buttons.",
+			"values": [
+				"8px",
+				"rounded-2xl",
+				"rounded-3xl"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "Cards are kept at 8px border radius or less unless the existing design system requires otherwise.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://www.reddit.com/r/OpenAI/comments/1us2t1t/already_disappointed_with_gpt_56_sol_frontend/owsopzt/",
+				"date": "2026-07-10",
+				"author": "u/AppealSame4367 (r/OpenAI)",
+				"quote": "idiotic GPT designs with baby blue colors and rounded corners",
+				"model_named": "GPT (5.5/5.6)"
+			},
+			{
+				"url": "https://www.reddit.com/r/ClaudeCode/comments/1u3ln1w/how_to_use_claude_35_fabel_for_a_ui_redesign/",
+				"date": "2026-06-12",
+				"author": "u/DudPro (r/ClaudeCode)",
+				"quote": "overly rounded buttons",
+				"model_named": "GPT"
+			},
+			{
+				"url": "https://open-design.ai/agents/codex-design/",
+				"date": "2026-09-11",
+				"author": "OpenDesign (Powerformer, Inc.); date = 'References checked' stamp",
+				"quote": "oversized rounded corners",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "giant rounded wrappers around every section",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://mowgli.ai/blog/codex-frontend-design",
+				"date": "2026-09-23",
+				"author": "Mowgli",
+				"quote": "Radius: 6px controls, 8px max for cards.",
+				"model_named": "Codex"
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-09-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-soft-dramatic-shadows",
+		"family": "gpt",
+		"models": [
+			"GPT-5",
+			"GPT-5.4",
+			"GPT-5.5",
+			"Codex"
+		],
+		"kind": "treatment",
+		"name": "Soft card shadows, dramatic drop shadows and embossed buttons",
+		"description": "Default soft shadows on every card (Tailwind shadow-lg/xl), heavy drop shadows, embossed/3D buttons.",
+		"detect": {
+			"type": "css",
+			"hint": "box-shadow present on most cards/buttons, blur radius >= 15px; inset+outer shadow combos on buttons.",
+			"values": [
+				"shadow-lg",
+				"shadow-xl"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "soft card shadows",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://open-design.ai/agents/codex-design/",
+				"date": "2026-09-11",
+				"author": "OpenDesign (Powerformer, Inc.); date = 'References checked' stamp",
+				"quote": "dramatic shadows",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48858053",
+				"date": "2026-07-10",
+				"author": "torginus (Hacker News)",
+				"quote": "embossed buttons, gradient backgrounds and dropshadows",
+				"model_named": "GPT-5"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Would the design still feel premium if all decorative shadows were removed?",
+				"model_named": "GPT-5.4"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-11",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-grid-pattern-background",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5"
+		],
+		"kind": "treatment",
+		"name": "Grid-pattern background",
+		"description": "A faint grid (graph-paper) pattern behind the page, even on utilitarian screens like settings. Design Arena names 'Grid background' as a classic AI design smell that GPT-5.6 Sol suppressed relative to GPT-5.5.",
+		"detect": {
+			"type": "css",
+			"hint": "background-image with repeating linear-gradient lines (two perpendicular 1px gradients) or an SVG grid pattern on body/section.",
+			"values": [
+				"repeating-linear-gradient",
+				"background-size: 24px 24px"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "GPT-5.5 added a grid pattern background",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://notes.designarena.ai/how-openais-sol-finally-learned-design-taste/",
+				"date": "2026-07-15",
+				"author": "Design Arena",
+				"quote": "Classic AI Design “Smell” #2: Grid background",
+				"model_named": "GPT-5.5 (contrasted with GPT-5.6 Sol)"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-07-15",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-bento-grid-and-gaps",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"Codex"
+		],
+		"kind": "layout",
+		"name": "Bento-box grids (often with dead cells)",
+		"description": "Feature sections laid out as bento grids. Design Arena lists bento-box layouts among GPT-5.5's clusters; the GPT/Codex taste skill warns the grids are left with empty cells.",
+		"detect": {
+			"type": "structure",
+			"hint": "CSS grid with mixed col-span/row-span cards; flag empty grid areas (grid cells with no item) or grid-auto-flow not dense.",
+			"values": [
+				"col-span",
+				"row-span"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://notes.designarena.ai/how-openais-sol-finally-learned-design-taste/",
+				"date": "2026-07-15",
+				"author": "Design Arena",
+				"quote": "We see the same effect for other anti-patterns, like bento box layouts, large typefaces in hero images, and offset layouts.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "leave ugly empty gaps in bento grids",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "default bento/card grids",
+				"model_named": "Codex"
+			}
+		],
+		"independent_sources": 3,
+		"newest_source_date": "2026-07-15",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-explanatory-ui-copy-prompt-leak",
+		"family": "gpt",
+		"models": [
+			"GPT-5 Pro",
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"Codex"
+		],
+		"kind": "copy",
+		"name": "In-app text that explains the UI, design commentary or prompt language leaking into copy",
+		"description": "Visible text describing what the app does, how to use it, its styling or its shortcuts ('Click here to filter your results'), design commentary or brief language pasted into the UI, long captions and footer disclaimers, and redundant repeated text.",
+		"detect": {
+			"type": "text",
+			"hint": "Regex on visible text: /\\b(click|tap) (here|the)\\b|\\buse (this|the) .* to\\b|\\bthis (section|panel|page) (shows|lets you)\\b/i; text mentioning design terms (\"hero\", \"accent\", \"typography\", \"layout\") in UI copy; duplicate strings repeated across sections.",
+			"values": [
+				"Click here to filter your results"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "do not include prompt language or design commentary into the UI",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "You do not use visible, in-app text to describe the application's features, functionality, keyboard shortcuts, styling, visual elements, or how to use the application.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://open-design.ai/agents/codex-design/",
+				"date": "2026-09-11",
+				"author": "OpenDesign (Powerformer, Inc.); date = 'References checked' stamp",
+				"quote": "instructions leaking into UI copy",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://mowgli.ai/blog/codex-frontend-design",
+				"date": "2026-09-23",
+				"author": "Mowgli",
+				"quote": "Text that explains the UI (\"Click here to filter your results\")",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+				"date": "2026-04-28",
+				"author": "Sailop Blog",
+				"quote": "GPT-5 Pro tends to over-document its output: comments, JSDoc, README-style headers. This bleeds into the design (long captions, footer disclaimers).",
+				"model_named": "GPT-5 Pro"
+			},
+			{
+				"url": "https://www.reddit.com/r/OpenAI/comments/1us2t1t/already_disappointed_with_gpt_56_sol_frontend/",
+				"date": "2026-07-09",
+				"author": "u/ReporterCalm6238 (r/OpenAI)",
+				"quote": "redundancy: texts and elements repeated unnecessarily across UI creating this sense of mess and \"too much\"",
+				"model_named": "GPT-5.5 / GPT-5.6 Sol"
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-09-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-marketing-hero-in-product-ui",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"Codex"
+		],
+		"kind": "layout",
+		"name": "Marketing heroes and aspirational headlines inside dashboards/tools (or a landing page instead of the app)",
+		"description": "Asked for an app or dashboard, the model builds a landing page, or puts a hero-scale aspirational headline ('Morning support pulse') on top of a dashboard. OpenAI's prompts spend several rules on this.",
+		"detect": {
+			"type": "structure",
+			"hint": "On app/dashboard routes: an h1 > 32px with a tagline-style sentence above the working surface; a full-width hero section before any table/chart/filter. On 'build me an app' outputs: first screen is marketing (CTA buttons, feature list) not the tool.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Do not introduce a hero section unless the user explicitly asks for one.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Avoid aspirational hero lines, metaphors, campaign-style language, and executive-summary banners on product surfaces unless specifically requested.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "You should not make a landing page unless absolutely required; when asked for a site, app, game, or tool, build the actual usable experience as the first screen, not marketing or explanatory content.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "GPT-5.5 made the centerpiece the headline (”Morning support pulse”), inflated the metric numbers",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://mowgli.ai/blog/codex-frontend-design",
+				"date": "2026-09-23",
+				"author": "Mowgli",
+				"quote": "marketing copy inside product screens",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://github.com/LeoStehlik/no-slop-ui",
+				"date": "2026-03-30",
+				"author": "LeoStehlik (no-slop-ui, design guardrail for Codex and other agents)",
+				"quote": "Hero sections inside internal dashboards",
+				"model_named": "Codex (listed agent surface)"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-tagline-fragment-cadence",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"GPT-6"
+		],
+		"kind": "copy",
+		"name": "Tagline headlines and clipped two-fragment cadence ('More direction. Less interpretation.')",
+		"description": "Headlines are value-prop taglines instead of the brand/product name, and section heads use short paired fragments ('X. Less Y.', 'A better brief, in three moves.'), plus extra subheadings. OpenAI's GPT-5.5 prompt has to tell the model to make the H1 the brand/offer and push value props into supporting copy.",
+		"detect": {
+			"type": "text",
+			"hint": "h1/h2 text matching /^[A-Z][^.]{2,30}\\.\\s+(Less|More|No|Zero)\\s[^.]{2,30}\\.$/ or two sentences of <= 4 words each; h1 that does not contain the brand/product name.",
+			"values": [
+				"More direction. Less interpretation.",
+				"A better brief, in three moves."
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=49996909",
+				"date": "2026-10-07",
+				"author": "kingstnap (Hacker News)",
+				"quote": "Less taglines, eyebrow text, subheadings, decorative spacing, pills, cards.",
+				"model_named": "GPT-6"
+			},
+			{
+				"url": "https://www.xda-developers.com/built-website-with-fable-5-and-gpt-56-sol-winner-wasnt-who-i-expected/",
+				"date": "2026-08-03",
+				"author": "Nolen Jonker (XDA)",
+				"quote": "\"A better brief, in three moves.\" \"More direction. Less interpretation.\" \"Give the model something worth following.\" All Sol-written",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "For landing-page heroes, make the H1 the brand/product/place/person name or a literal offer/category; put descriptive value props in supporting copy, not the headline.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "The headline reads “Command every dollar before it becomes runway risk.”",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Sections that repeat the same mood statement",
+				"model_named": "GPT-5.4"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-10-07",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-buzzword-saas-copy",
+		"family": "gpt",
+		"models": [
+			"GPT-5",
+			"GPT-5.4",
+			"ChatGPT",
+			"Codex"
+		],
+		"kind": "copy",
+		"name": "Buzzword SaaS copy ('empower', 'seamless', 'robust', 'Transform your workflow')",
+		"description": "Generic marketing verbs and filler lines in headlines and feature copy.",
+		"detect": {
+			"type": "text",
+			"hint": "Case-insensitive word list match in visible text: empower, seamless(ly), robust, transform your, supercharge, unlock.",
+			"values": [
+				"empower",
+				"seamless",
+				"robust",
+				"Transform your workflow"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+				"date": "2026-04-28",
+				"author": "Sailop Blog",
+				"quote": "\"Empower\", \"seamless\", \"robust\" frequent unless banned",
+				"model_named": "GPT-5"
+			},
+			{
+				"url": "https://www.reddit.com/r/ClaudeCoding/comments/1vwe61s/tldr_i_finally_figured_out_why_every_aicoded_site/",
+				"date": "2026-08-23",
+				"author": "u/AudienceNo2554 (crossposted from r/ClaudeCode)",
+				"quote": "\"Transform your workflow\" headline",
+				"model_named": "Claude / ChatGPT"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "No filler copy.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://github.com/LeoStehlik/no-slop-ui",
+				"date": "2026-03-30",
+				"author": "LeoStehlik (no-slop-ui, design guardrail for Codex and other agents)",
+				"quote": "Eyebrow labels and vague SaaS filler copy",
+				"model_named": "Codex (listed agent surface)"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-08-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-weak-brand-presence",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"GPT-6"
+		],
+		"kind": "layout",
+		"name": "Weak brand presence: brand only in nav, headline overpowers the brand",
+		"description": "The first viewport could belong to any company: the product name sits only in the nav (or an eyebrow) and a generic headline dominates. OpenAI's 'brand test' exists because this is a GPT default.",
+		"detect": {
+			"type": "structure",
+			"hint": "Brand/product name (from <title> or logo alt) absent from the h1 and not the largest text in the first viewport.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "If the first viewport could belong to another brand after removing the nav, the branding is too weak.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "the brand/product/place/object must be a first-viewport signal, not only tiny nav text or an eyebrow.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/microsoft/vscode/blob/main/extensions/copilot/src/extension/prompts/node/agent/openai/gpt6Prompt.tsx",
+				"date": "2026-09-16",
+				"author": "Microsoft VS Code Copilot GPT-6 prompt (ships OpenAI's frontend guidance text)",
+				"quote": "the brand/product/place/object must be a first-viewport signal, not only tiny nav text or an eyebrow.",
+				"model_named": "GPT-6"
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-09-16",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-icon-rows-ornamental-icons",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"Codex"
+		],
+		"kind": "element",
+		"name": "Icon rows and ornamental icons (icon-heavy nav, icon on every feature)",
+		"description": "Rows of icons, an icon in front of every feature/heading, and icon-heavy headers. Lucide is the usual set, which OpenAI's own GPT-5.5 prompt prescribes for buttons.",
+		"detect": {
+			"type": "dom",
+			"hint": "Count <svg> icons (lucide class names, 24x24 viewBox, stroke-width 2) per section; flag a row of >= 3 icon+label items or an icon before every h3.",
+			"values": [
+				"lucide"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "ornamental icons that do not improve scanning",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "Avoid icon-heavy nav, extra buttons, search bars, status widgets, segmented controls, decorative illustrations, or dense product chrome in the header",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "no filler cards, hero eyebrow/kicker labels, pills, badges, fake metrics, or icon rows unless explicitly requested",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47668467",
+				"date": "2026-04-06",
+				"author": "EForEndeavour (Hacker News)",
+				"quote": "Lucide icons",
+				"model_named": "Claude Code, Cursor, Codex (not separated)"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-04-23",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-text-buttons-and-glyph-arrows",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"Codex"
+		],
+		"kind": "element",
+		"name": "Rounded text buttons and plain-text glyph arrows instead of icons",
+		"description": "Tool UIs use rounded rectangles with words ('Undo', 'Bold') where a standard icon belongs, and arrows/chevrons as text characters (→, ›) rather than SVG icons. Both are inferred from OpenAI instructions telling the model not to do it.",
+		"detect": {
+			"type": "dom",
+			"hint": "Buttons whose only content is a short word for a standard action (undo, redo, bold, italic, zoom, download); text nodes consisting of → ← › ‹ » ▸ used as controls.",
+			"values": [
+				"→",
+				"›",
+				"»"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/api/docs/guides/frontend-prompt",
+				"date": "2026-04-25",
+				"author": "OpenAI developer docs, 'Frontend prompt instructions' (targets GPT-5.5; date = first Wayback capture)",
+				"quote": "You do not use rounded rectangular UI elements with text inside if you could use a familiar symbol or icon instead",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-apps/skills/frontend-app-builder/SKILL.md",
+				"date": "2026-04-23",
+				"author": "OpenAI (openai/plugins, Codex build-web-apps frontend-app-builder skill)",
+				"quote": "do not use plain text glyphs unless the concept intentionally does.",
+				"model_named": "Codex"
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-04-25",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-emoji-and-em-dashes",
+		"family": "gpt",
+		"models": [
+			"GPT-6",
+			"Codex"
+		],
+		"kind": "copy",
+		"name": "Emoji as icons/decoration and em dashes in copy",
+		"description": "The GPT/Codex-specific taste skill opens with a hard ban on emojis. OpenAI's GPT-5.6 and GPT-6 agent prompts (as shipped in VS Code Copilot) ban emojis and em dashes unless asked, but that rule targets the chat answer, not UI copy, so applying it to UI is inferred. The only UI-specific 2026 em-dash observation lumps Codex with Claude Code and Cursor. Weak GPT-specific evidence.",
+		"detect": {
+			"type": "text",
+			"hint": "Unicode emoji (\\p{Extended_Pictographic}) in headings, feature-card icon slots, buttons or bullets; count U+2014 (—) in visible headings, buttons and short paragraphs.",
+			"values": [
+				"—"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "DO NOT USE EMOJIS IN YOUR CODE, COMMENTS, OR OUTPUT.",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://github.com/microsoft/vscode/blob/main/extensions/copilot/src/extension/prompts/node/agent/openai/gpt6Prompt.tsx",
+				"date": "2026-09-16",
+				"author": "Microsoft VS Code Copilot GPT-6 prompt (ships OpenAI's frontend guidance text)",
+				"quote": "Don’t use emojis or em dashes unless explicitly instructed.",
+				"model_named": "GPT-6 (chat-output rule)"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47668467",
+				"date": "2026-04-06",
+				"author": "EForEndeavour (Hacker News)",
+				"quote": "em dashes, of course the em dashes",
+				"model_named": "Claude Code, Cursor, Codex (not separated)"
+			}
+		],
+		"independent_sources": 3,
+		"newest_source_date": "2026-09-16",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-same-template-low-variance",
+		"family": "gpt",
+		"models": [
+			"GPT-5.5",
+			"GPT-5.6 Sol",
+			"Codex"
+		],
+		"kind": "layout",
+		"name": "Same template every time (low variance across briefs)",
+		"description": "Different briefs get the same visual language and layout. GPT-5.5's five tasks read as 'the same designer's modern-SaaS template'. Users report always the same fonts, styles and layouts, and Codex models 'sticky to the default AI look'. Design Arena: GPT-5.6 Sol still works from templates but personalises more.",
+		"detect": {
+			"type": "structure",
+			"hint": "Cross-page/cross-generation check: compare font families, accent hue, radius, section order across outputs for different prompts; flag when they match.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "The five GPT-5.5 outputs feel like the same designer’s modern-SaaS template applied to five contexts.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://www.reddit.com/r/OpenAI/comments/1us2t1t/already_disappointed_with_gpt_56_sol_frontend/",
+				"date": "2026-07-09",
+				"author": "u/ReporterCalm6238 (r/OpenAI)",
+				"quote": "lack of originality: always the same fonts, styles, layouts",
+				"model_named": "GPT-5.5 / GPT-5.6 Sol"
+			},
+			{
+				"url": "https://www.reddit.com/r/codex/comments/1wje03t/ui_design_tips/pai3kir/",
+				"date": "2026-09-18",
+				"author": "u/Anxious_Marsupial_59 (r/codex)",
+				"quote": "codex models are too afraid to big UI/UX changes so they are very sticky to the default AI look",
+				"model_named": "Codex (GPT-5.6 / GPT-6)"
+			},
+			{
+				"url": "https://www.reddit.com/r/codex/comments/1wje03t/ui_design_tips/pai8qgx/",
+				"date": "2026-09-18",
+				"author": "u/Key-Rock7406 (r/codex)",
+				"quote": "If you just try to prompt codex with out an image or video it just produces the same AI slop websites.",
+				"model_named": "Codex"
+			},
+			{
+				"url": "https://dev.to/pranavbobde/maybe-gpt-wasnt-the-ui-problem-38ag",
+				"date": "2026-07-22",
+				"author": "Pranav Bobde (dev.to)",
+				"quote": "same-ish layouts",
+				"model_named": "Codex / GPT"
+			},
+			{
+				"url": "https://github.com/Leonxlnx/taste-skill/blob/main/skills/gpt-tasteskill/SKILL.md",
+				"date": "2026-04-18",
+				"author": "Leonxlnx (taste-skill, gpt-tasteskill variant 'for GPT/Codex')",
+				"quote": "endlessly repeat the same Left/Right layouts",
+				"model_named": "GPT/Codex"
+			},
+			{
+				"url": "https://notes.designarena.ai/how-openais-sol-finally-learned-design-taste/",
+				"date": "2026-07-15",
+				"author": "Design Arena",
+				"quote": "GPT-5.6 Sol starts from proven design structures but adapts them substantially to each prompt",
+				"model_named": "GPT-5.6 Sol"
+			}
+		],
+		"independent_sources": 7,
+		"newest_source_date": "2026-09-18",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-safe-underdesigned-no-motion",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.6 Luna",
+			"GPT-6.1 Sol"
+		],
+		"kind": "treatment",
+		"name": "Safe, under-designed output with no motion ('competent wireframe')",
+		"description": "The opposite failure from the slop list: GPT pages are clean but do the minimum: flat white cards, no visual hierarchy, wireframe-grade, no animations at all. OpenAI's skill has to require '2-3 intentional motions'.",
+		"detect": {
+			"type": "css",
+			"hint": "No CSS transitions/animations/@keyframes or JS animation libs; <= 2 colours besides neutrals; flat white cards with no imagery.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://thomas-wiegold.com/blog/gpt-6-1-sol-review/",
+				"date": "2026-10-05",
+				"author": "Thomas Wiegold",
+				"quote": "The design is too simple, and there are no animations at all.",
+				"model_named": "GPT-6.1 Sol"
+			},
+			{
+				"url": "https://www.banani.co/blog/gpt-5.4-ui-frontend-design",
+				"date": "2026-06-18",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "baseline output was functionally solid but visually safe.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://www.banani.co/blog/gpt-5.4-ui-frontend-design",
+				"date": "2026-06-18",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "Baseline gave a sensible but flat duo-tone dashboard with no visual hierarchy.",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "a competent wireframe with real content",
+				"model_named": "GPT-5.6 Luna"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "Ship at least 2-3 intentional motions for visually led work.",
+				"model_named": "GPT-5.4"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-10-05",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-pricing-three-tier-middle-highlight",
+		"family": "gpt",
+		"models": [
+			"GPT-5",
+			"GPT-5.5",
+			"GPT-5.6 Sol"
+		],
+		"kind": "layout",
+		"name": "Three-tier pricing with an inverted/'Most Popular' middle tier and 'Save 20%' toggle",
+		"description": "Pricing pages follow the stock playbook: three tiers, the middle one flipped/highlighted with a 'Most Popular' badge, an annual toggle with a 'Save 20%' badge, often on a dark blue/purple gradient.",
+		"detect": {
+			"type": "structure",
+			"hint": "Pricing section with exactly 3 plan cards where the middle differs in background/scale; text 'Most Popular' or /save \\d+%/i near a billing toggle.",
+			"values": [
+				"Most Popular",
+				"Save 20%"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "GPT-5.5 played the standard SaaS dark-mode pricing playbook: dark blue/purple gradient background, three tiers, the middle “Scale” tier flipped to white to draw the eye.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "The annual toggle with “Save 20%” badge sits cleanly in the layout.",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://divriots.com/blog/gpt56-sol-vs-terra-vs-luna-in-ai-to-design/",
+				"date": "2026-08-05",
+				"author": "Pierrick (@S3kelman1), divRIOTS",
+				"quote": "the three tiers visually balanced and the “Most Popular” badge drawing the eye to the middle option",
+				"model_named": "GPT-5.6 Sol"
+			},
+			{
+				"url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+				"date": "2026-04-28",
+				"author": "Sailop Blog",
+				"quote": "a pricing table with three tiers (the middle one labeled \"Most Popular\")",
+				"model_named": "GPT-5 (among nine models)"
+			}
+		],
+		"independent_sources": 3,
+		"newest_source_date": "2026-08-05",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-dashboard-card-mosaic",
+		"family": "gpt",
+		"models": [
+			"GPT-5.4",
+			"GPT-5.5",
+			"Codex"
+		],
+		"kind": "layout",
+		"name": "Dashboard card mosaic with decorative charts",
+		"description": "App/dashboard UIs built as a mosaic of bordered cards (KPI tiles + chart cards + table card) with thick borders on every region and decorative smoothed-curve charts, instead of a layout built around the workspace.",
+		"detect": {
+			"type": "structure",
+			"hint": "Dashboard page where >= 6 bordered cards tile the main area; every region has a border; chart lines use curve smoothing (monotone/basis) with gradient fills.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "dashboard-card mosaics - thick borders on every region - decorative gradients behind routine product UI",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4",
+				"date": "2026-03-20",
+				"author": "OpenAI (Brian Fioca, Alistair Gillespie, Kevin Leneway, Robert Tinn)",
+				"quote": "App UI made of stacked cards instead of layout",
+				"model_named": "GPT-5.4"
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "used soft smoothed Bezier curves on the charts that look more decorative than informational",
+				"model_named": "GPT-5.5"
+			},
+			{
+				"url": "https://github.com/openai/plugins/blob/main/plugins/build-web-data-visualization/assets/templates/human-visual-review-checklist.md",
+				"date": "2026-05-26",
+				"author": "OpenAI (openai/plugins, data-visualization review checklist)",
+				"quote": "Does the page avoid a generic grid of bordered chart cards?",
+				"model_named": "Codex (data-viz plugin)"
+			},
+			{
+				"url": "https://dev.to/pranavbobde/maybe-gpt-wasnt-the-ui-problem-38ag",
+				"date": "2026-07-22",
+				"author": "Pranav Bobde (dev.to)",
+				"quote": "generic dashboard polish",
+				"model_named": "Codex / GPT"
+			}
+		],
+		"independent_sources": 3,
+		"newest_source_date": "2026-07-22",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-confetti-overuse",
+		"family": "gpt",
+		"models": [
+			"GPT-5.6 Sol"
+		],
+		"kind": "treatment",
+		"name": "Confetti effects (GPT-5.6 Sol)",
+		"description": "Design Arena measured GPT-5.6 Sol adding confetti in over a quarter of website generations, hand-rolling its own confetti code when no library is present.",
+		"detect": {
+			"type": "dom",
+			"hint": "Scripts or canvases named/containing 'confetti'; many small absolutely-positioned coloured particles animated on load/click.",
+			"values": [
+				"confetti",
+				"26.5%"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://notes.designarena.ai/how-openais-sol-finally-learned-design-taste/",
+				"date": "2026-07-15",
+				"author": "Design Arena",
+				"quote": "GPT-5.6 Sol consistently overuses confetti, which appears in over 26.5% of generations.",
+				"model_named": "GPT-5.6 Sol"
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-07-15",
+		"older_than_7_months": false
+	},
+	{
+		"id": "gpt-circular-design-elements",
+		"family": "gpt",
+		"models": [
+			"GPT-5.6"
+		],
+		"kind": "element",
+		"name": "Recurring circular design elements (GPT-5.6)",
+		"description": "A reviewer noticed GPT-5.6 repeatedly reaching for circular elements (rings, round progress, circular motifs) across unrelated mobile apps.",
+		"detect": {
+			"type": "dom",
+			"hint": "Multiple decorative elements with border-radius: 50% (rings, circular progress, round illustrations) not tied to avatars/icons.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://www.banani.co/blog/gpt-5.6-ui-design-review",
+				"date": "2026-07-10",
+				"author": "Vlad Solomakha (Banani)",
+				"quote": "am noticing its penchant for circular design elements. It was in the minimal journaling app as well.",
+				"model_named": "GPT-5.6"
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-07-10",
+		"older_than_7_months": false
+	}
+]

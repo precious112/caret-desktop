@@ -30,6 +30,7 @@ import {
 	StructuredOutputError,
 	type StructuredRequest,
 	type StructuredResult,
+	type ToolCallRecord,
 } from "../backend"
 import { EventQueue } from "../stream-utils"
 import { resolveOpencodeBinary } from "./binary"
@@ -262,14 +263,15 @@ export class OpencodeBackend implements CodingBackend {
 	 */
 	async structured<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
 		try {
-			return { value: await this.promptForJson<T>(req, true), emulated: false }
+			return { ...(await this.promptForJson<T>(req, true)), emulated: false }
 		} catch (err) {
+			if (req.signal?.aborted) throw err
 			Logger.warn(`[backend] native structured output failed, emulating: ${err}`)
-			return { value: await this.promptForJson<T>(req, false), emulated: true }
+			return { ...(await this.promptForJson<T>(req, false)), emulated: true }
 		}
 	}
 
-	private async promptForJson<T>(req: StructuredRequest, native: boolean): Promise<T> {
+	private async promptForJson<T>(req: StructuredRequest, native: boolean): Promise<{ value: T; toolCalls: ToolCallRecord[] }> {
 		const server = await this.server()
 		const created = await request<OpencodeSession>(server, "/session", {
 			method: "POST",
@@ -277,6 +279,13 @@ export class OpencodeBackend implements CodingBackend {
 			body: { title: "Caret — structured" },
 		})
 
+		const abortSession = () => {
+			void request(server, `/session/${created.id}/abort`, {
+				method: "POST",
+				query: { directory: req.workingDirectory },
+			}).catch(() => {})
+		}
+		req.signal?.addEventListener("abort", abortSession, { once: true })
 		try {
 			const response = await request<OpencodePromptResponse>(server, `/session/${created.id}/message`, {
 				method: "POST",
@@ -287,11 +296,14 @@ export class OpencodeBackend implements CodingBackend {
 					...(modelRef(req.model, req.effort) ?? {}),
 					...(native ? { format: { type: "json_schema", schema: req.schema } } : {}),
 					// The model is answering a question, not doing work. Every tool it
-					// could reach for here is a way to spend minutes and get it wrong.
-					tools: { bash: false, edit: false, write: false, webfetch: false },
+					// could reach for here is a way to spend minutes and get it wrong —
+					// unless the caller hands it specific ones (the Design pass's libraries).
+					tools: toolsFor(req.workingDirectory, { bash: false, edit: false, write: false, webfetch: false }, req.tools),
 				},
+				signal: req.signal,
 			})
 
+			const toolCalls = toolCallsOf(response.parts)
 			if (response.info.error) {
 				throw new StructuredOutputError(response.info.error.data?.message ?? response.info.error.name)
 			}
@@ -300,15 +312,16 @@ export class OpencodeBackend implements CodingBackend {
 				const part = response.parts.find((p) => p.type === "tool" && p.tool === STRUCTURED_OUTPUT_TOOL)
 				const value = part && "state" in part ? (part.state as OpencodeToolState).input : undefined
 				if (!value) throw new StructuredOutputError("it returned no structured answer at all")
-				return value as T
+				return { value: value as T, toolCalls }
 			}
 
 			const text = response.parts
 				.filter((p): p is Extract<OpencodePart, { type: "text" }> => p.type === "text")
 				.map((p) => p.text)
 				.join("")
-			return parseJsonAnswer<T>(text)
+			return { value: parseJsonAnswer<T>(text), toolCalls }
 		} finally {
+			req.signal?.removeEventListener("abort", abortSession)
 			await request(server, `/session/${created.id}`, {
 				method: "DELETE",
 				query: { directory: req.workingDirectory },
@@ -567,7 +580,7 @@ export class OpencodeBackend implements CodingBackend {
 					body: {
 						parts: [{ type: "text", text: "Reply with the single word: ok" }],
 						model: { providerID: model.slice(0, slash), modelID: model.slice(slash + 1) },
-						tools: { bash: false, edit: false, write: false, webfetch: false },
+						tools: toolsFor(workingDirectory, { bash: false, edit: false, write: false, webfetch: false }),
 					},
 				},
 			)
@@ -688,6 +701,49 @@ export class OpencodeBackend implements CodingBackend {
 			permission: { ...CARET_SERVER_CONFIG.permission, ...serverConfigExtra.permission },
 		})
 	}
+}
+
+/**
+ * Tool switches every prompt in a project carries, before its own.
+ *
+ * The Design pass's libraries are MCP servers added to the project's instance,
+ * so their tools would otherwise reach every session there — the chat, the
+ * interview, a one-off structured answer. Two reasons that must not happen
+ * unfiltered: a library's write tools (21st.dev's server can delete components
+ * and edit your profile), and one tool with a top-level `oneOf` in its schema
+ * makes Anthropic refuse the WHOLE turn (measured: Lazyweb's public server,
+ * `scripts/probe-mcp-runtime.ts`). The policy is an allowlist per library.
+ */
+let toolPolicy: (directory: string) => Record<string, boolean> = () => ({})
+
+export function setOpencodeToolPolicy(policy: (directory: string) => Record<string, boolean>): void {
+	toolPolicy = policy
+}
+
+/**
+ * The project's policy, then the call's own switches, in that order: OpenCode
+ * lets the last matching key win, so a call can re-enable what the policy hides.
+ */
+export function toolsFor(directory: string, ...layers: Array<Record<string, boolean> | undefined>): Record<string, boolean> {
+	const merged: Record<string, boolean> = {}
+	for (const layer of [toolPolicy(directory), ...layers]) {
+		for (const [key, value] of Object.entries(layer ?? {})) {
+			// Re-insert so the later layer's key also comes later.
+			delete merged[key]
+			merged[key] = value
+		}
+	}
+	return merged
+}
+
+function toolCallsOf(parts: OpencodePart[]): ToolCallRecord[] {
+	return parts
+		.filter((p) => p.type === "tool" && p.tool !== STRUCTURED_OUTPUT_TOOL)
+		.map((p) => {
+			const state = ("state" in p ? p.state : {}) as { status?: string; error?: unknown }
+			const tool = String((p as { tool?: string }).tool ?? "")
+			return state.status === "error" ? { tool, ok: false, error: String(state.error ?? "") } : { tool, ok: true }
+		})
 }
 
 /**
@@ -878,9 +934,10 @@ class OpencodeSessionHandle implements BackendSession {
 					...(modelRef(this.options.model, this.options.effort) ?? {}),
 					// Same per-prompt `tools` map the structured path uses on /message:
 					// false removes the tool from this turn entirely.
-					...(input.disabledTools?.length
-						? { tools: Object.fromEntries(input.disabledTools.map((tool) => [tool, false])) }
-						: {}),
+					tools: toolsFor(
+						this.options.workingDirectory,
+						Object.fromEntries((input.disabledTools ?? []).map((tool) => [tool, false])),
+					),
 					// The Plan agent is a second line of defence, never the boundary:
 					// upstream subagents have been reported not to inherit it.
 					...(this.options.mode === "read-only" ? { agent: "plan" } : {}),

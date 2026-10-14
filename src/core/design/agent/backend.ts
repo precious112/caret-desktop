@@ -222,6 +222,22 @@ export interface StructuredRequest {
 	model?: string
 	effort?: ReasoningEffort
 	systemPrompt?: string
+	/**
+	 * Tools to switch on (true) or off (false) for this one answer, over the
+	 * defaults. Keys may be globs (`"lazyweb_*"`); later keys win, so put a glob
+	 * before the specific names it makes exceptions for.
+	 */
+	tools?: Record<string, boolean>
+	/** Cancels the answer: the session is aborted and the call rejects. */
+	signal?: AbortSignal
+}
+
+/** One tool call made while answering, for callers that watch their tools' health. */
+export interface ToolCallRecord {
+	tool: string
+	ok: boolean
+	/** The tool's own error text, when it failed. */
+	error?: string
 }
 
 export interface StructuredResult<T> {
@@ -232,6 +248,8 @@ export interface StructuredResult<T> {
 	 * load-bearing in that case — schema-valid is a weaker guarantee here.
 	 */
 	emulated: boolean
+	/** Every tool call the model made while answering, in order. */
+	toolCalls?: ToolCallRecord[]
 }
 
 /** Why a backend can or cannot be used, in terms the setup screen can render. */
