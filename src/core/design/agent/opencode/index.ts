@@ -13,6 +13,10 @@
  * nothing is ever decided behind Caret's back; the `plan` agent on read-only
  * sessions is a second line, not the boundary.
  */
+import * as fsp from "fs/promises"
+import * as os from "os"
+import * as path from "path"
+
 import { Logger } from "@/shared/services/Logger"
 import {
 	type AvailabilityReport,
@@ -21,11 +25,13 @@ import {
 	type BackendSession,
 	type BackendSessionSummary,
 	type CodingBackend,
+	isProviderRefusal,
 	type McpControl,
 	type ModelGroup,
 	type OauthChallenge,
 	type PermissionDecision,
 	type ProviderDoor,
+	ProviderRefusalError,
 	type SendInput,
 	type StartSessionOptions,
 	StructuredOutputError,
@@ -55,6 +61,21 @@ import { STRUCTURED_OUTPUT_TOOL } from "./protocol"
 import { ensureOpencodeServer, type RunningServer, stopOpencodeServer } from "./server"
 
 /**
+ * The agent every one-off answer runs as (interview turns, the Design pass's
+ * checks and judges, asset briefs, image checks). Its own short prompt
+ * REPLACES OpenCode's built-in coding-agent prompt, and it may use nothing
+ * until a call switches a tool on. Measured on the same one-line request:
+ * about 8,000 input tokens as the default agent, under 500 as this one — the
+ * request's own instructions are no longer buried under a coding agent's.
+ */
+export const ANSWER_AGENT = "caret-answer"
+
+const ANSWER_PROMPT = `You are answering one request from Caret, a design tool, as an automated step. Everything you need is in the request. Reply exactly in the format it asks for. You cannot ask anyone anything and nobody will reply to a question: when something is unclear, make the most reasonable choice.`
+
+/** Reading the project: what the from-app interview, the import survey and the planner may do. */
+export const READ_TOOLS: Record<string, boolean> = { read: true, glob: true, grep: true, list: true }
+
+/**
  * Passed inline via `OPENCODE_CONFIG_CONTENT`.
  *
  * Caret never writes `~/.config/opencode/*`. The user's own config and
@@ -70,6 +91,23 @@ const CARET_SERVER_CONFIG: OpencodeConfig = {
 		bash: "ask",
 		webfetch: "ask",
 		external_directory: "ask",
+		// OpenCode's own way to ask the user something, which Caret never shows:
+		// a session that calls it waits forever (field report: an interview turn
+		// stuck twelve minutes on it). Caret asks its own questions.
+		question: "deny",
+		// Caret sets the mode of every turn itself; a model must not switch it.
+		plan_enter: "deny",
+		plan_exit: "deny",
+	},
+	agent: {
+		[ANSWER_AGENT]: {
+			mode: "primary",
+			hidden: true,
+			description: "Answers one request from Caret, in the format it asks for.",
+			prompt: ANSWER_PROMPT,
+			// Nothing but the answer itself; a call opts into the tools it needs.
+			permission: { "*": "deny", StructuredOutput: "allow" },
+		},
 	},
 	logLevel: "WARN",
 }
@@ -275,13 +313,19 @@ export class OpencodeBackend implements CodingBackend {
 		try {
 			return { ...(await this.promptForJson<T>(req, true)), emulated: false }
 		} catch (err) {
-			if (req.signal?.aborted) throw err
+			// A refusal is the provider's answer to any request; asking again in
+			// another format only doubles the wait.
+			if (req.signal?.aborted || err instanceof ProviderRefusalError) throw err
 			Logger.warn(`[backend] native structured output failed, emulating: ${err}`)
 			return { ...(await this.promptForJson<T>(req, false)), emulated: true }
 		}
 	}
 
-	private async promptForJson<T>(req: StructuredRequest, native: boolean): Promise<{ value: T; toolCalls: ToolCallRecord[] }> {
+	private async promptForJson<T>(
+		original: StructuredRequest,
+		native: boolean,
+	): Promise<{ value: T; toolCalls: ToolCallRecord[] }> {
+		const req = original.scratch ? { ...original, workingDirectory: await answerDirectory() } : original
 		const server = await this.server()
 		const created = await request<OpencodeSession>(server, "/session", {
 			method: "POST",
@@ -308,7 +352,7 @@ export class OpencodeBackend implements CodingBackend {
 					// The model is answering a question, not doing work. Every tool it
 					// could reach for here is a way to spend minutes and get it wrong —
 					// unless the caller hands it specific ones (the Design pass's libraries).
-					tools: toolsFor(req.workingDirectory, { bash: false, edit: false, write: false, webfetch: false }, req.tools),
+					...answerSetup(req),
 				},
 				signal: req.signal,
 			})
@@ -317,7 +361,9 @@ export class OpencodeBackend implements CodingBackend {
 			// there live in earlier messages of the same session, so read them all.
 			const toolCalls = await this.sessionToolCalls(server, created.id, req.workingDirectory, response.parts)
 			if (response.info.error) {
-				throw new StructuredOutputError(response.info.error.data?.message ?? response.info.error.name)
+				const message = response.info.error.data?.message ?? response.info.error.name
+				if (isProviderRefusal(message)) throw new ProviderRefusalError(message)
+				throw new StructuredOutputError(message)
 			}
 
 			if (native) {
@@ -636,7 +682,7 @@ export class OpencodeBackend implements CodingBackend {
 					body: {
 						parts: [{ type: "text", text: "Reply with the single word: ok" }],
 						model: { providerID: model.slice(0, slash), modelID: model.slice(slash + 1) },
-						tools: toolsFor(workingDirectory, { bash: false, edit: false, write: false, webfetch: false }),
+						agent: ANSWER_AGENT,
 					},
 				},
 			)
@@ -755,6 +801,7 @@ export class OpencodeBackend implements CodingBackend {
 			...CARET_SERVER_CONFIG,
 			...serverConfigExtra,
 			permission: { ...CARET_SERVER_CONFIG.permission, ...serverConfigExtra.permission },
+			agent: { ...CARET_SERVER_CONFIG.agent, ...serverConfigExtra.agent },
 		})
 	}
 }
@@ -781,8 +828,13 @@ export function setOpencodeToolPolicy(policy: (directory: string) => Record<stri
  * lets the last matching key win, so a call can re-enable what the policy hides.
  */
 export function toolsFor(directory: string, ...layers: Array<Record<string, boolean> | undefined>): Record<string, boolean> {
+	return mergeTools(toolPolicy(directory), ...layers)
+}
+
+/** Tool switches merged in order, the later key winning and also coming later. */
+export function mergeTools(...layers: Array<Record<string, boolean> | undefined>): Record<string, boolean> {
 	const merged: Record<string, boolean> = {}
-	for (const layer of [toolPolicy(directory), ...layers]) {
+	for (const layer of layers) {
 		for (const [key, value] of Object.entries(layer ?? {})) {
 			// Re-insert so the later layer's key also comes later.
 			delete merged[key]
@@ -790,6 +842,35 @@ export function toolsFor(directory: string, ...layers: Array<Record<string, bool
 		}
 	}
 	return merged
+}
+
+/**
+ * Which agent answers and with which tools. Every answer is Caret's lean agent
+ * (its agent denies all tools; a call opts back into reads), except the
+ * planner, which keeps the built-in prompt with every tool off but reads, and
+ * the designer, which also gets the project's library allowlist.
+ */
+export function answerSetup(req: StructuredRequest): { agent?: string; tools: Record<string, boolean> } {
+	const reads = req.reads ? READ_TOOLS : undefined
+	if (req.openCodePrompt) return { tools: mergeTools({ "*": false, StructuredOutput: true }, reads, req.tools) }
+	if (req.allowTools) return { agent: ANSWER_AGENT, tools: toolsFor(req.workingDirectory, reads, req.tools) }
+	return { agent: ANSWER_AGENT, tools: mergeTools(reads, req.tools) }
+}
+
+let scratchDirectory: Promise<string> | null = null
+
+/**
+ * Where answers that need nothing from a project run: no AGENTS.md, no MCP
+ * servers. Resolved through symlinks (macOS /var → /private/var), because the
+ * server treats a path that resolves elsewhere as outside the project.
+ */
+export function answerDirectory(): Promise<string> {
+	scratchDirectory ??= (async () => {
+		const dir = path.join(os.tmpdir(), "caret-answers")
+		await fsp.mkdir(dir, { recursive: true })
+		return fsp.realpath(dir)
+	})()
+	return scratchDirectory
 }
 
 function toolCallsOf(parts: OpencodePart[]): ToolCallRecord[] {
@@ -990,13 +1071,17 @@ class OpencodeSessionHandle implements BackendSession {
 					...(modelRef(this.options.model, this.options.effort) ?? {}),
 					// Same per-prompt `tools` map the structured path uses on /message:
 					// false removes the tool from this turn entirely.
-					tools: toolsFor(
-						this.options.workingDirectory,
-						Object.fromEntries((input.disabledTools ?? []).map((tool) => [tool, false])),
-					),
+					// A lean session uses no tools at all (its agent denies everything);
+					// a coding session gets the project's library allowlist.
+					tools: this.options.lean
+						? mergeTools(Object.fromEntries((input.disabledTools ?? []).map((tool) => [tool, false])))
+						: toolsFor(
+								this.options.workingDirectory,
+								Object.fromEntries((input.disabledTools ?? []).map((tool) => [tool, false])),
+							),
 					// The Plan agent is a second line of defence, never the boundary:
 					// upstream subagents have been reported not to inherit it.
-					...(this.options.mode === "read-only" ? { agent: "plan" } : {}),
+					...(this.options.lean ? { agent: ANSWER_AGENT } : this.options.mode === "read-only" ? { agent: "plan" } : {}),
 				},
 			})
 

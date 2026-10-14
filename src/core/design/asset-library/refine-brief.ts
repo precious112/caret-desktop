@@ -186,6 +186,8 @@ export async function refineBrief(input: {
 			prompt,
 			schema: REFINE_SCHEMA as unknown as Record<string, unknown>,
 			model: input.model,
+			// Text in, text out: nothing from the project is needed.
+			scratch: true,
 		})
 		const rebuilt = result.value?.prompt?.trim()
 		if (!rebuilt) return null

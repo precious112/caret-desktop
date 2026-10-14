@@ -371,6 +371,8 @@ export async function clarifyRequest(input: {
 			prompt,
 			schema: CLARIFY_SCHEMA as unknown as Record<string, unknown>,
 			model: input.model,
+			// Text in, text out: nothing from the project is needed.
+			scratch: true,
 		})
 		const value = result.value
 		if (!value || typeof value.sufficient !== "boolean") return { sufficient: true, questions: [] }

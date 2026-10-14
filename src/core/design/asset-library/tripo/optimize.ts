@@ -84,6 +84,7 @@ export async function decideOptimization(input: OptimizationInput): Promise<Opti
 		workingDirectory: input.workingDirectory,
 		model: input.model || undefined,
 		schema: DECISION_SCHEMA,
+		scratch: true,
 		systemPrompt:
 			"You are deciding mesh-optimization parameters for a 3D asset that will be embedded in a web page. " +
 			"You answer with parameters only; a conversion service applies them.",

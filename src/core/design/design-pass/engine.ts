@@ -11,7 +11,7 @@
  * Every model call goes through {@link PassModels}, so the whole loop can be run
  * against scripted answers in tests.
  */
-import type { ToolCallRecord } from "../agent/backend"
+import { ProviderRefusalError, type ToolCallRecord } from "../agent/backend"
 import {
 	applyVerdicts,
 	type Defence,
@@ -63,7 +63,9 @@ import {
 } from "./prompts"
 
 export interface PassModels {
-	/** The user's main model: plans, defends, rewrites. */
+	/** The user's main model, planning: the one step that may read the project. */
+	planner<T>(prompt: string, schema: Record<string, unknown>): Promise<T>
+	/** The user's main model: defends and rewrites. */
 	main<T>(prompt: string, schema: Record<string, unknown>): Promise<T>
 	/** The helper model: checks and judges. */
 	helper<T>(prompt: string, schema: Record<string, unknown>): Promise<T>
@@ -186,7 +188,7 @@ class DesignPass {
 
 		// 1. Plan, section by section.
 		let plan = await this.step("plan", async () => {
-			const raw = await this.retry("plan", () => deps.models.main<unknown>(planPrompt(deps.context), PLAN_SCHEMA))
+			const raw = await this.retry("plan", () => deps.models.planner<unknown>(planPrompt(deps.context), PLAN_SCHEMA))
 			try {
 				return normalizePlan(raw)
 			} catch (error) {
@@ -508,6 +510,8 @@ class DesignPass {
 				return await call()
 			} catch (error) {
 				if (this.deps.signal?.aborted) throw new Cancelled()
+				// A usage limit or billing refusal: retrying only repeats it.
+				if (error instanceof ProviderRefusalError) throw new DesignPassError(step, error.message)
 				last = error
 			}
 		}

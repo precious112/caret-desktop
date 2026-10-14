@@ -66,7 +66,8 @@ function checker(model: string, dir: string) {
 					prompt: checkPrompt(section as never),
 					schema: CHECK_SCHEMA,
 					model,
-					tools: { "caret_*": false },
+					// As in the app: a lean answer, outside the project.
+					scratch: true,
 				})
 				return answer.value
 			} catch (err) {

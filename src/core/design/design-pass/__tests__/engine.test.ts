@@ -1,6 +1,6 @@
 import should from "should"
 
-import type { ToolCallRecord } from "../../agent/backend"
+import { ProviderRefusalError, type ToolCallRecord } from "../../agent/backend"
 import {
 	ATTEMPTS,
 	type DesignPassDeps,
@@ -49,9 +49,12 @@ function fakeModels(script: Script) {
 	const calls: string[] = []
 	const checked: string[] = []
 	const models: PassModels = {
+		async planner<T>(prompt: string): Promise<T> {
+			if (!prompt.startsWith("Plan this page")) throw new Error("the planner was asked something other than the plan")
+			return (calls.push("plan"), script.plan?.() ?? { sections: [HERO, DELIVERY] }) as T
+		},
 		async main<T>(prompt: string): Promise<T> {
-			if (prompt.startsWith("Plan this page"))
-				return (calls.push("plan"), script.plan?.() ?? { sections: [HERO, DELIVERY] }) as T
+			if (prompt.startsWith("Plan this page")) throw new Error("the plan must go to the planner")
 			if (prompt.includes("For EACH flagged part")) return (calls.push("revise"), script.revise?.(prompt)) as T
 			if (prompt.includes("These parts were flagged as common AI design habits"))
 				return (calls.push("justify"), script.justify?.()) as T
@@ -281,6 +284,23 @@ describe("design pass · failures and cancelling", () => {
 		error.step.should.equal("check")
 		error.message.should.match(/checking section "(hero|delivery)": provider is down/)
 		tries.should.be.aboveOrEqual(ATTEMPTS)
+	})
+
+	it("stops at the first provider refusal (a usage limit) instead of retrying it", async () => {
+		let tries = 0
+		const { models } = fakeModels({
+			plan: () => {
+				tries += 1
+				throw new ProviderRefusalError("The usage limit has been reached")
+			},
+		})
+		const error = await runDesignPass(deps(models)).then(
+			() => null,
+			(e) => e,
+		)
+		error.should.be.instanceOf(DesignPassError)
+		error.message.should.match(/usage limit has been reached/)
+		tries.should.equal(1)
 	})
 
 	it("recovers when a call fails once and then answers", async () => {

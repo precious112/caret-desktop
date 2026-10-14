@@ -64,6 +64,7 @@ export async function probeVision(options: VisionProbeOptions): Promise<VisionVe
 			mode: "read-only",
 			model: options.model,
 			title: "caret vision check",
+			lean: true,
 		})
 
 		for await (const event of session.send({

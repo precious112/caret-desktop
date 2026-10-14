@@ -15,6 +15,7 @@ import * as fs from "fs"
 import * as os from "os"
 import * as path from "path"
 
+import type { StructuredRequest } from "../src/core/design/agent/backend"
 import { OpencodeBackend, setOpencodeToolPolicy } from "../src/core/design/agent/opencode"
 import { stopOpencodeServer } from "../src/core/design/agent/opencode/server"
 import { runDesignPass } from "../src/core/design/design-pass/engine"
@@ -71,7 +72,8 @@ async function main(): Promise<void> {
 	setOpencodeToolPolicy(() => libraryToolPolicy(usable))
 
 	const started = Date.now()
-	const ask = async <T>(model: string, prompt: string, schema: Record<string, unknown>, allowTools = false) => {
+	type Setup = Pick<StructuredRequest, "allowTools" | "reads" | "scratch" | "openCodePrompt">
+	const ask = async <T>(model: string, prompt: string, schema: Record<string, unknown>, setup: Setup = {}) => {
 		const t0 = Date.now()
 		const answer = await backend.structured<T>({
 			workingDirectory: dir,
@@ -79,7 +81,7 @@ async function main(): Promise<void> {
 			schema,
 			model,
 			tools: { "caret_*": false },
-			allowTools,
+			...setup,
 		})
 		console.log(
 			`    · ${model.split("/").pop()} answered in ${Math.round((Date.now() - t0) / 1000)}s${answer.emulated ? " (emulated)" : ""}`,
@@ -89,10 +91,13 @@ async function main(): Promise<void> {
 
 	const result = await runDesignPass({
 		models: {
-			main: async (prompt, schema) => (await ask(MAIN, prompt, schema)).value as never,
-			helper: async (prompt, schema) => (await ask(HELPER, prompt, schema)).value as never,
+			// The same setup per step as the app (desktop/main/design-pass/service.ts).
+			planner: async (prompt, schema) =>
+				(await ask(MAIN, prompt, schema, { openCodePrompt: true, reads: true })).value as never,
+			main: async (prompt, schema) => (await ask(MAIN, prompt, schema, { scratch: true })).value as never,
+			helper: async (prompt, schema) => (await ask(HELPER, prompt, schema, { scratch: true })).value as never,
 			designer: async (prompt, schema) => {
-				const answer = await ask(MAIN, prompt, schema, true)
+				const answer = await ask(MAIN, prompt, schema, { allowTools: true })
 				return { value: answer.value as never, toolCalls: answer.toolCalls ?? [] }
 			},
 		},

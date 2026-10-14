@@ -353,6 +353,7 @@ export async function surveyScreensWithModel(input: {
 		model: input.model,
 		effort: input.effort,
 		schema: MODEL_SURVEY_SCHEMA as unknown as Record<string, unknown>,
+		reads: true,
 		systemPrompt: `You are listing the screens of an existing app so each can be redrawn as a design page.
 Read the app with your tools (read, glob, grep, list); the working directory is the project.
 Find where it declares its routes or views (a router config, a navigation stack, top-level

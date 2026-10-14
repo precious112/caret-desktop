@@ -14,7 +14,7 @@
  * not going to on the third attempt, and the surface has an honest error state.
  */
 import { Logger } from "@/shared/services/Logger"
-import type { CodingBackend, ReasoningEffort } from "../agent/backend"
+import { type CodingBackend, ProviderRefusalError, type ReasoningEffort } from "../agent/backend"
 import { commonValues, commonValuesComplaint, foundationCandidates, type UserChoices } from "../design-pass/foundation-check"
 import { PALETTE_RECIPES, TYPEFACE_PAIRINGS } from "../foundation-library"
 import { searchGoogleFonts } from "../google-fonts"
@@ -1077,6 +1077,10 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 			systemPrompt: systemPrompt(mode),
 			model: input.model,
 			effort: input.effort,
+			// Only the from-app interview reads anything (the app's styles); the
+			// others need nothing but the prompt, so they run outside the project.
+			reads: mode === "from-app",
+			scratch: mode !== "from-app",
 		})
 
 		const value = result.value
@@ -1130,7 +1134,9 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 		} catch (err) {
 			const why = err instanceof Error ? err.message : String(err)
 			Logger.warn(`[wizard] attempt ${attemptIndex}/${MAX_TURN_ATTEMPTS} rejected (${why})`)
-			if (attemptIndex >= MAX_TURN_ATTEMPTS) throw err
+			// The provider refused the request itself (a usage limit, billing):
+			// another attempt gets the same refusal, so say it now.
+			if (err instanceof ProviderRefusalError || attemptIndex >= MAX_TURN_ATTEMPTS) throw err
 			complaint = `Your previous reply (rejected):\n${rejectedPayload}\n\nWhy it was rejected: ${why}`
 		}
 	}

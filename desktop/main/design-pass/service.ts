@@ -121,7 +121,9 @@ export class DesignPassService {
 			if (api.signal.aborted) throw new Error("Stopped.")
 			try {
 				pageWork = (
-					await ask<{ pageWork?: boolean; page?: string }>(helper, pageWorkPrompt(message, pageIds), PAGE_WORK_SCHEMA)
+					await ask<{ pageWork?: boolean; page?: string }>(helper, pageWorkPrompt(message, pageIds), PAGE_WORK_SCHEMA, {
+						scratch: true,
+					})
 				).value
 			} catch (err) {
 				lastError = err
@@ -145,9 +147,20 @@ export class DesignPassService {
 			let usableAtPolish: Set<string> = new Set()
 			const result = await runDesignPass({
 				models: {
+					// Planning keeps the backend's own prompt and may read the project;
+					// every other step is a lean answer, outside the project.
+					planner: async (prompt, schema) =>
+						(
+							await ask(mainModel, prompt, schema, {
+								effort: prefs.backendEffort || undefined,
+								openCodePrompt: true,
+								reads: true,
+							})
+						).value as never,
 					main: async (prompt, schema) =>
-						(await ask(mainModel, prompt, schema, { effort: prefs.backendEffort || undefined })).value as never,
-					helper: async (prompt, schema) => (await ask(helper, prompt, schema)).value as never,
+						(await ask(mainModel, prompt, schema, { effort: prefs.backendEffort || undefined, scratch: true }))
+							.value as never,
+					helper: async (prompt, schema) => (await ask(helper, prompt, schema, { scratch: true })).value as never,
 					designer: async (prompt, schema) => {
 						usableAtPolish = await librariesReady
 						const answer = await ask(mainModel, prompt, schema, {
