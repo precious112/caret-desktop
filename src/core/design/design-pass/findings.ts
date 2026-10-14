@@ -24,6 +24,20 @@ export interface Approved {
 
 export const NOTHING_APPROVED: Approved = { colours: [], fonts: [], radii: [] }
 
+/**
+ * The foundation's values plus the colours the user wrote in their own words.
+ * A brief that names its brand colour chose it, whether a checker quotes it
+ * under a described habit or code measures it (field report: three questions
+ * asked whether to keep "#28A4F0", the brief's own brand colour, as a
+ * "baby-blue accent").
+ */
+export function withBriefValues(approved: Approved, brief: string): Approved {
+	const named = hexesIn(brief)
+		.map(parseHex)
+		.filter((c): c is Rgb => !!c)
+	return named.length ? { ...approved, colours: [...approved.colours, ...named] } : approved
+}
+
 /** Every value in a committed foundation, as the Design pass compares against it. */
 export function approvedFrom(tokens: FoundationTokens | null | undefined): Approved {
 	if (!tokens) return NOTHING_APPROVED

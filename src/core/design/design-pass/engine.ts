@@ -32,6 +32,7 @@ import {
 	normalize,
 	valueFindings,
 	verifyMatches,
+	withBriefValues,
 } from "./findings"
 import { kindOfLibraryTool, libraryOfTool } from "./libraries"
 import {
@@ -181,7 +182,9 @@ class DesignPass {
 	private rejectedClaims = 0
 	private readonly timings: Partial<Record<PassStep, number>> = {}
 
-	constructor(private readonly deps: DesignPassDeps) {}
+	constructor(private readonly deps: DesignPassDeps) {
+		this.deps = { ...deps, approved: withBriefValues(deps.approved, deps.context.brief) }
+	}
 
 	async run(): Promise<DesignPassResult> {
 		const { deps } = this

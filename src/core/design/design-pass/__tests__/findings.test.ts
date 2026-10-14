@@ -1,6 +1,15 @@
 import type { FoundationTokens } from "../../types"
 import { parseHex } from "../colour"
-import { applyLevels, approvedFrom, type Finding, NOTHING_APPROVED, quoteIn, valueFindings, verifyMatches } from "../findings"
+import {
+	applyLevels,
+	approvedFrom,
+	type Finding,
+	NOTHING_APPROVED,
+	quoteIn,
+	valueFindings,
+	verifyMatches,
+	withBriefValues,
+} from "../findings"
 import type { DesignPlan, PlanSection } from "../plan"
 
 const hero: PlanSection = {
@@ -109,6 +118,30 @@ describe("design pass · verifying checker claims", () => {
 		verifyMatches(
 			hero,
 			[{ id: "serif-display-hero", quote: "56px Fraunces" }],
+			NOTHING_APPROVED,
+		).findings[0].userChose.should.be.false()
+	})
+})
+
+describe("design pass · the brief's own colours", () => {
+	it("never asks about a colour the brief names, even when a checker quotes it under a described habit", () => {
+		const button = {
+			id: "hero",
+			purpose: "",
+			layout: "",
+			components: [{ term: "button", looks: "background #28A4F0", content: "Get started" }],
+			copy: {},
+		}
+		const brief = "Argus, an open-source monitoring tool. Brand colour #28A4F0."
+		const approved = withBriefValues(NOTHING_APPROVED, brief)
+		verifyMatches(
+			button,
+			[{ id: "baby-blue-accent", quote: "background #28A4F0" }],
+			approved,
+		).findings[0].userChose.should.be.true()
+		verifyMatches(
+			button,
+			[{ id: "baby-blue-accent", quote: "background #28A4F0" }],
 			NOTHING_APPROVED,
 		).findings[0].userChose.should.be.false()
 	})
