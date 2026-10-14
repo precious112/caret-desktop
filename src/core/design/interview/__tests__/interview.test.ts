@@ -207,6 +207,59 @@ describe("validateQuestion", () => {
 		)
 	})
 
+	it("keeps only the values of the area a question settles (field report: a light-or-dark question proposing a body size, spacing, corners, an accent and fonts)", () => {
+		const full = (surface: "dark" | "light") => ({
+			accent: "#22d3ee",
+			baseSize: 16,
+			bodyFamily: "Inter",
+			displayFamily: "Geist",
+			neutral: "cool" as const,
+			radius: 12,
+			spacingUnit: 8,
+			surface,
+		})
+		const valid = validateQuestion(
+			question({
+				kind: "boolean",
+				covers: ["surface"],
+				options: [
+					{ id: "dark", label: "Dark first", spec: full("dark") },
+					{ id: "light", label: "Light first", spec: full("light") },
+				],
+			}),
+			[],
+		)
+		assert.deepEqual(
+			valid.options?.map((o) => o.spec),
+			[{ surface: "dark" }, { surface: "light" }],
+		)
+	})
+
+	it("refuses two options that are the same choice (field report: 'Dark first' offered twice)", () => {
+		const dark = { id: "dark", label: "Dark first", spec: { surface: "dark" as const, radius: 12 } }
+		assert.throws(
+			() =>
+				validateQuestion(
+					question({ kind: "boolean", covers: ["surface"], options: [dark, { ...dark, id: "dark-2" }] }),
+					[],
+				),
+			(err: unknown) => err instanceof WizardTurnError && /same answer/.test(err.message),
+		)
+		// Different labels, same look in the area being decided: still not a choice.
+		assert.throws(
+			() =>
+				validateQuestion(
+					question({
+						kind: "boolean",
+						covers: ["surface"],
+						options: [dark, { id: "night", label: "Night mode", spec: { surface: "dark" as const, radius: 4 } }],
+					}),
+					[],
+				),
+			(err: unknown) => err instanceof WizardTurnError && /same look/.test(err.message),
+		)
+	})
+
 	it("sends common AI defaults back once, unless the user chose them", () => {
 		const cream = () =>
 			question({

@@ -24,8 +24,8 @@ import {
 	nextWizardTurn,
 	questionCapFor,
 	readWizardScratch,
-	tracksCoverage,
 	type StoredQA,
+	tracksCoverage,
 	type WizardAnswer,
 	type WizardMode,
 	type WizardQuestion,
@@ -47,6 +47,23 @@ interface WizardSession {
 }
 
 const sessions = new Map<string, WizardSession>()
+
+/**
+ * The model turn running for each project. One at a time: a second request
+ * while one runs gets the same result instead of a second turn. React's
+ * StrictMode mounts the interview twice in development, so an unguarded start
+ * ran two turns in parallel, and the later answer replaced the question the
+ * user was already reading (field report: five options became three).
+ */
+const turnInFlight = new Map<string, Promise<WizardStateWire>>()
+
+export function oneTurnAtATime(projectPath: string, run: () => Promise<WizardStateWire>): Promise<WizardStateWire> {
+	const running = turnInFlight.get(projectPath)
+	if (running) return running
+	const turn = run().finally(() => turnInFlight.delete(projectPath))
+	turnInFlight.set(projectPath, turn)
+	return turn
+}
 
 /** The configured backend, only if it is actually ready. */
 async function resolveBackend(): Promise<{ backend: CodingBackend; detail: null } | { backend: null; detail: string }> {
@@ -186,11 +203,15 @@ export async function resumeWizard(projectPath: string): Promise<WizardStateWire
 	return stateFor(session)
 }
 
-export async function startWizard(
+export function startWizard(
 	projectPath: string,
 	description: string,
 	mode: WizardMode = "collaborative",
 ): Promise<WizardStateWire> {
+	return oneTurnAtATime(projectPath, () => beginWizard(projectPath, description, mode))
+}
+
+async function beginWizard(projectPath: string, description: string, mode: WizardMode): Promise<WizardStateWire> {
 	const context = mode === "from-app" ? await describeApp(projectPath) : description.trim()
 	const session: WizardSession = { description: context, mode, history: [] }
 	await persist(projectPath, session)
@@ -215,7 +236,11 @@ async function describeApp(projectPath: string): Promise<string> {
 	return lines.join("\n")
 }
 
-export async function answerWizard(projectPath: string, answer: WizardAnswer): Promise<WizardStateWire> {
+export function answerWizard(projectPath: string, answer: WizardAnswer): Promise<WizardStateWire> {
+	return oneTurnAtATime(projectPath, () => recordAnswer(projectPath, answer))
+}
+
+async function recordAnswer(projectPath: string, answer: WizardAnswer): Promise<WizardStateWire> {
 	const session = sessions.get(projectPath)
 	if (!session?.pending) throw new Error("There is no question waiting for an answer.")
 	if (session.pending.id !== answer.questionId) {
@@ -230,18 +255,22 @@ export async function answerWizard(projectPath: string, answer: WizardAnswer): P
 }
 
 /** Re-runs the turn that just failed, without recording anything new. */
-export async function retryWizard(projectPath: string): Promise<WizardStateWire> {
-	const session = sessions.get(projectPath)
-	if (!session) throw new Error("There is no interview in progress.")
-	return advance(projectPath, session)
+export function retryWizard(projectPath: string): Promise<WizardStateWire> {
+	return oneTurnAtATime(projectPath, async () => {
+		const session = sessions.get(projectPath)
+		if (!session) throw new Error("There is no interview in progress.")
+		return advance(projectPath, session)
+	})
 }
 
 /** "Just finish" — construct from whatever is known. */
-export async function finishWizard(projectPath: string): Promise<WizardStateWire> {
-	const session = sessions.get(projectPath)
-	if (!session) throw new Error("There is no interview in progress.")
-	session.pending = undefined
-	return advance(projectPath, session, "finish")
+export function finishWizard(projectPath: string): Promise<WizardStateWire> {
+	return oneTurnAtATime(projectPath, async () => {
+		const session = sessions.get(projectPath)
+		if (!session) throw new Error("There is no interview in progress.")
+		session.pending = undefined
+		return advance(projectPath, session, "finish")
+	})
 }
 
 /**

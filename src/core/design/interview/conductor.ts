@@ -22,8 +22,10 @@ import { finalizeProposal } from "./finalize"
 import {
 	type FoundationProposal,
 	normalizeHex,
+	type SpecimenParams,
 	type StoredQA,
 	WIZARD_TURN_SCHEMA,
+	type WizardOption,
 	type WizardQuestion,
 	type WizardTurn,
 } from "./widgets"
@@ -631,6 +633,42 @@ export function validateQuestion(
 
 		if (options.some((option) => !option.label)) throw new WizardTurnError(`an option in "${question.id}" has no label.`)
 
+		// One question, one decision. A model hands every option a full specimen
+		// (field report: a light-or-dark question whose options also proposed a
+		// 16px body, an 8px unit, 12px corners, a cyan accent, Inter and Geist),
+		// and the screen then shows those as if they were being chosen here. An
+		// option keeps only the values of the area its question settles; the
+		// specimen fills the rest from what is already settled.
+		const fields = specFieldsOf(question.covers)
+		if (fields) {
+			for (const option of options) {
+				if (!option.spec) continue
+				const kept = Object.fromEntries(
+					Object.entries(option.spec).filter(([key]) => fields.includes(key as keyof SpecimenParams)),
+				)
+				if (Object.keys(kept).length) option.spec = kept as SpecimenParams
+				else delete option.spec
+			}
+		}
+
+		// Two options that are the same are not a choice (field report: a
+		// light-or-dark question offering "Dark first" twice, identical specimens).
+		if (question.kind !== "assumptions") {
+			const look = (option: WizardOption) => JSON.stringify([option.hex ?? null, fields ? (option.spec ?? null) : null])
+			for (let i = 0; i < options.length; i++) {
+				for (let j = i + 1; j < options.length; j++) {
+					const sameLabel = options[i].label.toLowerCase() === options[j].label.toLowerCase()
+					const sameLook =
+						!!fields?.length && (options[i].spec || options[i].hex) && look(options[i]) === look(options[j])
+					if (sameLabel || sameLook) {
+						throw new WizardTurnError(
+							`options "${options[i].label}" and "${options[j].label}" in "${question.id}" are the same ${sameLabel ? "answer" : "look"} — every option must be a different choice for ${(question.covers ?? []).join(", ") || "this question"}.`,
+						)
+					}
+				}
+			}
+		}
+
 		// A "you decide" option is a non-answer taking up an answer's seat —
 		// delegation is harness-owned (the Skip button renders on every
 		// question). Mechanically repairable, so it is SANITIZED, not retried:
@@ -989,6 +1027,32 @@ function userChoicesOf(description: string, history: StoredQA[], settled: Settle
 		colours: settled.flatMap((v) => (v.kind === "hex" ? [v.value] : [])),
 		fonts: settled.flatMap((v) => (v.kind === "family" ? [v.value] : [])),
 	}
+}
+
+/**
+ * The specimen values each area decides. A question that settles one area may
+ * only vary these between its options; null for a question that settles no
+ * tracked area (nothing to narrow).
+ */
+const SPEC_FIELDS_OF_AREA: Record<string, Array<keyof SpecimenParams>> = {
+	"display-type": ["displayFamily"],
+	"body-type": ["bodyFamily"],
+	"type-scale": ["baseSize"],
+	"brand-color": ["accent"],
+	"secondary-color": ["accent"],
+	"accent-color": ["accent"],
+	neutral: ["neutral"],
+	surface: ["surface"],
+	semantics: [],
+	spacing: ["spacingUnit"],
+	radius: ["radius"],
+	depth: ["shadow"],
+}
+
+export function specFieldsOf(covers: string[] | undefined): Array<keyof SpecimenParams> | null {
+	const areas = (covers ?? []).filter((area) => area in SPEC_FIELDS_OF_AREA)
+	if (areas.length === 0) return null
+	return [...new Set(areas.flatMap((area) => SPEC_FIELDS_OF_AREA[area]))]
 }
 
 export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn> {

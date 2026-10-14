@@ -20,15 +20,15 @@
  *   a font search, or a free input — never another lecture.
  */
 import { ArrowLeft, Check, Loader2, Pipette, Plus, Search, Sparkles } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import type {
 	WizardAnswerWire,
+	WizardModeWire,
 	WizardOptionWire,
 	WizardQAWire,
 	WizardQuestionWire,
 	WizardSpecWire,
-	WizardModeWire,
 	WizardStateWire,
 } from "../../../shared/ipc"
 import { invoke, on } from "../ipc"
@@ -84,8 +84,13 @@ export function WizardView({
 		[projectPath],
 	)
 
+	// Once per mount, even where React runs mount effects twice (StrictMode in
+	// development): a second start is a second model turn whose answer would
+	// replace the question already on screen. Main also refuses a parallel turn.
+	const started = useRef(false)
 	useEffect(() => {
-		if (initialState || !start) return
+		if (initialState || !start || started.current) return
+		started.current = true
 		void transition(() => invoke("wizard:start", projectPath, start.description, start.mode))
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
