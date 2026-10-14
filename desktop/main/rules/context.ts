@@ -15,7 +15,7 @@ import {
 	readPromotedRules,
 } from "../../../src/core/design"
 import { foundationSummary } from "../../../src/core/design/design-pass/foundation-summary"
-import { bannedHabitNames } from "../../../src/core/design/design-pass/slop-list"
+import { bannedHabitLines } from "../../../src/core/design/design-pass/slop-list"
 
 /**
  * What every MCP tool reply carries, so the foundation cannot be skipped: the
@@ -126,7 +126,7 @@ ${tokens ? tokenVocabulary(tokens) : NO_FOUNDATION}
 
 People keep reporting these in AI-made designs; they make a page look generic. Don't use them
 unless the user asks for one by name:
-${bannedHabitNames()
+${bannedHabitLines()
 	.map((name) => `- ${name}`)
 	.join("\n")}
 

@@ -129,6 +129,14 @@ export interface RegistryInstallOptions {
 	installDeps?: (workspacePath: string, deps: string[]) => Promise<void>
 }
 
+/** What a paid item behind a registry's login needs, in the user's words. */
+const ACCOUNT_OF: Record<string, string> = {
+	"@aceternity": "an Aceternity account",
+	"@magicui": "a Magic UI Pro account",
+	"@smoothui": "a Smooth UI Pro account",
+	"@kokonutui": "a Kokonut UI Pro account",
+}
+
 /** How deep a chain of registry dependencies is followed before Caret refuses it. */
 const MAX_DEPTH = 4
 
@@ -182,6 +190,10 @@ class Installer {
 		if (!template) throw new Error(`${registry} is not a registry Caret installs from`)
 		const url = template.replace("{name}", name)
 		const response = await fetch(url)
+		if (response.status === 401 || response.status === 403 || response.status === 402) {
+			// A paid item behind the library's own login: say what it needs, not the status code.
+			throw new Error(`${name} needs ${ACCOUNT_OF[registry] ?? `an account with ${registry}`} (it is a paid item)`)
+		}
 		if (!response.ok) throw new Error(`${registry} answered ${response.status} for ${name} (${url})`)
 		const item = (await response.json()) as RegistryItem
 		const files = (item.files ?? []).filter((file) => typeof file.content === "string")

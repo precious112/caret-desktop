@@ -71,19 +71,15 @@ async function main(): Promise<void> {
 	setOpencodeToolPolicy(() => libraryToolPolicy(usable))
 
 	const started = Date.now()
-	const ask = async <T>(
-		model: string,
-		prompt: string,
-		schema: Record<string, unknown>,
-		tools: Record<string, boolean> = {},
-	) => {
+	const ask = async <T>(model: string, prompt: string, schema: Record<string, unknown>, allowTools = false) => {
 		const t0 = Date.now()
 		const answer = await backend.structured<T>({
 			workingDirectory: dir,
 			prompt,
 			schema,
 			model,
-			tools: { "caret_*": false, ...tools },
+			tools: { "caret_*": false },
+			allowTools,
 		})
 		console.log(
 			`    · ${model.split("/").pop()} answered in ${Math.round((Date.now() - t0) / 1000)}s${answer.emulated ? " (emulated)" : ""}`,
@@ -96,7 +92,7 @@ async function main(): Promise<void> {
 			main: async (prompt, schema) => (await ask(MAIN, prompt, schema)).value as never,
 			helper: async (prompt, schema) => (await ask(HELPER, prompt, schema)).value as never,
 			designer: async (prompt, schema) => {
-				const answer = await ask(MAIN, prompt, schema)
+				const answer = await ask(MAIN, prompt, schema, true)
 				return { value: answer.value as never, toolCalls: answer.toolCalls ?? [] }
 			},
 		},

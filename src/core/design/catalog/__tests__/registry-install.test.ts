@@ -140,6 +140,14 @@ describe("registry install · into a project", () => {
 		;(outcome as { reason: string }).reason.should.match(/outside the known registries/)
 	})
 
+	it("says a paid item needs the library's account, not a status code", async () => {
+		const mock = (async () => new Response("unauthorized", { status: 401 })) as unknown as typeof globalThis.fetch
+		const outcome = await mockFetchForTesting(mock, () =>
+			installComponentRef(workspace, "@aceternity/pro-thing", { installDeps: async () => {} }),
+		)
+		;(outcome as { reason: string }).reason.should.equal("pro-thing needs an Aceternity account (it is a paid item)")
+	})
+
 	it("needs a key for 21st.dev, and says so", async () => {
 		const outcome = await installComponentRef(workspace, "21st:10635")
 		outcome.ok.should.be.false()

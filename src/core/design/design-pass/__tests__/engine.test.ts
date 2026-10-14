@@ -136,7 +136,10 @@ describe("design pass · the whole loop", () => {
 					{ component: "not-a-ref", section: "hero", job: "x", why_not_plain: "y" },
 				],
 			}),
-			designerCalls: [{ tool: "lazyweb_lazyweb_execute", ok: true }],
+			designerCalls: [
+				{ tool: "lazyweb_lazyweb_execute", ok: true },
+				{ tool: "shadcn_search_items_in_registries", ok: true },
+			],
 			componentJudge: () => ({ verdicts: [{ n: 1, keep: true, why: "Shows every flavour." }] }),
 		})
 		const d = deps(models)
@@ -181,6 +184,25 @@ describe("design pass · the whole loop", () => {
 				"polish:done",
 			])
 		d.seen.find((p) => p.step === "polish" && p.state === "done")!.detail!.should.equal("looked at 1 reference page")
+	})
+
+	it("drops a component from a library the designer never searched", async () => {
+		let judged = 0
+		const { models } = fakeModels({
+			plan: () => ({ sections: [noEyebrow] }),
+			designer: () => ({
+				sections: [noEyebrow],
+				components: [{ component: "21st:35051", section: "hero", job: "x", why_not_plain: "y" }],
+			}),
+			designerCalls: [{ tool: "shadcn_search_items_in_registries", ok: true }],
+			componentJudge: () => {
+				judged += 1
+				return { verdicts: [{ n: 1, keep: true }] }
+			},
+		})
+		const result = await runDesignPass(deps(models))
+		result.components.should.eql([])
+		judged.should.equal(0)
 	})
 
 	it("drops references the designer reports without having opened an inspiration library", async () => {
@@ -314,6 +336,7 @@ describe("design pass · failures and cancelling", () => {
 				sections: [noEyebrow],
 				components: [{ component: "21st:10635", section: "hero", job: "logs", why_not_plain: "interactive" }],
 			}),
+			designerCalls: [{ tool: "twentyfirst_search", ok: true }],
 			componentJudge: () => {
 				throw new Error("judge down")
 			},

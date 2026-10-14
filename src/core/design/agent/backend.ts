@@ -238,6 +238,12 @@ export interface StructuredRequest {
 	tools?: Record<string, boolean>
 	/** Cancels the answer: the session is aborted and the call rejects. */
 	signal?: AbortSignal
+	/**
+	 * The answer may need tool calls first (the Design pass's designer browses
+	 * libraries). A schema-constrained answer forces the model straight to the
+	 * answer, so this asks in words and parses instead.
+	 */
+	allowTools?: boolean
 }
 
 /** An MCP server's state on the backend, in the server's own words. */

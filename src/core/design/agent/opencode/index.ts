@@ -269,7 +269,7 @@ export class OpencodeBackend implements CodingBackend {
 		// references). The pinned server also cannot read such a session's
 		// messages back (400 on its stored format). A call that needs tools asks
 		// in words and parses the answer instead.
-		if (Object.values(req.tools ?? {}).some(Boolean)) {
+		if (req.allowTools) {
 			return { ...(await this.promptForJson<T>(req, false)), emulated: true }
 		}
 		try {

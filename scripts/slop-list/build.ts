@@ -13,14 +13,17 @@
 import * as fs from "fs"
 import * as path from "path"
 
-interface ResearchEntry {
+/** One report in `research/*.json` (format: `research/SCHEMA.md`). */
+export interface ResearchEntry {
 	id: string
+	family?: string
 	kind: "element" | "treatment" | "layout" | "copy" | "foundation" | "font"
 	name: string
 	description?: string
 	detect?: { values?: string[] }
-	evidence?: Array<{ url?: string }>
+	evidence?: Array<{ url?: string; date?: string; quote?: string }>
 	independent_sources?: number
+	newest_source_date?: string
 	older_than_7_months?: boolean
 }
 

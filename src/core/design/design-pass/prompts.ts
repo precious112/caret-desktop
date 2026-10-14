@@ -8,7 +8,7 @@ import type { Item } from "./findings"
 import { glossaryText } from "./glossary"
 import type { DesignPlan, PlanSection } from "./plan"
 import { PLAN_FORMAT } from "./plan"
-import { bannedHabitNames, habitsText } from "./slop-list"
+import { bannedHabitLines, habitsText } from "./slop-list"
 
 export interface PassContext {
 	/** The user's own words for this page. */
@@ -97,7 +97,7 @@ export const CHECK_SCHEMA = {
 }
 
 const bannedList = () =>
-	bannedHabitNames()
+	bannedHabitLines()
 		.map((name) => `- ${name}`)
 		.join("\n")
 

@@ -2,7 +2,17 @@ import should from "should"
 
 import { compile } from "../../../../../scripts/slop-list/build"
 import { closeMatch, hexesIn, isUninformative, parseHex } from "../colour"
-import { activeHabits, BAN, bannedHabitNames, FLOOR, HABITS, habitById, habitsText, levelOf } from "../slop-list"
+import {
+	activeHabits,
+	BAN,
+	bannedHabitLines,
+	bannedHabitNames,
+	FLOOR,
+	HABITS,
+	habitById,
+	habitsText,
+	levelOf,
+} from "../slop-list"
 
 describe("design pass · colour", () => {
 	it("parses 3, 4, 6 and 8 digit hex and refuses anything else", () => {
@@ -60,6 +70,15 @@ describe("design pass · slop list levels", () => {
 		banned.should.containEql("Eyebrow labels")
 		banned.should.containEql("Purple-indigo gradients")
 		banned.should.containEql("Centered hero with three cards")
+	})
+
+	it("names the reported values beside a banned value habit, so a rewrite cannot swap one for another", () => {
+		const line = bannedHabitLines().find((l) => l.startsWith("Default sans font"))!
+		line.should.containEql("Inter")
+		line.should.containEql("Space Grotesk")
+		bannedHabitLines()
+			.find((l) => l.startsWith("Eyebrow labels"))!
+			.should.equal("Eyebrow labels")
 	})
 
 	it("ignores habits under the floor and few-option patterns", () => {

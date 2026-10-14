@@ -66,6 +66,18 @@ export function bannedHabitNames(): string[] {
 }
 
 /**
+ * The banned list with the values that make a habit, where the sources named
+ * them: a model told only "Default sans font" swapped Inter for Space Grotesk,
+ * which the same habit lists, and cost the pass a whole round to undo.
+ */
+export function bannedHabitLines(): string[] {
+	return HABITS.filter((habit) => habit.sources >= BAN).map((habit) => {
+		const values = [...habit.fonts, ...habit.colours]
+		return values.length ? `${habit.name} (including ${values.join(", ")})` : habit.name
+	})
+}
+
+/**
  * The list as the checker reads it: one line per habit, in the sources' own
  * words. Habits that are only exact values are left out — code checks those.
  */

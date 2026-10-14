@@ -155,6 +155,7 @@ export class DesignPassService {
 							// Library tools come from the project's policy; Caret's own
 							// reference viewer is the one extra tool the designer needs.
 							tools: { caret_view_reference: true },
+							allowTools: true,
 						})
 						return { value: answer.value as never, toolCalls: answer.toolCalls ?? [] }
 					},

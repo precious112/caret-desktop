@@ -1,0 +1,62 @@
+{
+ "smolder": {
+  "brief": "Smolder, a small-batch hot sauce brand from Bristol. Three sauces smoked over oak. A landing page that sells bottles online.",
+  "foundation": { "colors": { "brand": "#c2361f", "ink": "#2b211c", "paper": "#fbfaf7", "line": "#e4e4e4" }, "fonts": { "heading": "Archivo", "body": "Source Sans 3" }, "radius": [0, 2, 4] },
+  "plan": { "sections": [
+   { "id": "hero", "purpose": "Show the three bottles and let people buy straight away", "layout": "headline and button on the left half, a photo of the three bottles on the right half",
+     "components": [ { "term": "headline", "looks": "Archivo 56px bold, #2b211c", "content": "Smoked over oak in Bristol" }, { "term": "product shot", "looks": "photo of the three bottles on a charred oak board, 4px corners", "content": "First Light, Slow Burn and Last Word" }, { "term": "button", "looks": "#c2361f fill, white text, 2px corners", "content": "Buy a bottle" } ],
+     "copy": { "headline": "Smoked over oak in Bristol", "body": "Three hot sauces. We smoke the peppers for twelve hours before they go in the bottle.", "cta": "Buy a bottle" } },
+   { "id": "range", "purpose": "Let people pick a sauce by flavour and heat", "layout": "a list with one row per sauce: name, flavour, heat out of ten, price and an add button",
+     "components": [ { "term": "list", "looks": "rows separated by #e4e4e4 hairlines, Source Sans 3 18px", "content": "First Light, jalapeno and lime, heat 3, £8 / Slow Burn, chipotle and ancho, heat 6, £9 / Last Word, scotch bonnet and plum, heat 9, £9" }, { "term": "button", "looks": "outlined #c2361f, 2px corners", "content": "Add" } ],
+     "copy": { "headline": "The three sauces", "body": "", "cta": "Add" } },
+   { "id": "smokehouse", "purpose": "Explain the smoking so the price makes sense", "layout": "two paragraphs on the left, a photo of the smoker on the right",
+     "components": [ { "term": "image", "looks": "photo of the oak smoker at dawn, 4px corners", "content": "the smoker" } ],
+     "copy": { "headline": "Twelve hours over oak", "body": "The peppers sit over oak offcuts from a Devon cooperage overnight. Then we blend, bottle and label every batch by hand, sixty bottles at a time.", "cta": "" } },
+   { "id": "delivery", "purpose": "Answer the questions people have before they order", "layout": "a short list of questions and answers",
+     "components": [ { "term": "list", "looks": "question in Archivo 18px, answer in Source Sans 3 16px", "content": "Postage: £3.50, free over £30 / Dispatch: Tuesdays and Fridays / Storage: keeps a year unopened" } ],
+     "copy": { "headline": "Ordering", "body": "", "cta": "" } },
+   { "id": "footer", "purpose": "Contact and legal links", "layout": "one row of small text",
+     "components": [ { "term": "footer", "looks": "Source Sans 3 14px, #2b211c", "content": "Smolder Sauce Co, Unit 4, St Philips, Bristol. hello@smolder.co.uk" } ],
+     "copy": { "headline": "", "body": "", "cta": "" } } ] }
+ },
+ "ledgerly": {
+  "brief": "Ledgerly, invoicing software for small accounting firms. It sends invoices, chases late payers and matches bank payments.",
+  "foundation": { "colors": { "brand": "#173b6c", "ink": "#1b2430", "paper": "#f6f7f9", "line": "#dfe3ea" }, "fonts": { "heading": "Public Sans", "body": "Public Sans" }, "radius": [0, 3, 6] },
+  "plan": { "sections": [
+   { "id": "hero", "purpose": "Say what Ledgerly does and start a trial", "layout": "headline and button on the left, a screenshot of the invoice list on the right",
+     "components": [ { "term": "headline", "looks": "Public Sans 48px semibold, #1b2430", "content": "Invoices that get paid" }, { "term": "image", "looks": "screenshot of the invoice list with two overdue rows, 6px corners", "content": "invoice list" }, { "term": "button", "looks": "#173b6c fill, white text, 3px corners", "content": "Start a 30-day trial" } ],
+     "copy": { "headline": "Invoices that get paid", "body": "Ledgerly sends your invoices, reminds clients who pay late and matches payments from your bank feed.", "cta": "Start a 30-day trial" } },
+   { "id": "chasing", "purpose": "Show how late payers are chased", "layout": "a table of the reminder schedule beside one paragraph",
+     "components": [ { "term": "table", "looks": "Public Sans 15px, #dfe3ea row lines", "content": "Day 1 polite reminder / Day 7 second reminder with the invoice attached / Day 14 phone call task for your team" } ],
+     "copy": { "headline": "Chasing, on your schedule", "body": "You set the days and the wording. Ledgerly sends each reminder from your own email address.", "cta": "" } },
+   { "id": "matching", "purpose": "Show payments being matched", "layout": "a screenshot of the bank feed with matched invoices, caption below",
+     "components": [ { "term": "image", "looks": "screenshot, 6px corners", "content": "bank feed with three matched payments" } ],
+     "copy": { "headline": "Payments matched for you", "body": "When a client pays, Ledgerly finds the invoice and marks it paid.", "cta": "" } },
+   { "id": "pricing", "purpose": "Give the price", "layout": "one paragraph and a button",
+     "components": [ { "term": "button", "looks": "#173b6c fill, 3px corners", "content": "Start a 30-day trial" } ],
+     "copy": { "headline": "£14 per user per month", "body": "Every feature is included. Cancel from the settings page.", "cta": "Start a 30-day trial" } },
+   { "id": "footer", "purpose": "Contact and legal links", "layout": "one row of small text",
+     "components": [ { "term": "footer", "looks": "Public Sans 13px", "content": "Ledgerly Ltd, Manchester. Privacy, Terms, Contact" } ],
+     "copy": { "headline": "", "body": "", "cta": "" } } ] }
+ },
+ "tidewater": {
+  "brief": "Tidewater, a surf school in Polzeath, Cornwall. Beginners and families book lessons by the tide and hire boards and wetsuits.",
+  "foundation": { "colors": { "brand": "#1f6f5c", "ink": "#1d2a2a", "paper": "#eef3f2", "sand": "#e9dcc0" }, "fonts": { "heading": "Bitter", "body": "Atkinson Hyperlegible" }, "radius": [0, 4, 8] },
+  "plan": { "sections": [
+   { "id": "hero", "purpose": "Show today's surf and let people book a lesson", "layout": "photo of the beach across the full width, headline and button on top of it at the bottom left",
+     "components": [ { "term": "image", "looks": "photo of Polzeath beach at low tide", "content": "beach" }, { "term": "headline", "looks": "Bitter 44px bold, white", "content": "Learn to surf in Polzeath" }, { "term": "button", "looks": "#1f6f5c fill, white text, 4px corners", "content": "Book a lesson" } ],
+     "copy": { "headline": "Learn to surf in Polzeath", "body": "Lessons start two hours either side of low tide, when the waves are small.", "cta": "Book a lesson" } },
+   { "id": "lessons", "purpose": "Let people choose a lesson", "layout": "a table of lessons with times for the coming week",
+     "components": [ { "term": "table", "looks": "Atkinson Hyperlegible 16px, #1d2a2a", "content": "Family lesson, 2 hours, £45 per person / Beginner group, 2 hours, £40 / Private lesson, 1 hour, £70" } ],
+     "copy": { "headline": "This week's lessons", "body": "Times move with the tide. Ages eight and up.", "cta": "Book" } },
+   { "id": "hire", "purpose": "Explain board and wetsuit hire", "layout": "two paragraphs and a price list",
+     "components": [ { "term": "list", "looks": "Atkinson Hyperlegible 16px", "content": "Board, £15 a day / Wetsuit, £10 a day / Both, £22 a day" } ],
+     "copy": { "headline": "Board and wetsuit hire", "body": "Pick up from the hut by the lifeguard station from 9am.", "cta": "" } },
+   { "id": "getting-here", "purpose": "Help families find the hut and park", "layout": "a map with the car park and the hut marked, directions beside it",
+     "components": [ { "term": "image", "looks": "simple map, #e9dcc0 sand and #1f6f5c markers, 8px corners", "content": "car park and hut" } ],
+     "copy": { "headline": "Finding us", "body": "Park at the Polzeath beach car park. The hut is the green one beside the lifeguard station.", "cta": "" } },
+   { "id": "footer", "purpose": "Contact and safety links", "layout": "one row of small text",
+     "components": [ { "term": "footer", "looks": "Atkinson Hyperlegible 14px", "content": "Tidewater Surf School, Polzeath. 01208 000000. Surf safety advice" } ],
+     "copy": { "headline": "", "body": "", "cta": "" } } ] }
+ }
+}

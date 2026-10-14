@@ -33,7 +33,7 @@ import {
 	valueFindings,
 	verifyMatches,
 } from "./findings"
-import { kindOfLibraryTool } from "./libraries"
+import { kindOfLibraryTool, libraryOfTool } from "./libraries"
 import {
 	type DesignPlan,
 	mergeSections,
@@ -300,29 +300,20 @@ class DesignPass {
 
 	/** One isolated checker per section, all at once; unchanged sections reuse their result. */
 	private async check(plan: DesignPlan): Promise<Item[]> {
-		const reports = await Promise.all(
-			plan.sections.map(async (section) => {
-				const key = sectionKey(section)
-				const cached = this.checked.get(key)
-				if (cached) return cached
-				const answer = await this.retry(
+		const result = await checkPlan(
+			(section) =>
+				this.retry(
 					"check",
 					() => this.deps.models.helper<{ matches?: CheckerMatch[] }>(checkPrompt(section), CHECK_SCHEMA),
 					`checking section "${section.id}"`,
-				)
-				const matches = Array.isArray(answer?.matches) ? answer.matches : []
-				this.checked.set(key, matches)
-				return matches
-			}),
+				),
+			plan,
+			this.deps.approved,
+			this.deps.context.brief,
+			this.checked,
 		)
-		const findings: Finding[] = []
-		plan.sections.forEach((section, index) => {
-			const verified = verifyMatches(section, reports[index], this.deps.approved)
-			findings.push(...verified.findings)
-			this.rejectedClaims += verified.rejected.length
-		})
-		findings.push(...valueFindings(plan, this.deps.approved, this.deps.context.brief))
-		return applyLevels(findings)
+		this.rejectedClaims += result.rejected
+		return result.items
 	}
 
 	/** Rewrites the flagged parts. Null when the answer changed nothing usable. */
@@ -437,6 +428,9 @@ class DesignPass {
 				whyNotPlain: String(c.why_not_plain ?? ""),
 			}))
 			.filter((c) => isInstallableRef(c.component) && ids.has(c.section))
+			// A pick counts only from a library the designer actually searched:
+			// a model can name a plausible component id it never saw.
+			.filter((c) => searched(c.component, toolCalls))
 
 		let components: ComponentPick[] = []
 		let declined: ComponentPick[] = []
@@ -525,9 +519,52 @@ class DesignPass {
 	}
 }
 
+/**
+ * Steps 2 and 3 on one plan: every section checked in its own call, all at
+ * once, claims verified, exact values measured, levels applied. Exported for
+ * the development regression test, which runs exactly this on planted plans.
+ */
+export async function checkPlan(
+	askSection: (section: PlanSection) => Promise<{ matches?: CheckerMatch[] } | null>,
+	plan: DesignPlan,
+	approved: Approved,
+	brief: string,
+	cache: Map<string, CheckerMatch[]> = new Map(),
+): Promise<{ items: Item[]; rejected: number }> {
+	const reports = await Promise.all(
+		plan.sections.map(async (section) => {
+			const key = sectionKey(section)
+			const cached = cache.get(key)
+			if (cached) return cached
+			const answer = await askSection(section)
+			const matches = Array.isArray(answer?.matches) ? answer.matches : []
+			cache.set(key, matches)
+			return matches
+		}),
+	)
+	const findings: Finding[] = []
+	let rejected = 0
+	plan.sections.forEach((section, index) => {
+		const verified = verifyMatches(section, reports[index], approved)
+		findings.push(...verified.findings)
+		rejected += verified.rejected.length
+	})
+	findings.push(...valueFindings(plan, approved, brief))
+	return { items: applyLevels(findings), rejected }
+}
+
 /** "@registry/name" or "21st:<id>": the two forms the installer can fetch. */
 export function isInstallableRef(ref: string): boolean {
 	return /^@[a-z0-9][\w-]*\/[a-z0-9][\w./-]*$/i.test(ref) || /^21st:\d+$/.test(ref)
+}
+
+/** Did the designer search the library a pick comes from? */
+export function searched(ref: string, toolCalls: ToolCallRecord[]): boolean {
+	const libraries = new Set(toolCalls.filter((call) => call.ok).map((call) => libraryOfTool(call.tool)))
+	if (ref.startsWith("21st:")) return libraries.has("twentyfirst")
+	// shadcn's MCP searches every registry Caret installs from; Aceternity has its own too.
+	if (ref.startsWith("@aceternity/")) return libraries.has("aceternity") || libraries.has("shadcn")
+	return libraries.has("shadcn")
 }
 
 function dedupe(picks: ComponentPick[]): ComponentPick[] {
