@@ -232,6 +232,12 @@ export function libraryOfTool(tool: string): LibraryId | null {
 	return library?.id ?? null
 }
 
+/** Whether a prefixed tool belongs to a component library or an inspiration library. */
+export function kindOfLibraryTool(tool: string): "components" | "inspiration" | null {
+	const id = libraryOfTool(tool)
+	return id ? (libraryById(id)?.kind ?? null) : null
+}
+
 /**
  * Does a tool failure mean the library should rest? Rate limits, quotas,
  * timeouts and lost sign-ins do; a bad argument the model sent does not — the

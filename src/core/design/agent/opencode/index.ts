@@ -263,6 +263,15 @@ export class OpencodeBackend implements CodingBackend {
 	 * post-validation just became load-bearing.
 	 */
 	async structured<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
+		// A schema-constrained answer forces the model's tool choice to the
+		// answer itself, so it never calls the tools it was handed (measured: the
+		// Design pass's designer made zero library calls and invented its
+		// references). The pinned server also cannot read such a session's
+		// messages back (400 on its stored format). A call that needs tools asks
+		// in words and parses the answer instead.
+		if (Object.values(req.tools ?? {}).some(Boolean)) {
+			return { ...(await this.promptForJson<T>(req, false)), emulated: true }
+		}
 		try {
 			return { ...(await this.promptForJson<T>(req, true)), emulated: false }
 		} catch (err) {
@@ -1229,12 +1238,18 @@ export class EventMapper {
 				if (tool.state.status === "completed") {
 					for (const path of filePathsOf(tool.tool, tool.state)) yield { type: "file-changed", path }
 				}
+				const input = tool.state.input ?? {}
+				const read =
+					tool.tool === "read" && tool.state.status === "completed"
+						? (input.filePath ?? input.file_path ?? input.path)
+						: undefined
 				yield {
 					type: "tool-end",
 					callId: tool.callID,
 					name: tool.tool,
 					ok: tool.state.status === "completed",
 					summary: tool.state.status === "error" ? tool.state.error : tool.state.title,
+					...(typeof read === "string" ? { readPath: read } : {}),
 				}
 			}
 			return

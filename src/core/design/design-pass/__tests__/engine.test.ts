@@ -1,5 +1,6 @@
 import should from "should"
 
+import type { ToolCallRecord } from "../../agent/backend"
 import {
 	ATTEMPTS,
 	type DesignPassDeps,
@@ -39,6 +40,7 @@ interface Script {
 	justify?: () => unknown
 	judge?: () => unknown
 	designer?: () => unknown
+	designerCalls?: ToolCallRecord[]
 	componentJudge?: () => unknown
 }
 
@@ -69,9 +71,9 @@ function fakeModels(script: Script) {
 				return (calls.push("component-judge"), script.componentJudge?.() ?? { verdicts: [] }) as T
 			throw new Error(`unexpected helper prompt: ${prompt.slice(0, 60)}`)
 		},
-		async designer<T>(): Promise<{ value: T; toolCalls: [] }> {
+		async designer<T>(): Promise<{ value: T; toolCalls: ToolCallRecord[] }> {
 			calls.push("designer")
-			return { value: (script.designer?.() ?? { sections: [] }) as T, toolCalls: [] }
+			return { value: (script.designer?.() ?? { sections: [] }) as T, toolCalls: script.designerCalls ?? [] }
 		},
 	}
 	return { models, calls, checked }
@@ -134,6 +136,7 @@ describe("design pass · the whole loop", () => {
 					{ component: "not-a-ref", section: "hero", job: "x", why_not_plain: "y" },
 				],
 			}),
+			designerCalls: [{ tool: "lazyweb_lazyweb_execute", ok: true }],
 			componentJudge: () => ({ verdicts: [{ n: 1, keep: true, why: "Shows every flavour." }] }),
 		})
 		const d = deps(models)
@@ -178,6 +181,18 @@ describe("design pass · the whole loop", () => {
 				"polish:done",
 			])
 		d.seen.find((p) => p.step === "polish" && p.state === "done")!.detail!.should.equal("looked at 1 reference page")
+	})
+
+	it("drops references the designer reports without having opened an inspiration library", async () => {
+		const { models } = fakeModels({
+			plan: () => ({ sections: [noEyebrow] }),
+			designer: () => ({ sections: [noEyebrow], references: [{ what: "a page it never saw", learned: "nothing" }] }),
+			designerCalls: [{ tool: "shadcn_search_items_in_registries", ok: true }],
+		})
+		const d = deps(models)
+		const result = await runDesignPass(d)
+		result.references.should.eql([])
+		should(d.seen.find((p) => p.step === "polish" && p.state === "done")!.detail).be.undefined()
 	})
 
 	it("keeps a part without asking when the user's own words call for it and the judge agrees", async () => {

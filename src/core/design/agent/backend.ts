@@ -172,7 +172,15 @@ export type BackendEvent =
 	| { type: "text"; text: string }
 	| { type: "thinking"; text: string }
 	| { type: "tool-start"; callId: string; name: string; summary: string }
-	| { type: "tool-end"; callId: string; name: string; ok: boolean; summary?: string }
+	| {
+			type: "tool-end"
+			callId: string
+			name: string
+			ok: boolean
+			summary?: string
+			/** The file a completed read tool read: how Caret knows the design layer's rules were read. */
+			readPath?: string
+	  }
 	| { type: "file-changed"; path: string }
 	| { type: "permission"; requestId: string; tool: string; path?: string; summary: string }
 	/**

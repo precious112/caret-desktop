@@ -33,6 +33,7 @@ import {
 	valueFindings,
 	verifyMatches,
 } from "./findings"
+import { kindOfLibraryTool } from "./libraries"
 import {
 	type DesignPlan,
 	mergeSections,
@@ -460,10 +461,15 @@ class DesignPass {
 		components = dedupe(components)
 		declined = dedupe(declined)
 
-		const references = list<Record<string, unknown>>(value?.references).map((r) => ({
-			what: String(r.what ?? ""),
-			learned: String(r.learned ?? ""),
-		}))
+		// A reference counts only if the designer actually opened an inspiration
+		// library: a model can describe pages it never looked at.
+		const browsed = toolCalls.some((call) => call.ok && kindOfLibraryTool(call.tool) === "inspiration")
+		const references = browsed
+			? list<Record<string, unknown>>(value?.references).map((r) => ({
+					what: String(r.what ?? ""),
+					learned: String(r.learned ?? ""),
+				}))
+			: []
 		this.deps.progress({
 			step: "polish",
 			state: "done",

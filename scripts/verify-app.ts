@@ -597,6 +597,18 @@ async function main(): Promise<void> {
 		return `${record.url}, token ${record.token.length} chars, mode 0600`
 	}).then(() => readDiscovery(fixture))
 
+	/** `list_assets` over MCP, as an agent calls it: where the asset list lives now that the core only counts. */
+	async function mcpListAssets(search: string): Promise<string> {
+		if (!discovery) return ""
+		const response = await callMcp(discovery.url, discovery.token, {
+			jsonrpc: "2.0",
+			id: 900,
+			method: "tools/call",
+			params: { name: "list_assets", arguments: { search } },
+		})
+		return response.text()
+	}
+
 	await scenario("c. MCP refuses an unauthenticated request", async () => {
 		assert(discovery, "no discovery record")
 		const response = await callMcp(discovery.url, null, INITIALIZE)
@@ -643,12 +655,23 @@ async function main(): Promise<void> {
 			60_000,
 		)
 		assert(agents.includes("BEGIN CARET DESIGN LAYER"), "generated block marker missing")
-		assert(agents.includes("data-caret-id"), "authoring rules missing from the rules file")
+		assert(agents.includes("data-caret-id"), "the hard rules are missing from the core")
+		assert(agents.includes("read `.caret/AGENTS.md`"), "the core does not point at the design layer's rules")
+		// Codex silently cuts an AGENTS.md past 32 KiB; the core is meant to be a fraction of that.
+		assert(Buffer.byteLength(agents) < 32 * 1024, `AGENTS.md is ${Buffer.byteLength(agents)} bytes`)
 		const claude = await fs.readFile(path.join(fixture, "CLAUDE.md"), "utf-8")
 		assert(claude.includes("BEGIN CARET DESIGN LAYER"), "CLAUDE.md not generated")
 		const cursor = await fs.readFile(path.join(fixture, ".cursor", "rules", "caret-design-layer.mdc"), "utf-8")
 		assert(cursor.startsWith("---"), "Cursor rule is missing its frontmatter")
-		return "AGENTS.md, CLAUDE.md and .cursor/rules all written"
+
+		// The design layer's own rules: read before any work in .caret/.
+		const layer = await fs.readFile(path.join(fixture, ".caret", "AGENTS.md"), "utf-8")
+		assert(layer.includes("caret-id"), "the caret-id rules are missing from .caret/AGENTS.md")
+		const scoped = await fs.readFile(path.join(fixture, ".claude", "rules", "caret-design-layer.md"), "utf-8")
+		assert(scoped.includes('paths:\n  - ".caret/**"'), "the Claude rule is not scoped to .caret/")
+		const ignored = await fs.readFile(path.join(fixture, ".caret", ".gitignore"), "utf-8")
+		assert(ignored.split("\n").includes("/AGENTS.md"), ".caret/AGENTS.md is regenerated, so it must be gitignored")
+		return `core AGENTS.md (${Buffer.byteLength(agents)} bytes), CLAUDE.md, Cursor rule, and .caret/AGENTS.md with scoped copies`
 	})
 
 	await scenario("g. a user block in a rules file survives regeneration", async () => {
@@ -1308,20 +1331,26 @@ async function main(): Promise<void> {
 		return `tag "${entry.tag}" derived from the filename, ${entry.width}x${entry.height} probed from the header`
 	})
 
-	await scenario("w. the asset index reaches the always-on rules files", async () => {
-		// Behind a tool it would be ignored — an agent that must choose to
-		// enumerate assets emits a placeholder instead. This is the delivery
-		// mechanism, so it is the thing worth asserting.
-		const rules = await waitFor(
-			"AGENTS.md to carry the asset",
+	await scenario("w. the core counts the assets, and list_assets finds one by search with its path", async () => {
+		// What loads every time is a count and a pointer, never the list: a
+		// project with a thousand assets loads the same core as an empty one. The
+		// list comes from the tool, a page at a time.
+		await waitFor(
+			"AGENTS.md to count the asset",
+			async () =>
+				/\b\d+ assets?\b/.test(await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")) ? true : null,
+			60_000,
+		)
+		const listed = await waitFor(
+			"list_assets to find the asset by search",
 			async () => {
-				const text = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-				return text.includes("@hero-shot-2x") ? text : null
+				const text = await mcpListAssets("hero-shot")
+				return text.includes("hero-shot-2x") ? text : null
 			},
 			60_000,
 		)
-		assert(rules.includes("/caret-assets/"), "the rules file names the asset but not how to reference it")
-		return "AGENTS.md carries the tag, the path and the size"
+		assert(listed.includes("/caret-assets/"), "list_assets names the asset but not how to reference it")
+		return "the core counts the assets; list_assets finds the tag with its path"
 	})
 
 	await scenario("x. an agent can list assets and receive the actual pixels", async () => {
@@ -1461,11 +1490,8 @@ async function main(): Promise<void> {
 			30_000,
 		)
 		await waitFor(
-			"the description to reach AGENTS.md",
-			async () => {
-				const rules = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-				return rules.includes("empty space top-left") ? true : null
-			},
+			"the description to reach what agents read",
+			async () => ((await mcpListAssets("empty space top-left")).includes("empty space top-left") ? true : null),
 			30_000,
 		)
 
@@ -1716,8 +1742,7 @@ async function main(): Promise<void> {
 		const served = await fetch(`${origin_}/caret-assets/${String(entry?.file)}`, { signal: AbortSignal.timeout(30_000) })
 		assert(served.ok, `the generated asset was not served: ${served.status}`)
 		assert((served.headers.get("content-type") ?? "").includes("svg"), `served as ${served.headers.get("content-type")}`)
-		const rules = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-		assert(rules.includes("hero-wash"), "the generated asset never reached the rules files")
+		assert((await mcpListAssets("hero-wash")).includes("hero-wash"), "the generated asset never reached what agents read")
 
 		// And the record is readable where the asset lives, not only in JSON: the
 		// "generated" chip opens the whole thing — lane, producer, recipe, answers,
@@ -3837,10 +3862,10 @@ export default function ShaderDemo() {
 		)
 
 		await waitFor(
-			"AGENTS.md to carry the standing correction",
+			"the design layer's rules to carry the standing correction",
 			async () => {
-				const agents = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-				return agents.includes("Standing corrections") && agents.includes(ruleText) ? true : null
+				const layer = await fs.readFile(path.join(fixture, ".caret", "AGENTS.md"), "utf-8").catch(() => "")
+				return layer.includes("Standing corrections") && layer.includes(ruleText) ? true : null
 			},
 			30000,
 		)
@@ -3849,7 +3874,7 @@ export default function ShaderDemo() {
 		const gitignore = await fs.readFile(path.join(fixture, ".caret", ".gitignore"), "utf-8")
 		assert(!gitignore.split("\n").some((l) => l.trim() === "rules.json"), ".caret/.gitignore must not ignore rules.json")
 
-		return `an externally written rules.json reached AGENTS.md ("${ruleText}")`
+		return `an externally written rules.json reached .caret/AGENTS.md ("${ruleText}")`
 	})
 
 	await scenario("br. the design checks find planted defects, and the canvas shows them unasked", async () => {
@@ -4027,7 +4052,9 @@ export default function CatalogDemo() {
 			await waitFor(
 				"the rules to list it as installed",
 				async () =>
-					(await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")).includes("`magicui/marquee`")
+					(await fs.readFile(path.join(fixture, ".caret", "AGENTS.md"), "utf-8").catch(() => "")).includes(
+						"`magicui/marquee`",
+					)
 						? true
 						: null,
 				30_000,
@@ -5022,7 +5049,9 @@ export default function CatalogDemo() {
 		// The decisive half: Caret answered the permission itself. A `.caret/` write
 		// is auto-approved by fixed policy, and the transcript has to say so —
 		// a silent auto-approval is indistinguishable from an agent nobody checked.
-		const resolved = await chrome.getByTestId("chat-permission-resolved").first().textContent()
+		// The write's own entry: a session that tried to edit before reading the
+		// design layer's rules has a "read the rules first" denial above it.
+		const resolved = await chrome.getByTestId("chat-permission-resolved").filter({ hasText: "Allowed" }).first().textContent()
 		assert(resolved?.includes("Allowed"), `the write was not recorded as allowed: ${resolved}`)
 		assert(resolved?.includes("design layer"), `the transcript does not say why Caret allowed it without asking: ${resolved}`)
 		return `page rewritten; permission auto-answered ("${resolved?.trim().slice(0, 60)}…")`

@@ -44,7 +44,16 @@ export interface CaretMcpServerOptions {
 	onInterviewPrompt?(prompt: InterviewPrompt): void
 }
 
+/** What every client is told on connecting: short, because it is in every session. */
+const SERVER_INSTRUCTIONS = `Caret's design layer for this project lives in .caret/. Read its rules before writing pages: .caret/AGENTS.md, or call get_guide (page-writing tools refuse until you have). get_project and list_assets list a page at a time. Install ready-made components with install_component. Call run_design_checks on every page you wrote before you finish.`
+
 export class CaretMcpServer {
+	/**
+	 * Whether an outside agent has read the design layer's rules (`get_guide`)
+	 * since Caret opened this project. Page writes from outside agents wait for
+	 * it; Caret cannot see their own file reads, so the tool is the proof.
+	 */
+	private guideRead = false
 	private http: Server | null = null
 	private token = generateToken()
 	private port: number | null = null
@@ -116,9 +125,14 @@ export class CaretMcpServer {
 		this.setConnected(false)
 	}
 
-	private registerTools(mcp: McpServer): void {
+	private registerTools(mcp: McpServer, viaChat: boolean): void {
 		const ctx: ToolContext = {
 			projectPath: this.options.projectPath,
+			viaChat,
+			rulesRead: () => this.guideRead,
+			markRulesRead: () => {
+				this.guideRead = true
+			},
 			screenshot: (pageId, part) =>
 				this.options.screenshot?.(pageId, part) ??
 				Promise.resolve({ ok: false as const, reason: "this project has no window to render pages in" }),
@@ -198,7 +212,7 @@ export class CaretMcpServer {
 		// answers the first request correctly and then returns 500 to every request
 		// after it, forever. That is invisible until something makes a second call,
 		// which is why `verify:app` now makes several.
-		const mcp = new McpServer({ name: "caret", version: "0.1.0" })
+		const mcp = new McpServer({ name: "caret", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS })
 		const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
 
 		res.on("close", () => {
@@ -207,7 +221,7 @@ export class CaretMcpServer {
 		})
 
 		try {
-			this.registerTools(mcp)
+			this.registerTools(mcp, req.headers["x-caret-client"] === "chat")
 			await mcp.connect(transport)
 			await transport.handleRequest(req, res, body)
 		} catch (err) {

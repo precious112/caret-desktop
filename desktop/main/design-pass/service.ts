@@ -9,7 +9,7 @@
  * or the page).
  */
 import type { CodingBackend, StructuredRequest } from "../../../src/core/design/agent/backend"
-import type { PrepareApi } from "../../../src/core/design/agent/conversation"
+import type { PrepareApi, PreparedTurn } from "../../../src/core/design/agent/conversation"
 import type { InstallOutcome } from "../../../src/core/design/catalog/registry-install"
 import { DesignPassError, type DesignQuestion, type PassStep, runDesignPass } from "../../../src/core/design/design-pass/engine"
 import { approvedFrom } from "../../../src/core/design/design-pass/findings"
@@ -76,7 +76,7 @@ export class DesignPassService {
 	 * Runs the pass for one typed message. Null when the message is not page
 	 * work: the chat then runs the turn exactly as it would with the pass off.
 	 */
-	async prepare(message: string, api: PrepareApi): Promise<string | null> {
+	async prepare(message: string, api: PrepareApi): Promise<PreparedTurn | null> {
 		const backend = await this.options.backend()
 		// No backend: the turn itself reports that, in the chat's usual words.
 		if (!backend) return null
@@ -213,7 +213,8 @@ export class DesignPassService {
 				removed: result.removed.length,
 				rejected_claims: result.stats.rejectedClaims,
 			})
-			return buildInstructions(result.plan, result.removed, components)
+			// The plan goes in this turn's system text; the user's words stay the prompt.
+			return { system: buildInstructions(result.plan, result.removed, components) }
 		} catch (err) {
 			if (api.signal.aborted) throw err
 			capture("design_pass_completed", {

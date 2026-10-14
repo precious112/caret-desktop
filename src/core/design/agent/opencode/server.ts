@@ -74,6 +74,10 @@ async function boot(config: OpencodeConfig): Promise<RunningServer> {
 		env: {
 			...process.env,
 			OPENCODE_SERVER_PASSWORD: password,
+			// The user's own ~/.claude/CLAUDE.md and skills are theirs, not the
+			// design agent's: keep them out (the switch is in the pinned binary).
+			// The project's AGENTS.md still loads; Caret writes the same core there.
+			OPENCODE_DISABLE_CLAUDE_CODE: "1",
 			OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
 		},
 		stdio: ["ignore", "pipe", "pipe"],

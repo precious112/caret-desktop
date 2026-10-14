@@ -60,12 +60,18 @@ import { captureUndoStep } from "../../../src/core/design/undo/design-undo"
 import { precomputeAndApply } from "../../../src/core/design/visual-editing/post-generation-hook"
 import { Logger } from "../../../src/shared/services/Logger"
 import { getDesignLayerChangedFiles, getLatestGitCommitHash } from "../../../src/utils/git"
-import { buildFoundationContext, buildGuide } from "../rules/context"
+import { buildDesignLayer, buildFoundationContext } from "../rules/context"
 import type { ScreenshotResult } from "../types"
+import { matchesSearch, pageOf } from "./paging"
 import { VIEW_REFERENCE_TOOL } from "./view-reference"
 
 export interface ToolContext {
 	projectPath: string
+	/** The request came from Caret's own chat (its permission ruling covers the rules check). */
+	viaChat?: boolean
+	/** Whether an outside agent has read the design layer's rules this run. */
+	rulesRead?(): boolean
+	markRulesRead?(): void
 	/** Renders one page and captures it (one part of frames), or says why it could not. */
 	screenshot(pageId: string, part?: number): Promise<ScreenshotResult>
 	/** Runs the deterministic design checks on one page (or all). */
@@ -119,6 +125,18 @@ async function settleDesignFile(projectPath: string, absolutePath: string): Prom
 		// Unparseable as written: its hash is still the truth, and the healer
 		// will try again on the next save.
 	}
+}
+
+/**
+ * The rules check for outside agents' page writes. Caret's chat is checked by
+ * its own permission ruling, and a context without the hook (tests) is not
+ * checked at all.
+ */
+function rulesNotRead(ctx: ToolContext): ToolResult | null {
+	if (ctx.viaChat || !ctx.rulesRead || ctx.rulesRead()) return null
+	return fail(
+		"Read the design layer's rules first: call get_guide (or read .caret/AGENTS.md and then get_guide), then retry this write.",
+	)
 }
 
 function fail(message: string): ToolResult {
@@ -184,15 +202,25 @@ export const MUTATING_TOOL_NAMES = [
 	"generate_asset",
 ] as const
 
+/** Rows per page of the growing lists: enough to work with, bounded whatever the project holds. */
+const ASSETS_PER_PAGE = 30
+const PAGES_PER_PAGE = 50
+
+function shorten(text: string, max: number): string {
+	return text.length <= max ? text : `${text.slice(0, max - 1)}…`
+}
+
 export const TOOLS: ToolDefinition[] = [
 	VIEW_REFERENCE_TOOL as unknown as ToolDefinition,
 	{
 		name: "get_project",
 		title: "Read the design layer",
 		description:
-			"The structure of this project's design layer: every page with its metadata, every flow, and the current sync state. Call this first — it is the map.",
-		inputSchema: {},
-		async handler(ctx) {
+			"The structure of this project's design layer: its pages with their metadata (a page at a time), every flow, and the current sync state. Call this first — it is the map.",
+		inputSchema: {
+			page: z.number().int().optional().describe("Which page of the page list, from 1"),
+		},
+		async handler(ctx, args: { page?: number }) {
 			if (!(await caretDirectoryExists(ctx.projectPath))) {
 				return fail("This project has no .caret/ design layer yet.")
 			}
@@ -201,9 +229,12 @@ export const TOOLS: ToolDefinition[] = [
 				listFlows(ctx.projectPath),
 				readSyncState(ctx.projectPath),
 			])
+			const listed = pageOf(pages, args?.page, PAGES_PER_PAGE, "pages")
 			return reply(ctx, {
 				project: path.basename(ctx.projectPath),
-				pages: pages.map(summarisePage),
+				pages: listed.items.map(summarisePage),
+				pagesTotal: listed.total,
+				...(listed.more ? { more: listed.more } : {}),
 				flows: flows.map(summariseFlow),
 				lastSyncedCommit: sync.lastSyncedCommit,
 			})
@@ -331,20 +362,32 @@ export const TOOLS: ToolDefinition[] = [
 		name: "list_assets",
 		title: "List this project's assets",
 		description:
-			"Every image, vector, video and 3D model the user has added, with its tag, size and description. The same list is in your always-on context; call this when you need it fresh after an upload.",
-		inputSchema: {},
-		async handler(ctx) {
+			"The images, vectors, videos and 3D models the user has added: tag, kind, size and a short description, a page at a time. Search by words in the tag or description, or filter by kind. Use get_asset to look at one.",
+		inputSchema: {
+			search: z.string().optional().describe("Words that must all appear in the tag or description"),
+			kind: z.string().optional().describe('Only this kind: "image", "vector", "video" or "model"'),
+			page: z.number().int().optional().describe("Which page, from 1"),
+		},
+		async handler(ctx, args: { search?: string; kind?: string; page?: number }) {
 			const index = await readAssetIndex(ctx.projectPath)
+			const matching = index.assets.filter(
+				(asset) =>
+					(!args.kind || asset.kind === args.kind) &&
+					matchesSearch(`${asset.tag} ${asset.description ?? ""} ${asset.alt ?? ""}`, args.search),
+			)
+			const page = pageOf(matching, args.page, ASSETS_PER_PAGE, "assets")
 			return reply(ctx, {
-				assets: index.assets.map((asset) => ({
+				total: page.total,
+				page: page.page,
+				pages: page.pages,
+				...(page.more ? { more: page.more } : {}),
+				assets: page.items.map((asset) => ({
 					tag: asset.tag,
 					url: assetUrl(asset),
 					kind: asset.kind,
 					width: asset.width,
 					height: asset.height,
-					alt: asset.alt,
-					description: asset.description,
-					origin: asset.origin.type,
+					description: shorten(asset.description ?? asset.alt ?? "", 160),
 				})),
 			})
 		},
@@ -461,12 +504,13 @@ export const TOOLS: ToolDefinition[] = [
 
 	{
 		name: "get_guide",
-		title: "Read the authoring guide",
+		title: "Read the design layer's rules",
 		description:
-			"How to author pages in this design layer — the conventions that keep the visual editor working. Read this before writing a page for the first time in a session.",
+			"The design layer's authoring rules (the same text as .caret/AGENTS.md): caret-ids, inline editing, page metadata and states, shared components, packages, components. Read this before writing a page for the first time in a session; page-writing tools refuse until you have.",
 		inputSchema: {},
 		async handler(ctx) {
-			return { content: [{ type: "text", text: await buildGuide(ctx.projectPath) }] }
+			ctx.markRulesRead?.()
+			return { content: [{ type: "text", text: await buildDesignLayer(ctx.projectPath) }] }
 		},
 	},
 
@@ -491,6 +535,8 @@ export const TOOLS: ToolDefinition[] = [
 				.describe("Page metadata. Always give meaningful tags — the canvas groups by them."),
 		},
 		async handler(ctx, args: { pageId: string; source: string; meta: Omit<PageMeta, "id"> }) {
+			const unread = rulesNotRead(ctx)
+			if (unread) return unread
 			const dir = resolveInCaret(ctx.projectPath, path.join("pages", args.pageId))
 			if (!dir) return fail(`Invalid page id: ${args.pageId}`)
 			if (await exists(dir)) return fail(`Page "${args.pageId}" already exists — use write_page to change it.`)
@@ -516,6 +562,8 @@ export const TOOLS: ToolDefinition[] = [
 			"Replaces the source of an existing page. Prefer this over your own file tools: it writes atomically, validates, and records what changed.",
 		inputSchema: { pageId: z.string(), source: z.string() },
 		async handler(ctx, args: { pageId: string; source: string }) {
+			const unread = rulesNotRead(ctx)
+			if (unread) return unread
 			const dir = resolveInCaret(ctx.projectPath, path.join("pages", args.pageId))
 			if (!dir) return fail(`Invalid page id: ${args.pageId}`)
 			const indexPath = path.join(dir, "index.tsx")
@@ -549,6 +597,8 @@ export const TOOLS: ToolDefinition[] = [
 			source: z.string().describe("The full file source"),
 		},
 		async handler(ctx, args: { path: string; source: string }) {
+			const unread = rulesNotRead(ctx)
+			if (unread) return unread
 			const relative = args.path.replace(/^\.caret\//, "").replace(/^\.\//, "")
 			if (!/^(layouts|components)\/[A-Za-z0-9_\-/]+\.tsx$/.test(relative) || relative.startsWith("components/catalog/")) {
 				return fail(

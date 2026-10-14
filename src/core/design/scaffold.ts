@@ -84,6 +84,7 @@ canvas-layout.json
 caret-take-sources.css
 pages/*--v*/
 assets/.posters/
+/AGENTS.md
 `
 
 /**
