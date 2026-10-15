@@ -262,6 +262,11 @@ export interface StructuredRequest {
 	 * replaces it.
 	 */
 	openCodePrompt?: boolean
+	/**
+	 * What this call is ("interview:area" and the topic), for recordings and
+	 * replay. Backends that talk to a model ignore it.
+	 */
+	trace?: { tag: string; area?: string }
 }
 
 /** An MCP server's state on the backend, in the server's own words. */

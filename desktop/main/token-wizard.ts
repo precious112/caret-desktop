@@ -10,7 +10,7 @@
  * memory is what makes Back free, disk is what survives the window. Both are
  * cheap; losing a five-question interview to a crash is not.
  */
-import { BrowserWindow } from "electron"
+import { app, BrowserWindow } from "electron"
 
 import {
 	COVERAGE_AREAS,
@@ -35,6 +35,7 @@ import {
 import { recordEdit } from "../../src/core/design/provenance"
 import { Logger } from "../../src/shared/services/Logger"
 import type { WizardStateWire } from "../shared/ipc"
+import { interviewBackendOverride, recordingBackend, replayBackend } from "./interview-backend"
 import { getPrefs } from "./prefs"
 import { regenerateRulesFiles } from "./rules/generate"
 
@@ -67,12 +68,17 @@ export function oneTurnAtATime(projectPath: string, run: () => Promise<WizardSta
 
 /** The configured backend, only if it is actually ready. */
 async function resolveBackend(): Promise<{ backend: CodingBackend; detail: null } | { backend: null; detail: string }> {
+	// Development test switch: answers from a recording instead of a model.
+	const override = interviewBackendOverride(process.env, app.isPackaged)
+	if (override?.kind === "replay") return { backend: replayBackend(override), detail: null }
 	const id = getPrefs().backendId
 	if (!id) return { backend: null, detail: "No coding backend is set up. Open Settings → Backend to choose one." }
 	try {
 		const backend = getBackend(id)
 		const report = await backend.availability()
-		if (report.ready) return { backend, detail: null }
+		if (report.ready) {
+			return { backend: override?.kind === "record" ? recordingBackend(backend, override.file) : backend, detail: null }
+		}
 		return { backend: null, detail: report.remedy?.label ?? report.detail ?? `${backend.displayName} is not ready.` }
 	} catch (err) {
 		Logger.warn(`[wizard] backend check failed: ${err}`)

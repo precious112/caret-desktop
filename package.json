@@ -38,7 +38,8 @@
 		"package:win": "npm run build && electron-builder --win --publish never",
 		"package:linux": "npm run build && electron-builder --linux --publish never",
 		"preview:markdown": "npx tsx scripts/preview-markdown.ts",
-		"preview:wizard": "npx tsx scripts/preview-wizard.ts"
+		"preview:wizard": "npx tsx scripts/preview-wizard.ts",
+		"test:interview": "npm run build && tsx scripts/test-interview.ts"
 	},
 	"dependencies": {
 		"@babel/parser": "^7.29.8",
