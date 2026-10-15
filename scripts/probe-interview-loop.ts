@@ -20,6 +20,7 @@ import type { StructuredRequest } from "../src/core/design/agent/backend"
 import { OpencodeBackend } from "../src/core/design/agent/opencode"
 import { request } from "../src/core/design/agent/opencode/http"
 import { currentOpencodeServer, stopOpencodeServer } from "../src/core/design/agent/opencode/server"
+import { commonValues } from "../src/core/design/design-pass/foundation-check"
 import { nextWizardTurn } from "../src/core/design/interview/conductor"
 import type { StoredQA, WizardAnswer, WizardQuestion } from "../src/core/design/interview/widgets"
 
@@ -128,6 +129,15 @@ async function interview(run: number, dir: string): Promise<{ turns: number; stu
 		console.log(
 			`  [${run}.${turn}] ${q.kind} ${JSON.stringify(q.covers ?? [])} in ${seconds}s (${attempts} attempt(s)), ${q.options?.length ?? q.steps?.length ?? 0} options: ${(q.options ?? []).map((o) => o.label.slice(0, 28)).join(" | ")}${rejections.length ? ` | rejected: ${rejections.join("; ")}` : ""}`,
 		)
+		// What the user would see must hold no common default they did not choose.
+		const shown = commonValues(
+			{
+				colours: q.kind === "color" ? (q.options ?? []).map((o) => o.hex ?? "").filter(Boolean) : [],
+				fonts: q.kind === "font" ? (q.options ?? []).map((o) => o.label) : [],
+			},
+			{ words: DESCRIPTION, colours: [], fonts: [] },
+		)
+		if (shown.length) console.log(`      COMMON DEFAULTS SHOWN: ${shown.map((f) => f.value).join(", ")}`)
 		history.push({ question: q, answer: answerFor(q) })
 	}
 	return { turns: 14, stuck, failed, finished: false }

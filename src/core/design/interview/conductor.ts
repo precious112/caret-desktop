@@ -165,6 +165,14 @@ export class WizardTurnError extends Error {
 	}
 }
 
+/** A reply refused for offering common AI defaults: the model has now been told which. */
+export class CommonValuesError extends WizardTurnError {
+	constructor(message: string) {
+		super(message)
+		this.name = "CommonValuesError"
+	}
+}
+
 /**
  * Stable instructions, sent as the system prompt.
  *
@@ -556,6 +564,12 @@ export function validateQuestion(
 	mode: WizardMode = "ai-led",
 	/** When given, colour and font options that are common AI defaults the user did not choose are refused. */
 	slopCheck?: UserChoices,
+	/**
+	 * The model was already told about common defaults (or this is the last
+	 * attempt): offering them again drops those options instead of sending the
+	 * whole question back. They never reach the user either way.
+	 */
+	told = false,
 ): WizardQuestion {
 	const question: WizardQuestion = { ...raw, id: slug(raw.id, `q${history.length + 1}`) }
 	if (history.some((qa) => qa.question.id === question.id)) question.id = `${question.id}-${history.length + 1}`
@@ -690,6 +704,27 @@ export function validateQuestion(
 			}
 		}
 
+		// Before the count checks: dropping common defaults can leave too few.
+		if (slopCheck && (question.kind === "color" || question.kind === "font")) {
+			// The value each option offers; hexes are not normalised until below.
+			const valueOf = (o: WizardOption): string =>
+				question.kind === "color" ? (o.hex ? (normalizeHex(o.hex) ?? "") : "") : (o.label ?? "")
+			const found = commonValues(
+				{
+					colours: question.kind === "color" ? options.map(valueOf).filter(Boolean) : [],
+					fonts: question.kind === "font" ? options.map(valueOf) : [],
+				},
+				slopCheck,
+			)
+			if (found.length && !told) throw new CommonValuesError(commonValuesComplaint(found))
+			if (found.length) {
+				const common = new Set(found.map((f) => f.value.toLowerCase()))
+				const kept = options.filter((o) => !common.has(valueOf(o).toLowerCase()))
+				options.length = 0
+				options.push(...kept)
+			}
+		}
+
 		const minimum = question.kind === "assumptions" ? 1 : 2
 		if (options.length < minimum) {
 			throw new WizardTurnError(`"${question.kind}" needs at least ${minimum} options, got ${options.length}.`)
@@ -716,17 +751,6 @@ export function validateQuestion(
 				throw new WizardTurnError(`a colour question needs at least one option with a hex.`)
 			}
 		}
-		if (slopCheck && (question.kind === "color" || question.kind === "font")) {
-			const found = commonValues(
-				{
-					colours: question.kind === "color" ? options.map((o) => o.hex).filter((h): h is string => !!h) : [],
-					fonts: question.kind === "font" ? options.map((o) => o.label) : [],
-				},
-				slopCheck,
-			)
-			if (found.length) throw new WizardTurnError(commonValuesComplaint(found))
-		}
-
 		if (question.kind === "assumptions") {
 			// A blanket "yes, all of these" is always redundant and always wrong
 			// here: every statement is ticked already, so agreeing to everything is
@@ -1064,7 +1088,13 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 	// asked to correct a reply it has never seen.
 	let rejectedPayload = "(no reply was parsed)"
 
-	const attempt = async (complaint?: string, repair = false): Promise<WizardTurn> => {
+	// Common defaults are checked on EVERY attempt (field report: a retry after
+	// an unrelated rejection went unchecked and offered Space Grotesk and Geist).
+	// The first time they go back named; after that, or on the last attempt,
+	// they are dropped instead, so the check can never cost the user the turn.
+	let toldCommon = false
+
+	const attempt = async (complaint?: string, repair = false, last = false): Promise<WizardTurn> => {
 		rejectedPayload = "(no reply was parsed)"
 		const result = await input.backend.structured<{
 			action: string
@@ -1087,9 +1117,11 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 		rejectedPayload = JSON.stringify(value ?? null)
 		if (value?.action === "ask" && !force) {
 			if (!value.question) throw new WizardTurnError('action was "ask" but no question was included.')
-			// Common AI defaults go back once: the first attempt is checked, a retry is not.
-			const check = repair ? undefined : userChoicesOf(input.description, input.history, settled)
-			return { action: "ask", question: validateQuestion(value.question, input.history, mode, check) }
+			const check = userChoicesOf(input.description, input.history, settled)
+			return {
+				action: "ask",
+				question: validateQuestion(value.question, input.history, mode, check, toldCommon || last),
+			}
 		}
 		if (value?.action === "finish" || force) {
 			if (!value?.foundation) throw new WizardTurnError('action was "finish" but no foundation was included.')
@@ -1106,14 +1138,15 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 			// Finalize is the validator: it throws ProposalError with a quotable
 			// sentence, and its success proves the proposal derives cleanly.
 			const finalized = finalizeProposal(value.foundation, input.description)
-			// Before the user sees it: a common pairing goes back once, like a
-			// malformed question. A forced finish is never bounced.
-			if (!repair && !force) {
+			// Before the user sees it: a common pairing goes back once, on whichever
+			// attempt first offers it. A forced finish is never bounced, and a
+			// finish cannot drop a value the way a question drops an option.
+			if (!toldCommon && !last && !force) {
 				const found = commonValues(
 					foundationCandidates(finalized.tokens),
 					userChoicesOf(input.description, input.history, settled),
 				)
-				if (found.length) throw new WizardTurnError(commonValuesComplaint(found))
+				if (found.length) throw new CommonValuesError(commonValuesComplaint(found))
 			}
 			return { action: "finish", foundation: value.foundation }
 		}
@@ -1130,8 +1163,9 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 	for (let attemptIndex = 1; ; attemptIndex++) {
 		input.onAttempt?.(attemptIndex, MAX_TURN_ATTEMPTS)
 		try {
-			return await attempt(complaint, attemptIndex > 1)
+			return await attempt(complaint, attemptIndex > 1, attemptIndex >= MAX_TURN_ATTEMPTS)
 		} catch (err) {
+			if (err instanceof CommonValuesError) toldCommon = true
 			const why = err instanceof Error ? err.message : String(err)
 			Logger.warn(`[wizard] attempt ${attemptIndex}/${MAX_TURN_ATTEMPTS} rejected (${why})`)
 			// The provider refused the request itself (a usage limit, billing):

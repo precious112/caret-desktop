@@ -275,8 +275,16 @@ describe("validateQuestion", () => {
 			() => validateQuestion(cream(), [], "ai-led", nobody),
 			(err: unknown) => err instanceof WizardTurnError && /#f5f0e6 \(Warm cream background\)/i.test(err.message),
 		)
-		// The retry is not checked: the AI was told once.
-		assert.doesNotThrow(() => validateQuestion(cream(), []))
+		// Once told, offering it again drops that option; the rest still render.
+		const threeWays = cream()
+		threeWays.options?.push({ id: "c", label: "Kelp green", hex: "#2F6B4F" })
+		threeWays.recommendedId = "a"
+		const dropped = validateQuestion(threeWays, [], "ai-led", nobody, true)
+		assert.deepEqual(
+			dropped.options?.map((o) => o.id),
+			["b", "c"],
+		)
+		assert.equal(dropped.recommendedId, "b")
 		// The user's own words make it theirs.
 		assert.doesNotThrow(() => validateQuestion(cream(), [], "ai-led", { ...nobody, words: "Our brand cream is #F5F0E6" }))
 
@@ -289,6 +297,40 @@ describe("validateQuestion", () => {
 			],
 		})
 		assert.throws(() => validateQuestion(fonts, [], "ai-led", nobody), WizardTurnError)
+	})
+
+	it("drops common defaults on a told retry, and moves the recommendation off them", () => {
+		// The field question (Argus, deepseek): four display faces, two of them defaults.
+		const argus = question({
+			kind: "font",
+			covers: ["display-type"],
+			options: [
+				{ id: "space-grotesk", label: "Space Grotesk" },
+				{ id: "geist", label: "Geist" },
+				{ id: "plex", label: "IBM Plex Sans" },
+				{ id: "bricolage", label: "Bricolage Grotesque" },
+			],
+		})
+		argus.recommendedId = "space-grotesk"
+		const nobody = { words: "Argus is an open-source monitoring tool", colours: [], fonts: [] }
+		const shown = validateQuestion(argus, [], "collaborative", nobody, true)
+		const labels = shown.options?.map((o) => o.label) ?? []
+		assert.ok(!labels.includes("Space Grotesk") && !labels.includes("Geist"), labels.join(", "))
+		assert.ok(labels.length >= 2)
+		assert.ok(shown.options?.some((o) => o.id === shown.recommendedId))
+		assert.notEqual(shown.recommendedId, "space-grotesk")
+
+		// Too few left after dropping: back to the model, never a one-card question.
+		const mostlyDefaults = question({
+			kind: "font",
+			covers: ["display-type"],
+			options: [
+				{ id: "a", label: "Space Grotesk" },
+				{ id: "b", label: "Geist" },
+				{ id: "c", label: "Fraunces" },
+			],
+		})
+		assert.throws(() => validateQuestion(mostlyDefaults, [], "collaborative", nobody, true), WizardTurnError)
 	})
 
 	it("rejects a 'you decide' option — Skip and the recommendation carry delegation", () => {
@@ -444,6 +486,82 @@ describe("nextWizardTurn", () => {
 			]),
 		})
 		assert.equal(turn.action, "ask")
+	})
+
+	it("checks common defaults on a retry too (field: an unrelated rejection let Space Grotesk through)", async () => {
+		const prompts: string[] = []
+		const replies = [
+			{ action: "ask", question: question({ options: [] }) }, // rejected for something else
+			{
+				action: "ask",
+				question: {
+					...question({
+						kind: "font",
+						covers: ["display-type"],
+						options: [
+							{ id: "space-grotesk", label: "Space Grotesk" },
+							{ id: "geist", label: "Geist" },
+							{ id: "plex", label: "IBM Plex Sans" },
+						],
+					}),
+					recommendedId: "space-grotesk",
+				},
+			},
+			{
+				action: "ask",
+				question: {
+					...question({
+						kind: "font",
+						covers: ["display-type"],
+						options: [
+							{ id: "space-grotesk", label: "Space Grotesk" },
+							{ id: "plex", label: "IBM Plex Sans" },
+							{ id: "bricolage", label: "Bricolage Grotesque" },
+						],
+					}),
+					recommendedId: "space-grotesk",
+				},
+			},
+		]
+		let call = 0
+		const backend = {
+			id: "opencode",
+			async structured(req: { prompt: string }) {
+				prompts.push(req.prompt)
+				return { value: replies[Math.min(call++, replies.length - 1)], emulated: false }
+			},
+		} as unknown as CodingBackend
+		const turn = await nextWizardTurn({ ...base, description: "Argus watches servers.", backend })
+		assert.equal(prompts.length, 3, "the second attempt's defaults went back to the model")
+		assert.match(prompts[2], /Space Grotesk.*Geist|Geist.*Space Grotesk/)
+		assert.equal(turn.action, "ask")
+		if (turn.action !== "ask") return
+		// Told once, it offered Space Grotesk again: that option is gone, not the turn.
+		assert.deepEqual(
+			turn.question.options?.map((o) => o.label),
+			["IBM Plex Sans", "Bricolage Grotesque"],
+		)
+		assert.equal(turn.question.recommendedId, "plex")
+	})
+
+	it("checks a finish's common defaults on a retry too", async () => {
+		const prompts: string[] = []
+		const replies = [
+			{ action: "ask", question: question({ options: [] }) },
+			{ action: "finish", foundation: { ...PROPOSAL, displayFamily: "Space Grotesk" } },
+			{ action: "finish", foundation: PROPOSAL },
+		]
+		let call = 0
+		const backend = {
+			id: "opencode",
+			async structured(req: { prompt: string }) {
+				prompts.push(req.prompt)
+				return { value: replies[Math.min(call++, replies.length - 1)], emulated: false }
+			},
+		} as unknown as CodingBackend
+		await nextWizardTurn({ ...base, description: "Argus watches servers.", backend }).catch(() => undefined)
+		assert.ok(prompts.length >= 3, "the finish offering Space Grotesk was not let through on attempt 2")
+		assert.match(prompts[2], /Space Grotesk/)
 	})
 
 	it("fails after the retry rather than looping", async () => {
