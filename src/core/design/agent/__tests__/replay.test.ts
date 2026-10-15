@@ -74,6 +74,30 @@ describe("ReplayBackend", () => {
 		assert.equal(same.value, 1)
 	})
 
+	it("answers a labelled request only with a recording of word for word the same request, and names the line that differs", async () => {
+		const recording: Recording = {
+			format: 2,
+			calls: [
+				{ tag: "interview:area", area: "semantics", prompt: "Decided so far:\n- accent: #e8765a", reply: "after coral" },
+				{ tag: "interview:area", area: "semantics", prompt: "Decided so far:\n- accent: None", reply: "after none" },
+			],
+		}
+		const backend = new ReplayBackend(recording)
+		const trace = { tag: "interview:area", area: "semantics" }
+		// Out of recorded order: the matching request is found, not just the next one.
+		assert.equal(
+			(await backend.structured(request({ prompt: "Decided so far:\n- accent: None", trace }))).value,
+			"after none",
+		)
+		await assert.rejects(
+			backend.structured(request({ prompt: "Decided so far:\n- accent: #000000", trace })),
+			(err: unknown) => err instanceof ReplayStaleError && /line 2/.test(err.message),
+		)
+		// Lenient mode serves the next recorded answer whatever the request said.
+		const lenient = new ReplayBackend(recording, { strict: false })
+		assert.equal((await lenient.structured(request({ prompt: "anything", trace }))).value, "after coral")
+	})
+
 	it("plays back failures as the errors the app really gets", async () => {
 		const backend = new ReplayBackend({
 			format: 1,
@@ -143,8 +167,14 @@ describe("RecordingBackend", () => {
 		assert.equal(saved.calls[1].fault, "provider-refusal")
 
 		const replay = ReplayBackend.fromFile(file)
+		// Recorded in one project folder, replayed in another: the folder is not part of the match.
 		const brand = await replay.structured(
-			request({ systemPrompt: "s", trace: { tag: "interview:area", area: "brand-color" } }),
+			request({
+				systemPrompt: "s",
+				prompt: "read /tmp/elsewhere/x.css",
+				workingDirectory: "/tmp/elsewhere",
+				trace: { tag: "interview:area", area: "brand-color" },
+			}),
 		)
 		assert.deepEqual(brand.value, { a: 1 })
 		await assert.rejects(

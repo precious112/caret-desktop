@@ -9,7 +9,7 @@ import type { AreaOption } from "../answers"
 import { AREA_ORDER } from "../areas"
 import { avoidListFor, flaggedOptions, isCheckedForDefaults, userChoicesFrom } from "../defaults"
 import { applyAnswer, newRecord } from "../state"
-import { openedRecord, questionFor } from "./paths"
+import { openedRecord, questionFor, SAMPLE_OPTIONS } from "./paths"
 
 const nobody = { words: "A monitoring tool.", colours: [], fonts: [] }
 
@@ -38,6 +38,17 @@ describe("overused defaults", () => {
 	it("the field-run offenders are on the font avoid line", () => {
 		const avoid = avoidListFor("display-type", nobody)
 		for (const font of ["Inter", "Geist", "Space Grotesk"]) assert.ok(avoid.includes(font), `${font} is missing`)
+	})
+
+	it("the test samples themselves contain no overused default, so tests never fail on their own data", () => {
+		for (const area of AREA_ORDER) {
+			const options = SAMPLE_OPTIONS[area].map((value, i) => ({ id: String(i), label: "x", value }))
+			assert.deepEqual(
+				flaggedOptions(area, options as AreaOption[], nobody),
+				[],
+				`${area} samples include an overused default`,
+			)
+		}
 	})
 
 	it("ordinary choices are not flagged", () => {

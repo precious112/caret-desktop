@@ -20,7 +20,12 @@ import type { CodingBackend, StructuredRequest } from "../../agent/backend"
 import type { Recording } from "../../agent/replay"
 import { commonValues } from "../../design-pass/foundation-check"
 import { activeHabits } from "../../design-pass/slop-list"
+import { AREA_ORDER } from "../areas"
 import { nextWizardTurn } from "../conductor"
+import { avoidListFor, userChoicesFrom } from "../defaults"
+import { areaSystemPrompt, areaUserPrompt, fillSystemPrompt, openingSystemPrompt, proseSystemPrompt } from "../model-calls"
+import { newRecord } from "../state"
+import { openedRecord } from "./paths"
 
 const DESCRIPTION = "Argus is an open-source monitoring tool for servers, with an AI investigator built in."
 const RECORDINGS = path.resolve(__dirname, "../../../../../test-fixtures/interview")
@@ -71,6 +76,75 @@ describe("the interview's instructions to the AI", () => {
 				const found = overusedDefaultsIn(call.systemPrompt ?? "", recording.description ?? "")
 				assert.deepEqual(found, [], `${file}, request ${i + 1}: the instructions name ${found.join(", ")}`)
 			}
+		}
+	})
+})
+
+describe("the rebuilt interview's instructions to the AI", () => {
+	const record = openedRecord("collaborative", ["surface"])
+	const system: Array<[string, string]> = [
+		...AREA_ORDER.map((area) => [`question about ${area}`, areaSystemPrompt(area)] as [string, string]),
+		["opening (from a description)", openingSystemPrompt(newRecord("collaborative", DESCRIPTION))],
+		["opening (reading an app)", openingSystemPrompt(newRecord("from-app", DESCRIPTION))],
+		["Just finish it", fillSystemPrompt()],
+		["the finish's words", proseSystemPrompt()],
+	]
+
+	it("recommend no overused AI default anywhere except the avoid line", () => {
+		for (const [name, text] of system) {
+			assert.deepEqual(overusedDefaultsIn(text, ""), [], `${name}: the instructions name overused defaults`)
+		}
+		for (const area of AREA_ORDER) {
+			const prompt = areaUserPrompt(record, area)
+			assert.deepEqual(
+				overusedDefaultsIn(prompt, DESCRIPTION),
+				[],
+				`the request about ${area} names overused defaults outside its avoid line`,
+			)
+		}
+	})
+
+	it("tell the model to avoid exactly what the check then refuses", () => {
+		for (const area of AREA_ORDER) {
+			const prompt = areaUserPrompt(record, area)
+			const line = prompt.split("\n").find((l) => l.startsWith("Avoid"))
+			const expected = avoidListFor(area, userChoicesFrom(record))
+			if (!expected.length) {
+				assert.equal(line, undefined, `${area} has an avoid line but nothing is checked`)
+				continue
+			}
+			assert.ok(line, `${area} is checked for overused defaults but its request has no avoid line`)
+			assert.deepEqual(
+				line
+					.replace(/^[^:]*:\s*/, "")
+					.split(", ")
+					.sort(),
+				[...expected].sort(),
+			)
+		}
+	})
+
+	it("stay short: one job per call, no reference lists", () => {
+		for (const [name, text] of system) {
+			const limit = name.startsWith("opening") ? 3500 : 2500
+			assert.ok(text.length <= limit, `${name}: ${text.length} characters, over ${limit}`)
+		}
+		for (const area of AREA_ORDER) {
+			const prompt = areaUserPrompt(record, area).replace(DESCRIPTION, "")
+			assert.ok(prompt.length <= 1500, `the request about ${area} is ${prompt.length} characters without the description`)
+		}
+	})
+
+	it("never contain the rules that contradicted each other", () => {
+		const banned = [
+			/may not decide anything silently/i,
+			/known-good/i,
+			/never settle values/i,
+			/tag every question/i,
+			/covers/i,
+		]
+		for (const [name, text] of system) {
+			for (const phrase of banned) assert.doesNotMatch(text, phrase, `${name} contains "${phrase.source}"`)
 		}
 	})
 })

@@ -82,6 +82,16 @@ export class ReplayStaleError extends BackendError {
 	}
 }
 
+/** The first line where two requests differ, for a stale-recording message a person can act on. */
+function firstDifference(recorded: string, now: string): string {
+	const a = recorded.split("\n")
+	const b = now.split("\n")
+	for (let i = 0; i < Math.max(a.length, b.length); i++) {
+		if (a[i] !== b[i]) return `line ${i + 1}: recorded "${(a[i] ?? "").slice(0, 120)}", now "${(b[i] ?? "").slice(0, 120)}"`
+	}
+	return "(no difference found)"
+}
+
 /** Fingerprint of what the model was told and the answer format it was given. */
 export function templateHash(systemPrompt: string | undefined, schema: Record<string, unknown>): string {
 	return createHash("sha256")
@@ -146,25 +156,38 @@ export class ReplayBackend implements CodingBackend {
 
 	async structured<T>(request: StructuredRequest): Promise<StructuredResult<T>> {
 		const trace = request.trace
-		const index = this.recording.calls.findIndex(
-			(call, i) =>
-				!this.used.has(i) &&
-				(!trace || ((call.tag ?? null) === trace.tag && (call.area ?? null) === (trace.area ?? null))),
-		)
-		if (index === -1) {
+		const strict = this.options.strict ?? true
+		const prompt = normalizeProjectPath(request.prompt, request.workingDirectory)
+		const candidates = this.recording.calls
+			.map((call, index) => ({ call, index }))
+			.filter(
+				({ call, index }) =>
+					!this.used.has(index) &&
+					(!trace || ((call.tag ?? null) === trace.tag && (call.area ?? null) === (trace.area ?? null))),
+			)
+		const first = trace ? candidates : candidates.slice(0, 1)
+		if (first.length === 0) {
 			throw new ReplayExhaustedError(
 				trace ? `${trace.tag}${trace.area ? ` / ${trace.area}` : ""}, ${this.used.size} used` : `${this.used.size} used`,
 			)
 		}
-		const call = this.recording.calls[index]
-		if ((this.options.strict ?? true) && call.templateHash) {
+		// A recorded call answers this request only if it was made with the same
+		// instructions and, in strict mode, word for word the same request.
+		const fits = (call: RecordedCall) =>
+			!strict ||
+			((!call.templateHash || call.templateHash === templateHash(request.systemPrompt, request.schema)) &&
+				(call.prompt === undefined || !trace || call.prompt === prompt))
+		const match = first.find(({ call }) => fits(call))
+		if (!match) {
+			const nearest = first[0].call
 			const now = templateHash(request.systemPrompt, request.schema)
-			if (now !== call.templateHash) {
-				throw new ReplayStaleError(
-					`${call.tag ?? "call"} ${call.area ?? ""}: recorded ${call.templateHash}, now ${now}`.trim(),
-				)
-			}
+			throw new ReplayStaleError(
+				nearest.templateHash && nearest.templateHash !== now
+					? `${nearest.tag ?? "call"} ${nearest.area ?? ""}: instructions changed (recorded ${nearest.templateHash}, now ${now})`.trim()
+					: `${nearest.tag ?? "call"} ${nearest.area ?? ""}: the request differs from the recorded one at "${firstDifference(nearest.prompt ?? "", prompt)}"`.trim(),
+			)
 		}
+		const { call, index } = match
 		this.used.add(index)
 		appendLog(this.options.logFile, { index, tag: call.tag, area: call.area ?? null, at: new Date().toISOString() })
 
@@ -223,7 +246,8 @@ export class RecordingBackend implements CodingBackend {
 			return result
 		} catch (err) {
 			const fault: RecordedCall["fault"] = err instanceof ProviderRefusalError ? "provider-refusal" : "transport"
-			const message = err instanceof ProviderRefusalError ? err.providerMessage : String(err)
+			const message =
+				err instanceof ProviderRefusalError ? err.providerMessage : err instanceof Error ? err.message : String(err)
 			this.save({ ...base, fault, message })
 			throw err
 		}

@@ -36,7 +36,7 @@ export const SAMPLE_OPTIONS: { [A in AreaId]: AreaValue<A>[] } = {
 	],
 	"brand-color": [{ hex: "#1d7ec4" }, { hex: "#0f6e5a" }, { hex: "#5b47c4" }],
 	"secondary-color": [{ hex: "#3e4c6b" }, { hex: "#8a6d3b" }, { none: true }],
-	"accent-color": [{ hex: "#e8765a" }, { hex: "#c9a227" }, { none: true }],
+	"accent-color": [{ hex: "#b0413e" }, { hex: "#c9a227" }, { none: true }],
 	neutral: [{ neutral: "cool" }, { neutral: "true" }, { neutral: "warm" }],
 	semantics: [
 		{ success: "#2e9e5b", warning: "#d99a1e", error: "#d9453b", info: "#3b82c4" },
