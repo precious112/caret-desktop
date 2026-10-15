@@ -570,6 +570,13 @@ export function validateQuestion(
 	 * whole question back. They never reach the user either way.
 	 */
 	told = false,
+	/**
+	 * The turn's last attempt: a re-asked area is let through (and logged)
+	 * instead of failing the turn, because a repeated question is a smaller
+	 * failure than the error screen (verify:app iw ended there, five rejections
+	 * of the same re-ask).
+	 */
+	lastAttempt = false,
 ): WizardQuestion {
 	const question: WizardQuestion = { ...raw, id: slug(raw.id, `q${history.length + 1}`) }
 	if (history.some((qa) => qa.question.id === question.id)) question.id = `${question.id}-${history.length + 1}`
@@ -589,10 +596,40 @@ export function validateQuestion(
 	// Coverage tags: sanitized FIRST, never rejected over — an unknown tag is
 	// noise, not a broken screen, and it must not count toward the atomicity
 	// check below.
+	const known = new Set(COVERAGE_AREAS.map((area) => area.id))
 	if (question.covers) {
-		const known = new Set(COVERAGE_AREAS.map((area) => area.id))
 		const covers = question.covers.filter((id) => known.has(id))
 		question.covers = covers.length ? covers : undefined
+	}
+
+	// Collaborative questions are tracked by area: an untagged one settles
+	// nothing, so its area is asked again (field report, Argus: the accent was
+	// asked three times because the first accent question had no \`covers\`).
+	// An id that IS an area name says which; anything else goes back.
+	if (mode === "collaborative") {
+		if (question.kind !== "assumptions") {
+			if (!question.covers && known.has(raw.id)) question.covers = [raw.id]
+			if (!question.covers) {
+				throw new WizardTurnError(
+					`"${question.id}" has no \`covers\` — tag it with the one area it settles (${[...known].join(", ")}).`,
+				)
+			}
+		}
+		// An assumptions screen re-confirming an answered area is asking twice
+		// too (verify:app iw: "light or dark" answered, then "the page is dark"
+		// to confirm on the next screen).
+		const settled = new Set(coveredAreas(history))
+		const again = (question.covers ?? []).filter((id) => settled.has(id))
+		if (again.length && lastAttempt) {
+			Logger.warn(`[wizard] last attempt re-asks ${again.join(", ")}; shown rather than failing the turn`)
+		} else if (again.length) {
+			throw new WizardTurnError(
+				`${again.join(", ")} ${again.length === 1 ? "is" : "are"} already settled by an earlier answer — ` +
+					(question.kind === "assumptions"
+						? "leave those statements out and confirm only what is still open."
+						: "ask about an area that is still open."),
+			)
+		}
 	}
 
 	// One decision per question. A bundled question breaks the purpose-built
@@ -707,19 +744,19 @@ export function validateQuestion(
 		// Before the count checks: dropping common defaults can leave too few.
 		if (slopCheck && (question.kind === "color" || question.kind === "font")) {
 			// The value each option offers; hexes are not normalised until below.
-			const valueOf = (o: WizardOption): string =>
+			const offered = (o: WizardOption): string =>
 				question.kind === "color" ? (o.hex ? (normalizeHex(o.hex) ?? "") : "") : (o.label ?? "")
 			const found = commonValues(
 				{
-					colours: question.kind === "color" ? options.map(valueOf).filter(Boolean) : [],
-					fonts: question.kind === "font" ? options.map(valueOf) : [],
+					colours: question.kind === "color" ? options.map(offered).filter(Boolean) : [],
+					fonts: question.kind === "font" ? options.map(offered) : [],
 				},
 				slopCheck,
 			)
 			if (found.length && !told) throw new CommonValuesError(commonValuesComplaint(found))
 			if (found.length) {
 				const common = new Set(found.map((f) => f.value.toLowerCase()))
-				const kept = options.filter((o) => !common.has(valueOf(o).toLowerCase()))
+				const kept = options.filter((o) => !common.has(offered(o).toLowerCase()))
 				options.length = 0
 				options.push(...kept)
 			}
@@ -898,6 +935,8 @@ export type SettledValue =
 	| { area: string; kind: "choice"; value: string; own: boolean }
 	| { area: string; kind: "none" }
 	| { area: string; kind: "delegated" }
+	/** An assumptions screen: what the user confirmed, or what they said instead, per statement. */
+	| { area: string; kind: "confirmed"; areas: string[]; statements: string[] }
 
 /**
  * One entry per atomically-tagged area (numbers may add a second for
@@ -910,6 +949,30 @@ export type SettledValue =
 export function settledValues(history: StoredQA[]): SettledValue[] {
 	const entries = new Map<string, SettledValue>()
 	for (const qa of history) {
+		// A confirmed assumptions screen settles every area it covers. Left out
+		// of this ledger, the model saw "covered: neutral, radius" with no
+		// decision behind it and asked about them again ("I'm not going to fill
+		// it in behind your back"), and the finish could contradict a confirmed
+		// "the page is dark".
+		if (qa.question.kind === "assumptions" && qa.question.covers?.length && !qa.answer.skipped) {
+			const statements = String(qa.answer.value ?? "")
+				.split("\n")
+				.map((line) => {
+					const [said, reply = ""] = line.split(" → ")
+					const correction = reply.match(/^actually:\s*(.+)$/)?.[1]
+					return correction ? `${correction.trim()} (they corrected "${said.trim()}")` : said.trim()
+				})
+				.filter(Boolean)
+			if (statements.length) {
+				entries.set(`assumptions:${qa.question.id}`, {
+					area: qa.question.covers.join(", "),
+					kind: "confirmed",
+					areas: [...qa.question.covers],
+					statements,
+				})
+			}
+			continue
+		}
 		const area = qa.question.covers?.length === 1 ? qa.question.covers[0] : undefined
 		if (!area) continue
 		if (qa.answer.skipped) {
@@ -963,6 +1026,8 @@ function ledgerLines(settled: SettledValue[]): string {
 					return `- \`${entry.area}\`: skipped — your recommendation stands. Record the concrete value you recommend.`
 				case "choice":
 					return `- \`${entry.area}\`: they chose "${entry.value}"${entry.own ? " (their own words)" : ""}.`
+				case "confirmed":
+					return `- ${entry.areas.map((area) => `\`${area}\``).join(", ")}: settled on the assumptions screen — ${entry.statements.map((statement) => `"${statement}"`).join("; ")}. Do not ask about these areas again; the finish must match these statements.`
 			}
 		})
 		.join("\n")
@@ -976,6 +1041,10 @@ function ledgerLines(settled: SettledValue[]): string {
 export function checkValueEcho(foundation: FoundationProposal, settled: SettledValue[]): void {
 	const problems: string[] = []
 	const record = foundation as unknown as Record<string, unknown>
+	const surface = settledSurface(settled)
+	if (surface && foundation.surface !== surface) {
+		problems.push(`\`surface\` — the user settled a ${surface} page but the proposal has ${foundation.surface ?? "nothing"}`)
+	}
 	for (const entry of settled) {
 		if (entry.kind === "number") {
 			const got = record[entry.field]
@@ -1018,6 +1087,8 @@ export function checkValueEcho(foundation: FoundationProposal, settled: SettledV
  */
 export async function bindSettledValues(foundation: FoundationProposal, settled: SettledValue[]): Promise<void> {
 	const record = foundation as unknown as Record<string, unknown>
+	const surface = settledSurface(settled)
+	if (surface) foundation.surface = surface
 	const syncDecision = (area: string, value: string) => {
 		const entry = foundation.decisions?.find((decision) => decision.area === area)
 		if (entry && !entry.choice.includes(value)) entry.choice = value
@@ -1041,6 +1112,29 @@ export async function bindSettledValues(foundation: FoundationProposal, settled:
 			syncDecision(entry.area, record[field] as string)
 		}
 	}
+}
+
+/**
+ * Light or dark, as the user settled it: a pick on the surface question, or a
+ * confirmed statement on an assumptions screen that covers \`surface\`. Only an
+ * unambiguous mention counts ("dark page with light text" settles nothing).
+ */
+export function settledSurface(settled: SettledValue[]): "light" | "dark" | undefined {
+	let surface: "light" | "dark" | undefined
+	for (const entry of settled) {
+		const text =
+			entry.kind === "choice" && entry.area === "surface"
+				? entry.value
+				: entry.kind === "confirmed" && entry.areas.includes("surface")
+					? // What they said instead, not the statement they corrected.
+						entry.statements.map((statement) => statement.replace(/\s*\(they corrected "[^"]*"\)$/, "")).join(" ")
+					: undefined
+		if (!text) continue
+		const dark = /\bdark\b/i.test(text)
+		const light = /\blight\b/i.test(text)
+		if (dark !== light) surface = dark ? "dark" : "light"
+	}
+	return surface
 }
 
 /** What the user chose or said: exempt from the common-defaults check. */
@@ -1120,7 +1214,7 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 			const check = userChoicesOf(input.description, input.history, settled)
 			return {
 				action: "ask",
-				question: validateQuestion(value.question, input.history, mode, check, toldCommon || last),
+				question: validateQuestion(value.question, input.history, mode, check, toldCommon || last, last),
 			}
 		}
 		if (value?.action === "finish" || force) {
@@ -1167,7 +1261,11 @@ export async function nextWizardTurn(input: ConductorInput): Promise<WizardTurn>
 		} catch (err) {
 			if (err instanceof CommonValuesError) toldCommon = true
 			const why = err instanceof Error ? err.message : String(err)
-			Logger.warn(`[wizard] attempt ${attemptIndex}/${MAX_TURN_ATTEMPTS} rejected (${why})`)
+			// The reply itself, not only the reason: answer sessions are deleted
+			// once read, so this line is the only record of what the model sent.
+			Logger.warn(
+				`[wizard] attempt ${attemptIndex}/${MAX_TURN_ATTEMPTS} rejected (${why}) reply: ${rejectedPayload.slice(0, 600)}`,
+			)
 			// The provider refused the request itself (a usage limit, billing):
 			// another attempt gets the same refusal, so say it now.
 			if (err instanceof ProviderRefusalError || attemptIndex >= MAX_TURN_ATTEMPTS) throw err

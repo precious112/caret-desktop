@@ -25,6 +25,7 @@ import {
 	COVERAGE_AREAS,
 	checkValueEcho,
 	nextWizardTurn,
+	settledSurface,
 	settledValues,
 	validateQuestion,
 	WizardTurnError,
@@ -297,6 +298,65 @@ describe("validateQuestion", () => {
 			],
 		})
 		assert.throws(() => validateQuestion(fonts, [], "ai-led", nobody), WizardTurnError)
+	})
+
+	it("collaborative: a question must settle one area, and never one already settled", () => {
+		const accent = (overrides: Partial<WizardQuestion> = {}) =>
+			question({
+				id: "pick",
+				kind: "color",
+				options: [
+					{ id: "green", label: "Terminal green", hex: "#34d399" },
+					{ id: "amber", label: "Console amber", hex: "#f59e0b" },
+				],
+				...overrides,
+			})
+		// Untagged, with an id that names nothing: back to the model.
+		assert.throws(() => validateQuestion(accent(), [], "collaborative"), /has no `covers`/)
+		// The field case: untagged, but its id IS the area.
+		assert.deepEqual(validateQuestion(accent({ id: "accent-color" }), [], "collaborative").covers, ["accent-color"])
+		// ai-led questions carry no areas, so the rule is collaborative-only.
+		assert.doesNotThrow(() => validateQuestion(accent(), [], "ai-led"))
+
+		const answered = {
+			question: accent({ id: "accent-color", covers: ["accent-color"] }),
+			answer: { questionId: "accent-color", question: "", kind: "color", value: "#34d399", data: { hex: "#34d399" } },
+		} as StoredQA
+		assert.throws(
+			() => validateQuestion(accent({ id: "accent-again", covers: ["accent-color"] }), [answered], "collaborative"),
+			/accent-color is already settled/,
+		)
+		assert.doesNotThrow(() =>
+			validateQuestion(accent({ id: "support", covers: ["secondary-color"] }), [answered], "collaborative"),
+		)
+
+		// verify:app iw: "light or dark" answered, then an assumptions screen
+		// asking to confirm "the page is dark".
+		const dark = {
+			question: question({
+				id: "surface",
+				kind: "boolean",
+				covers: ["surface"],
+				options: [
+					{ id: "dark", label: "Dark" },
+					{ id: "light", label: "Light" },
+				],
+			}),
+			answer: { questionId: "surface", question: "", kind: "boolean", value: "dark" },
+		} as StoredQA
+		const confirm = (covers: string[]) =>
+			question({
+				id: "confirm",
+				kind: "assumptions",
+				covers,
+				question: "Is this the look?",
+				options: [{ id: "a", label: "The page is dark." }],
+			})
+		assert.throws(
+			() => validateQuestion(confirm(["surface", "neutral"]), [dark], "collaborative"),
+			/surface is already settled/,
+		)
+		assert.doesNotThrow(() => validateQuestion(confirm(["neutral"]), [dark], "collaborative"))
 	})
 
 	it("drops common defaults on a told retry, and moves the recommendation off them", () => {
@@ -770,6 +830,122 @@ describe("the settled-values ledger", () => {
 		assert.equal(foundation.secondary, "#b25a3c")
 		assert.equal(foundation.accent, undefined)
 		assert.equal(foundation.decisions?.[0].choice, "#b25a3c")
+	})
+
+	// verify:app iw (deepseek): an opening assumptions screen confirmed the
+	// greys and the corners, the ledger left them out, and the model asked about
+	// them five times running ("I'm not going to fill it in behind your back").
+	const confirmedScreen = (value: string): StoredQA => ({
+		question: question({
+			id: "look",
+			kind: "assumptions",
+			covers: ["surface", "neutral", "radius"],
+			options: [
+				{ id: "s", label: "The page is dark." },
+				{ id: "n", label: "The greys lean cool." },
+				{ id: "r", label: "Corners are slightly rounded." },
+			],
+		}),
+		answer: { questionId: "look", question: "Is this the look?", kind: "assumptions", value } as StoredQA["answer"],
+	})
+
+	it("a confirmed assumptions screen is in the ledger, corrections included, and the prompt says so", async () => {
+		const history = [
+			confirmedScreen(
+				"The page is dark. → yes\nThe greys lean cool. → actually: warm greys, like paper\nCorners are slightly rounded. → yes",
+			),
+		]
+		const [entry] = settledValues(history)
+		assert.equal(entry.kind, "confirmed")
+		assert.ok(entry.kind === "confirmed")
+		assert.deepEqual(entry.areas, ["surface", "neutral", "radius"])
+		assert.deepEqual(entry.statements, [
+			"The page is dark.",
+			'warm greys, like paper (they corrected "The greys lean cool.")',
+			"Corners are slightly rounded.",
+		])
+
+		let prompt = ""
+		const backend = {
+			id: "opencode",
+			async structured(request: { prompt: string }) {
+				prompt = request.prompt
+				return {
+					value: {
+						action: "ask",
+						question: question({
+							id: "brand",
+							kind: "color",
+							covers: ["brand-color"],
+							options: [
+								{ id: "a", label: "Harbour", hex: "#1f5fa8" },
+								{ id: "b", label: "Kelp", hex: "#2f6b4f" },
+							],
+						}),
+					},
+					emulated: false,
+				}
+			},
+		} as unknown as CodingBackend
+		await nextWizardTurn({ workingDirectory: "/tmp/x", description: "d", history, backend, mode: "collaborative" })
+		assert.match(prompt, /`surface`, `neutral`, `radius`: settled on the assumptions screen/)
+		assert.match(prompt, /warm greys, like paper/)
+		assert.match(prompt, /Do not ask about these areas again/)
+	})
+
+	it("a finish must keep the light or dark the user settled; bind writes it", async () => {
+		const light = settledValues([
+			confirmedScreen("The page is light. → yes\nThe greys lean cool. → yes\nCorners are slightly rounded. → yes"),
+		])
+		assert.equal(settledSurface(light), "light")
+		assert.throws(() => checkValueEcho({ ...PROPOSAL, surface: "dark" }, light), /settled a light page/)
+		const foundation = { ...PROPOSAL, surface: "dark" as const }
+		await bindSettledValues(foundation, light)
+		assert.equal(foundation.surface, "light")
+
+		// A corrected statement counts as what they said instead.
+		const corrected = settledValues([confirmedScreen("The page is dark. → actually: light, like paper")])
+		assert.equal(settledSurface(corrected), "light")
+		// A pick on the surface question counts too; an ambiguous one settles nothing.
+		assert.equal(settledSurface(settledValues([qa("surface", { value: "dark", label: "Dark" }, "boolean")])), "dark")
+		assert.equal(
+			settledSurface(settledValues([qa("surface", { value: "x", label: "Dark page, light text" }, "boolean")])),
+			undefined,
+		)
+	})
+
+	it("a model that keeps re-asking a settled area gets it shown on the last attempt, never the error screen", async () => {
+		let calls = 0
+		const reask = {
+			action: "ask",
+			question: question({
+				id: "greys",
+				kind: "options",
+				covers: ["neutral"],
+				options: [
+					{ id: "cool", label: "Cool" },
+					{ id: "warm", label: "Warm" },
+				],
+			}),
+		}
+		const backend = {
+			id: "opencode",
+			async structured() {
+				calls++
+				return { value: reask, emulated: false }
+			},
+		} as unknown as CodingBackend
+		const turn = await nextWizardTurn({
+			workingDirectory: "/tmp/x",
+			description: "d",
+			history: [
+				confirmedScreen("The page is dark. → yes\nThe greys lean cool. → yes\nCorners are slightly rounded. → yes"),
+			],
+			backend,
+			mode: "collaborative",
+		})
+		assert.equal(turn.action, "ask")
+		assert.equal(calls, 5, "the re-ask was refused on every attempt before the last")
 	})
 
 	it("the retry carries the rejected payload — a stateless attempt cannot correct what it never saw", async () => {

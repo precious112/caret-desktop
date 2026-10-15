@@ -20,6 +20,7 @@ import * as path from "path"
 
 import { type ElectronApplication, _electron as electron, type Page } from "playwright"
 
+import { commonValues } from "../src/core/design/design-pass/foundation-check"
 import { ensureCaretDirectoryExists } from "../src/core/design/scaffold"
 import { NO_MODEL_REASON, resolveVerifyModel, solidPng } from "./verify-support"
 
@@ -4410,6 +4411,246 @@ export default function CatalogDemo() {
 			"the history list survived returning to the chat",
 		)
 		return "history replaced the chat, and back restored it"
+	})
+
+	await scenario("iw. a whole collaborative interview runs in the app: one area per question, none asked twice", async () => {
+		// Field report (Argus, 2026-10-15): an accent question came back with no
+		// `covers`, the answer settled nothing, and the accent was asked three
+		// times while "So far" showed whichever colour was answered last. Unit
+		// tests and a direct-call probe both passed. Only the real window, the
+		// app's own `.interview.json` and its main.log show what a user sees, so
+		// this drives the whole interview by clicks and checks every turn.
+		// The picks vary (not always the recommendation) and the brand is typed,
+		// as the user did.
+		const description =
+			"Argus is an open-source monitoring tool for servers and applications, with an AI investigator built in. " +
+			"You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches " +
+			"metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, " +
+			"logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data " +
+			"never leaves your servers. The landing page should send people to the GitHub repo and the docs."
+		const BRAND = "#28a4f0"
+		const scratchFile = path.join(fixture, ".caret", ".interview.json")
+		const logFile = path.join(SHOTS, "main.log")
+		const logStart = (await fs.readFile(logFile, "utf8").catch(() => "")).length
+		const wizardLog = async () =>
+			(await fs.readFile(logFile, "utf8").catch(() => ""))
+				.slice(logStart)
+				.split("\n")
+				.filter((line) => line.includes("[wizard]"))
+		type Scratch = {
+			history: Array<{ question: any; answer: any }>
+			pending?: any
+			proposal?: any
+		}
+		const readScratch = async (): Promise<Scratch | null> =>
+			JSON.parse(await fs.readFile(scratchFile, "utf8").catch(() => "null"))
+
+		await fs.rm(scratchFile, { force: true })
+		try {
+			await openDesignSystem(chrome)
+			await chrome.click('[data-testid="ds-rerun"]')
+			await openDescribe(chrome, description)
+			await chrome.click('[data-testid="foundation-mode-collaborative"]')
+
+			const turns: string[] = []
+			const problems: string[] = []
+			let lastSeen = "nothing yet"
+			let brandSet = false
+			for (let answered = 0; ; answered++) {
+				assert(answered <= 18, `no finish after ${answered} answers:\n${turns.join("\n")}`)
+				// The next screen: the app saved it, and the window shows it settled.
+				const scratch = await waitFor(
+					`question ${answered + 1} (or the finish)`,
+					async () => {
+						if (await chrome.getByTestId("wizard-error").count()) {
+							throw new Error(
+								`the interview showed its error screen: ${await chrome.getByTestId("wizard-error").textContent()}\n${turns.join("\n")}\n${(await wizardLog()).slice(-8).join("\n")}`,
+							)
+						}
+						const saved = await readScratch()
+						lastSeen = saved
+							? `saved: ${saved.history.length} answered, pending ${saved.pending?.id ?? "none"}, proposal ${!!saved.proposal}`
+							: "no scratch"
+						if (!saved || saved.history.length !== answered) return null
+						const screen = saved.proposal ? "wizard-finish" : saved.pending ? "wizard-question" : null
+						if (!screen || (await chrome.getByTestId(screen).count()) === 0) return null
+						if (await chrome.getByTestId("wizard-thinking").count()) return null
+						return saved
+					},
+					8 * 60_000,
+					async () => `${lastSeen}; wizard log: ${(await wizardLog()).slice(-6).join(" | ")}`,
+				)
+
+				// What the previous answer settled must be ticked, and the summary
+				// must still show the brand, not the last colour answered.
+				const previous = scratch.history[answered - 1]?.question
+				if (previous?.covers?.length === 1 && !scratch.proposal) {
+					const done = await chrome
+						.locator(`[data-testid="wizard-coverage"] [data-area="${previous.covers[0]}"]`)
+						.getAttribute("data-done")
+					if (done !== "true") problems.push(`after answering ${previous.id}, "${previous.covers[0]}" is not ticked`)
+				}
+				if (brandSet && !scratch.proposal) {
+					const colour = (
+						await chrome.locator('[data-testid="wizard-so-far"] [data-term="Colour"]').textContent()
+					)?.trim()
+					if (!colour?.toLowerCase().includes(BRAND))
+						problems.push(`"So far" shows colour ${colour} after the brand was ${BRAND}`)
+				}
+				if (scratch.proposal) break
+
+				const q = scratch.pending
+				const settled = scratch.history.flatMap((qa) => qa.question.covers ?? [])
+				if (q.kind !== "assumptions" && q.covers?.length !== 1) {
+					problems.push(`${q.id} settles ${JSON.stringify(q.covers ?? [])}, not exactly one area`)
+				}
+				for (const area of q.covers ?? []) {
+					if (settled.includes(area)) problems.push(`${q.id} asks about "${area}" again`)
+				}
+				const userChoices = {
+					words: [description, ...scratch.history.map((qa) => String(qa.answer?.value ?? ""))].join("\n"),
+					colours: scratch.history.map((qa) => qa.answer?.data?.hex).filter(Boolean),
+					fonts: scratch.history.map((qa) => qa.answer?.data?.family).filter(Boolean),
+				}
+				const shown = commonValues(
+					{
+						colours: q.kind === "color" ? (q.options ?? []).map((o: any) => o.hex).filter(Boolean) : [],
+						fonts: q.kind === "font" ? (q.options ?? []).map((o: any) => o.label) : [],
+					},
+					userChoices,
+				)
+				if (shown.length) problems.push(`${q.id} offers common defaults: ${shown.map((f) => f.value).join(", ")}`)
+
+				// Answer it the way a person would.
+				const area = q.covers?.[0] ?? q.kind
+				let picked = ""
+				if (area === "brand-color") {
+					await chrome.fill('[data-testid="wizard-hex"]', BRAND)
+					await chrome.press('[data-testid="wizard-hex"]', "Enter")
+					picked = `typed ${BRAND}`
+					brandSet = true
+				} else if (q.kind === "assumptions") {
+					picked = "all confirmed"
+				} else if (q.kind === "scale") {
+					const steps = chrome.locator('[data-testid="wizard-scale"] button')
+					const index = answered % (await steps.count())
+					await steps.nth(index).click()
+					picked = `step ${index + 1}`
+				} else if (q.kind === "chips") {
+					const chips = chrome.locator('[data-testid="wizard-chips"] > button')
+					await chips.nth((await chips.count()) - 1).click()
+					picked = "chips"
+				} else if (q.kind === "text") {
+					await chrome.fill('[data-testid="wizard-text"]', "Plain and precise, like an incident report.")
+					picked = "text"
+				} else {
+					const options = chrome.locator('[data-testid="wizard-question"] [data-testid="wizard-option"]')
+					const count = await options.count()
+					assert(count >= 2, `${q.id} (${q.kind}) shows ${count} options`)
+					const index = answered % count
+					await options.nth(index).click()
+					picked = (await options.nth(index).getAttribute("data-option-id")) ?? `option ${index + 1}`
+				}
+				await waitFor(
+					`Continue to enable on ${q.id}`,
+					async () => ((await chrome.getByTestId("wizard-continue").isEnabled()) ? true : null),
+					10_000,
+				)
+				turns.push(
+					`${answered + 1}. ${q.kind} ${JSON.stringify(q.covers ?? [])} "${String(q.question).slice(0, 60)}" → ${picked}`,
+				)
+				await shot(chrome, `14-interview-${String(answered + 1).padStart(2, "0")}`)
+				await chrome.click('[data-testid="wizard-continue"]')
+			}
+
+			const final = (await readScratch())!
+			// The app's own record, kept: deleting it unread once cost the
+			// evidence for whether a confirmed "dark" came back light.
+			await fs.writeFile(path.join(SHOTS, "14-interview.json"), JSON.stringify(final, null, 2))
+			await chrome.waitForTimeout(800) // the finish screen fades in
+			await shot(chrome, "14-interview-finish")
+
+			// The finish must carry what was answered, read here from the answers
+			// themselves, not from the conductor's ledger (which is under test).
+			const proposal = final.proposal
+			if (String(proposal.brand).toLowerCase() !== BRAND) {
+				problems.push(`the finished foundation's brand is ${proposal.brand}, the user typed ${BRAND}`)
+			}
+			let surface: "light" | "dark" | undefined
+			for (const qa of final.history) {
+				const family = qa.answer?.data?.family
+				if (family && qa.question.covers?.[0] === "display-type" && proposal.displayFamily !== family) {
+					problems.push(`heading font answered ${family}, finished as ${proposal.displayFamily}`)
+				}
+				if (family && qa.question.covers?.[0] === "body-type" && proposal.bodyFamily !== family) {
+					problems.push(`body font answered ${family}, finished as ${proposal.bodyFamily}`)
+				}
+				if (!qa.question.covers?.includes("surface") || qa.answer?.skipped) continue
+				// A pick names it; a confirmed statement names it ("The page is dark").
+				// Each line is "statement → yes" or "statement → actually: what's true".
+				const said =
+					qa.question.kind === "assumptions"
+						? String(qa.answer.value ?? "")
+								.split("\n")
+								.map((line) => line.split(" → actually: ")[1] ?? line.split(" → ")[0])
+								.join(" ")
+						: `${qa.answer.label ?? ""} ${qa.answer.value ?? ""}`
+				const dark = /\bdark\b/i.test(said)
+				const light = /\blight\b/i.test(said)
+				if (dark !== light) surface = dark ? "dark" : "light"
+			}
+			if (surface && proposal.surface !== surface) {
+				problems.push(`the user settled a ${surface} page; the finish is ${proposal.surface}`)
+			}
+			const rejections = (await wizardLog()).filter((line) => line.includes("rejected"))
+			console.log(`    turns:\n      ${turns.join("\n      ")}\n    rejected attempts in main.log: ${rejections.length}`)
+			for (const line of rejections) console.log(`      ${line.slice(0, 220)}`)
+			assert(
+				problems.length === 0,
+				`the interview broke its own rules:\n- ${problems.join("\n- ")}\nturns:\n${turns.join("\n")}`,
+			)
+
+			// Finish the way a user does. The open interview lives in the app's
+			// memory, so deleting its file leaves the finish screen up and the next
+			// wizard scenario (ii) never finds the design-system view.
+			const tokensFile = path.join(fixture, ".caret", "tokens", "foundation.json")
+			const before = await fs.readFile(tokensFile, "utf-8")
+			await chrome.click('[data-testid="wizard-commit"]')
+			const tokens = await waitFor(
+				"the interview to write foundation.json",
+				async () => {
+					const raw = await fs.readFile(tokensFile, "utf-8")
+					return raw !== before ? JSON.parse(raw) : null
+				},
+				30_000,
+			)
+			assert(
+				String(tokens.color?.brand?.seed).toLowerCase() === BRAND,
+				`committed brand seed ${tokens.color?.brand?.seed}, the user typed ${BRAND}`,
+			)
+			assert(
+				tokens.typography?.displayFamily === proposal.displayFamily &&
+					tokens.typography?.fontFamily === proposal.bodyFamily,
+				`committed fonts ${tokens.typography?.displayFamily}/${tokens.typography?.fontFamily}, the finish showed ${proposal.displayFamily}/${proposal.bodyFamily}`,
+			)
+			assert(
+				(tokens.color?.surface ?? "light") === proposal.surface,
+				`committed surface ${tokens.color?.surface}, the finish showed ${proposal.surface}`,
+			)
+			// A commit hands the user to the canvas (FoundationView's onDone).
+			await chrome.waitForSelector('[data-testid="wizard"]', { state: "detached", timeout: 30_000 })
+
+			return `${final.history.length} questions, every one a single new area; brand ${proposal.brand}, ${proposal.surface}, ${proposal.displayFamily}/${proposal.bodyFamily}, committed; ${rejections.length} rejected attempts`
+		} finally {
+			// Keep the app's own record whatever happened, then leave no
+			// half-finished interview for later scenarios.
+			const left = await fs.readFile(scratchFile, "utf8").catch(() => null)
+			if (left) await fs.writeFile(path.join(SHOTS, "14-interview-at-end.json"), left)
+			if (await chrome.getByTestId("wizard-commit").count()) {
+				await chrome.click('[data-testid="wizard-commit"]').catch(() => {})
+			}
+			await fs.rm(scratchFile, { force: true })
+		}
 	})
 
 	await scenario("dp. the Design pass is on by default, says so, and turning it off is one confirmed click", async () => {

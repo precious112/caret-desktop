@@ -388,7 +388,7 @@ function Coverage({ coverage }: { coverage: NonNullable<Extract<WizardStateWire,
 					...coverage.done.map((area) => ({ ...area, done: true })),
 					...coverage.missing.map((area) => ({ ...area, done: false })),
 				].map((area) => (
-					<li className="flex items-center gap-2 text-[11.5px]" key={area.id}>
+					<li className="flex items-center gap-2 text-[11.5px]" data-area={area.id} data-done={area.done} key={area.id}>
 						<span
 							className={cn(
 								"flex size-3.5 shrink-0 items-center justify-center rounded-full border",
@@ -1400,7 +1400,7 @@ function SoFar({ history, proposalSpec: finalSpec }: { history: WizardQAWire[]; 
 			</div>
 			<dl className="mt-3 flex flex-col gap-1.5">
 				{known.map(([term, value]) => (
-					<div className="flex items-center justify-between gap-2 text-[11.5px]" key={term}>
+					<div className="flex items-center justify-between gap-2 text-[11.5px]" data-term={term} key={term}>
 						<dt className="text-shell-muted">{term}</dt>
 						<dd className="flex min-w-0 items-center gap-1.5 truncate">
 							{term === "Colour" && (
@@ -1453,6 +1453,10 @@ function specFromHistory(history: WizardQAWire[]): WizardSpecWire {
 	const spec: WizardSpecWire = {}
 	for (const qa of history) {
 		if (qa.answer.skipped) continue
+		// The summary's colour is the brand. A supporting or accent answer
+		// previews on its own cards, but must not replace it here (field report:
+		// "Colour" showed violet, then green, after the brand was #28a4f0).
+		const brandBefore = spec.accent
 		const picked = qa.question.options?.find(
 			(option) => option.id === qa.answer.value || option.hex === qa.answer.value || option.label === qa.answer.value,
 		)
@@ -1486,6 +1490,10 @@ function specFromHistory(history: WizardQAWire[]): WizardSpecWire {
 			} else {
 				spec.bodyFamily = family
 			}
+		}
+		if (area === "secondary-color" || area === "accent-color" || area === "semantics") {
+			if (brandBefore === undefined) delete spec.accent
+			else spec.accent = brandBefore
 		}
 	}
 	return spec

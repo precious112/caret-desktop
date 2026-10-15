@@ -70,6 +70,9 @@ import { ensureOpencodeServer, type RunningServer, stopOpencodeServer } from "./
  */
 export const ANSWER_AGENT = "caret-answer"
 
+/** Models whose native structured answer failed where the worded one worked, this session. */
+const NO_NATIVE_ANSWER = new Set<string>()
+
 const ANSWER_PROMPT = `You are answering one request from Caret, a design tool, as an automated step. Everything you need is in the request. Reply exactly in the format it asks for. You cannot ask anyone anything and nobody will reply to a question: when something is unclear, make the most reasonable choice.`
 
 /** Reading the project: what the from-app interview, the import survey and the planner may do. */
@@ -307,7 +310,8 @@ export class OpencodeBackend implements CodingBackend {
 		// references). The pinned server also cannot read such a session's
 		// messages back (400 on its stored format). A call that needs tools asks
 		// in words and parses the answer instead.
-		if (req.allowTools) {
+		const model = req.model ?? "(default)"
+		if (req.allowTools || NO_NATIVE_ANSWER.has(model)) {
 			return { ...(await this.promptForJson<T>(req, false)), emulated: true }
 		}
 		try {
@@ -317,7 +321,13 @@ export class OpencodeBackend implements CodingBackend {
 			// another format only doubles the wait.
 			if (req.signal?.aborted || err instanceof ProviderRefusalError) throw err
 			Logger.warn(`[backend] native structured output failed, emulating: ${err}`)
-			return { ...(await this.promptForJson<T>(req, false)), emulated: true }
+			const emulated = await this.promptForJson<T>(req, false)
+			// Native failed and words worked: the model cannot take a forced answer
+			// tool (deepseek in thinking mode refuses every one), so stop paying a
+			// doomed request on each call. A transient failure costs one call's
+			// native path for the session, which emulation covers anyway.
+			NO_NATIVE_ANSWER.add(model)
+			return { ...emulated, emulated: true }
 		}
 	}
 
