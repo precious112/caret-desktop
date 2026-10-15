@@ -127,6 +127,26 @@ describe("design skills · one per project", () => {
 		assert.equal(await fs.readFile(path.join(project, ".agents/skills/frontend-design/SKILL.md"), "utf8"), "theirs")
 	})
 
+	it("the chat is told to open the skill's reference files when the skill points to them, and which files there are", async () => {
+		const { skills, project } = await setUp()
+		await chooseSkill(project, "frontend-design", skills.folderOf("frontend-design"))
+		// A skill with reference files, the way Impeccable and Design Taste ship them.
+		const folder = path.join(project, ".agents/skills/frontend-design")
+		await fs.mkdir(path.join(folder, "references"), { recursive: true })
+		await fs.writeFile(path.join(folder, "references/copy.md"), "copy")
+		await fs.writeFile(path.join(folder, "references/type.md"), "type")
+		const text = (await skillInstructions(project, "Frontend Design"))!
+		assert.match(
+			text,
+			/reference files in `\.agents\/skills\/frontend-design\/`: `references\/copy\.md`, `references\/type\.md`\./,
+		)
+		assert.match(
+			text,
+			/Whenever the skill points to one of them for the step you are on, open and read that file before doing the step\./,
+		)
+		assert.doesNotMatch(text, /`LICENSE|`SKILL\.md`|caret-skill/, "the list names files that aren't references")
+	})
+
 	it("the chat is told the skill's instructions and that the foundation wins; nothing when no skill is chosen", async () => {
 		const { skills, project } = await setUp()
 		assert.equal(await skillInstructions(project), null)
@@ -136,6 +156,8 @@ describe("design skills · one per project", () => {
 		assert.match(text, /^## Design skill: Frontend Design/)
 		assert.match(text, /foundation .* always wins over anything the skill suggests/)
 		assert.doesNotMatch(text, /^---$/m, "the skill's header block was passed on")
+		// Frontend Design has no reference files, so nothing is said about them.
+		assert.doesNotMatch(text, /reference files/)
 		const skillBody = (await fs.readFile(path.join(skills.folderOf("frontend-design"), "SKILL.md"), "utf8"))
 			.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "")
 			.trim()

@@ -70,12 +70,21 @@ export async function skillInstructions(projectPath: string, name?: string): Pro
 	const text = await fs.readFile(path.join(projectPath, ".agents/skills", id, "SKILL.md"), "utf8").catch(() => "")
 	if (!text) return null
 	const body = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim()
+	const folder = `.agents/skills/${id}`
+	const references = (await filesOf(path.join(projectPath, folder))).filter(
+		(file) => file !== "SKILL.md" && !/^licen[cs]e/i.test(file) && file !== PROJECT_MARK,
+	)
 	return [
 		`## Design skill: ${name ?? id}`,
 		"",
 		"The user chose this design skill for this project. Follow it when you design or build pages.",
 		"The project's foundation (its fonts, colours, spacing, corners and depth) always wins over anything the skill suggests: never replace a foundation value because the skill prefers another.",
-		`Its reference files are in \`.agents/skills/${id}/\`; read one when the skill points to it.`,
+		...(references.length
+			? [
+					`The skill comes with reference files in \`${folder}/\`: ${references.map((file) => `\`${file}\``).join(", ")}.`,
+					"Whenever the skill points to one of them for the step you are on, open and read that file before doing the step. Don't work from what it probably says.",
+				]
+			: []),
 		"",
 		body,
 	].join("\n")
