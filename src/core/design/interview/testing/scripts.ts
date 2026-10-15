@@ -58,6 +58,18 @@ export const SCRIPTS: Record<string, InterviewScript> = {
 		backAfter: "accent-color",
 		backStep: { skip: true },
 	},
+	/**
+	 * "Use what my app already has" on the sample app (testing/sample-app.ts).
+	 * The description is what Caret detects in the app, worked out when the
+	 * interview starts, so it is empty here.
+	 */
+	"from-app": {
+		name: "from-app",
+		mode: "from-app",
+		description: "",
+		correct: { "brand-color": "Our brand is the deeper indigo, #3730a3." },
+		steps: { "brand-color": { own: { kind: "hex", hex: "#3730a3" } } },
+	},
 	"finish-early": {
 		name: "finish-early",
 		mode: "collaborative",

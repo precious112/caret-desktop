@@ -124,3 +124,14 @@ describe("the rebuilt interview's instructions to the AI", () => {
 		}
 	})
 })
+
+describe("starting from an app", () => {
+	it("only the opening call is told it can read the app; every later request says it can't", () => {
+		const record = openedRecord("from-app", ["surface"])
+		for (const area of AREA_ORDER) {
+			const prompt = areaUserPrompt(record, area)
+			assert.doesNotMatch(prompt, /working directory/, `the request about ${area} says the app can be read`)
+			assert.match(prompt, /can't open its files/, `the request about ${area} doesn't say the app can't be read`)
+		}
+	})
+})

@@ -366,10 +366,18 @@ function decidedLines(record: InterviewRecord): string[] {
 	return lines
 }
 
-function productBlock(record: InterviewRecord): string {
-	return record.mode === "from-app"
+/**
+ * What the model is told about the product. Starting from an app, only the
+ * opening call can read the app's files; every later call runs without them,
+ * so it must not be told it can look (field run: told the app was "in your
+ * working directory", a call that couldn't read it returned a placeholder
+ * three times and the interview ended on the error screen).
+ */
+function productBlock(record: InterviewRecord, canRead = false): string {
+	if (record.mode !== "from-app") return `Their product, in their words:\n"""\n${record.description}\n"""`
+	return canRead
 		? `Their app is in your working directory. What Caret detected:\n"""\n${record.description}\n"""`
-		: `Their product, in their words:\n"""\n${record.description}\n"""`
+		: `Their app, as Caret detected it:\n"""\n${record.description}\n"""\nWhat was read from its code is listed under "Decided so far". You can't open its files in this step.`
 }
 
 function avoidLine(area: AreaId, user: UserChoices): string | null {
@@ -474,7 +482,7 @@ export async function askOpening(
 ): Promise<OpeningReply> {
 	const systemPrompt = openingSystemPrompt(record)
 	const schema = openingReplySchema(record)
-	const prompt = `${productBlock(record)}\n\nWrite the opening screen.`
+	const prompt = `${productBlock(record, true)}\n\nWrite the opening screen.`
 	return call(
 		"opening",
 		ctx,

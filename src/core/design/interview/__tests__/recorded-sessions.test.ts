@@ -18,7 +18,7 @@ import * as path from "path"
 
 import { type Recording, ReplayBackend } from "../../agent/replay"
 import { InterviewSession } from "../session"
-import { BRAND, runScript, SCRIPTS } from "../testing/scripts"
+import { runScript, SCRIPTS } from "../testing/scripts"
 import { checkRules } from "./paths"
 
 const FIXTURES = path.resolve(__dirname, "../../../../../test-fixtures/interview")
@@ -35,10 +35,8 @@ function recordings(): Array<{ file: string; recording: Recording }> {
 describe("recorded interviews, replayed word for word", () => {
 	const found = recordings()
 
-	it("there is a recording for every scripted interview from a description", () => {
-		const scripts = Object.values(SCRIPTS)
-			.filter((s) => s.mode === "collaborative")
-			.map((s) => s.name)
+	it("there is a recording for every scripted interview", () => {
+		const scripts = Object.values(SCRIPTS).map((s) => s.name)
 		const recorded = found.map((r) => r.recording.script)
 		for (const name of scripts) assert.ok(recorded.includes(name), `no recording for the "${name}" script in ${FIXTURES}`)
 	})
@@ -49,7 +47,9 @@ describe("recorded interviews, replayed word for word", () => {
 			assert.ok(script, `${file} names no known script`)
 			const backend = new ReplayBackend(recording)
 			let session: InterviewSession | null = null
-			session = await InterviewSession.start(script.mode, script.description, {
+			// Reading an app, the description is what Caret detected; the recording keeps it.
+			const description = script.mode === "from-app" ? (recording.description ?? "") : script.description
+			session = await InterviewSession.start(script.mode, description, {
 				backend,
 				workingDirectory: "/tmp/replayed-project",
 				persist: async () => {},
@@ -67,7 +67,9 @@ describe("recorded interviews, replayed word for word", () => {
 			)
 			if (end.phase !== "finish") return
 			const typedBrand = script.steps?.["brand-color"]
-			if (typedBrand && "own" in typedBrand) assert.equal(end.proposal.brand, BRAND)
+			if (typedBrand && "own" in typedBrand && typedBrand.own.kind === "hex") {
+				assert.equal(end.proposal.brand, typedBrand.own.hex, "the typed brand colour did not reach the finish")
+			}
 			assert.equal(end.proposal.decisions?.length, 12)
 		})
 	}

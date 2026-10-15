@@ -168,10 +168,11 @@ export function WizardView({
 							key={wire.question.id}
 							onAnswer={(answer) => transition(() => invoke("wizard:answer", projectPath, answer))}
 							onBack={wire.canBack ? () => transition(() => invoke("wizard:back", projectPath)) : undefined}
+							// Available once anything is settled (an answer, or a line agreed on the
+							// opening screen): starting from an app, the opening screen may settle
+							// nearly everything, and the one question left still needs the way out.
 							onFinishNow={
-								wire.state.position.index > 1
-									? () => transition(() => invoke("wizard:finishNow", projectPath))
-									: undefined
+								wire.canBack ? () => transition(() => invoke("wizard:finishNow", projectPath)) : undefined
 							}
 							previous={wire.previous}
 							question={wire.question}

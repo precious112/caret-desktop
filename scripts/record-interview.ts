@@ -20,17 +20,18 @@ import * as path from "path"
 import { OpencodeBackend } from "../src/core/design/agent/opencode"
 import { stopOpencodeServer } from "../src/core/design/agent/opencode/server"
 import { type Recording, RecordingBackend } from "../src/core/design/agent/replay"
+import { describeApp } from "../src/core/design/interview/describe-app"
 import { InterviewSession } from "../src/core/design/interview/session"
+import { writeSampleApp } from "../src/core/design/interview/testing/sample-app"
 import { runScript, SCRIPTS } from "../src/core/design/interview/testing/scripts"
+import { ensureCaretDirectoryExists } from "../src/core/design/scaffold"
 
 const FIXTURES = path.resolve("test-fixtures/interview")
 
 async function main(): Promise<void> {
 	const model = process.env.CARET_VERIFY_MODEL?.trim()
 	if (!model) throw new Error("Set CARET_VERIFY_MODEL (for example opencode-go/deepseek-v4.1-flash).")
-	const names = process.argv.slice(2).length
-		? process.argv.slice(2)
-		: Object.keys(SCRIPTS).filter((n) => SCRIPTS[n].mode === "collaborative")
+	const names = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(SCRIPTS)
 	const gitSha = child_process.execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim()
 	fs.mkdirSync(FIXTURES, { recursive: true })
 	const live = new OpencodeBackend()
@@ -45,15 +46,25 @@ async function main(): Promise<void> {
 			mode: script.mode,
 			description: script.description,
 		}
-		const backend = new RecordingBackend(live, temp, meta)
 		const project = fs.mkdtempSync(path.join(os.tmpdir(), "caret-record-project-"))
+		// Reading an app: the sample app, set up exactly as the app tests set it up,
+		// so the requests recorded here are the requests the app makes there.
+		let description = script.description
+		if (script.mode === "from-app") {
+			await writeSampleApp(project)
+			await ensureCaretDirectoryExists(project)
+			description = await describeApp(project)
+			meta.description = description
+		}
+		const backend = new RecordingBackend(live, temp, meta)
 		const started = Date.now()
 		console.log(`\n${name}: recording with ${model}`)
-		const session = await InterviewSession.start(script.mode, script.description, {
+		const session = await InterviewSession.start(script.mode, description, {
 			backend,
 			workingDirectory: project,
 			model,
 			persist: async () => {},
+			sourceExists: async (relative) => fs.existsSync(path.join(project, relative)),
 			log: (line) => console.log(`  ${line.slice(0, 220)}`),
 		})
 		const end = await runScript(session, script, (view) => {

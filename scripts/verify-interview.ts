@@ -20,9 +20,17 @@
  * Nothing is ever skipped: a missing build, a missing recording or an
  * unexpected screen is a failure, and the run fails unless every case ran.
  *
- *   npm run build && npx tsx scripts/verify-interview.ts      every case
+ *   npm run test:interview                                    every case, with the logic tests
  *   npx tsx scripts/verify-interview.ts --only 1,5            some cases (not a certification)
+ *   CARET_VERIFY_MODEL=opencode-go/deepseek-v4.1-flash \
+ *     npm run test:interview:live -- --save                    a live model; saves new recordings
+ *
+ * The live run checks what recordings can't: that a real model, with today's
+ * instructions, still gives answers the interview can use. Run it whenever the
+ * instructions to the model change (the recorded tests then refuse the old
+ * recordings, naming the line that changed).
  */
+import * as child_process from "child_process"
 import * as fs from "fs/promises"
 import * as path from "path"
 
@@ -31,6 +39,7 @@ import type { Page } from "playwright"
 import type { RecordedCall, Recording } from "../src/core/design/agent/replay"
 import { AREAS, type AreaId } from "../src/core/design/interview/areas"
 import { flaggedOptions, userChoicesFrom } from "../src/core/design/interview/defaults"
+import { describeApp } from "../src/core/design/interview/describe-app"
 import { finalizeProposal } from "../src/core/design/interview/finalize"
 import { type SessionScratch, viewOf } from "../src/core/design/interview/session"
 import { deriveState } from "../src/core/design/interview/state"
@@ -54,17 +63,26 @@ const FIXTURES = path.resolve("test-fixtures/interview")
 
 const args = process.argv.slice(2)
 const ONLY = args.includes("--only") ? new Set(args[args.indexOf("--only") + 1].split(",")) : null
+/** With a live model instead of recordings: the cases that need no planted failure. */
+const LIVE = args.includes("--live")
+/** After a live run that passed, save its recordings as the new test recordings. */
+const SAVE = args.includes("--save")
+const LIVE_CASES = new Set(["1", "2", "6", "7"])
+const LIVE_MODEL = process.env.CARET_VERIFY_MODEL?.trim() ?? ""
 
 // ── one case's world ────────────────────────────────────────────────────────
 
 interface Run {
 	id: string
+	/** A live model is answering (and being recorded) instead of a recording. */
+	live: boolean
 	project: string
 	userData: string
 	dir: string
 	logFile: string
 	replayLog: string
-	recording: Recording
+	/** The recording being played back; null with a live model or with no model at all. */
+	recording: Recording | null
 	env: Record<string, string>
 	launched: LaunchedApp
 	/** Everything the case noticed that a user would call a bug. */
@@ -75,6 +93,8 @@ interface Run {
 }
 
 let template: string | undefined
+/** Each case's project folder, for saving live recordings with what they were made from. */
+const projects = new Map<string, string>()
 
 async function readRecording(name: string): Promise<Recording> {
 	const raw = await fs.readFile(path.join(FIXTURES, `${name}.json`), "utf8").catch(() => "")
@@ -82,27 +102,43 @@ async function readRecording(name: string): Promise<Recording> {
 	return JSON.parse(raw) as Recording
 }
 
-async function startRun(id: string, recording: Recording): Promise<Run> {
+/**
+ * A fresh project and profile, and the app launched on them. The model is a
+ * recording (the default), a live model being recorded (`--live`), or none
+ * at all (`recording: null` outside live mode).
+ */
+async function startRun(id: string, recording: Recording | null, options: { sampleApp?: boolean } = {}): Promise<Run> {
 	const dir = path.join(SHOTS, `case-${id}`)
 	await fs.rm(dir, { recursive: true, force: true })
 	await fs.mkdir(dir, { recursive: true })
-	const project = await buildProject(template)
-	const userData = await freshProfile()
+	const project = await buildProject(template, options)
 	const recordingFile = path.join(dir, "recording.json")
-	await fs.writeFile(recordingFile, JSON.stringify(recording, null, 2))
 	const replayLog = path.join(dir, "replay.log")
-	const env = { CARET_INTERVIEW_REPLAY: recordingFile, CARET_INTERVIEW_REPLAY_LOG: replayLog }
+	let env: Record<string, string> = {}
+	let userData: string
+	if (LIVE) {
+		userData = await freshProfile({ backendId: "opencode", backendModel: LIVE_MODEL })
+		env = { CARET_INTERVIEW_RECORD: recordingFile }
+	} else {
+		userData = await freshProfile()
+		if (recording) {
+			await fs.writeFile(recordingFile, JSON.stringify(recording, null, 2))
+			env = { CARET_INTERVIEW_REPLAY: recordingFile, CARET_INTERVIEW_REPLAY_LOG: replayLog }
+		}
+	}
 	const logFile = path.join(dir, "main.log")
 	const launched = await launchApp({ project, userData, logFile, env })
 	template ??= project
+	projects.set(id, project)
 	return {
 		id,
+		live: LIVE,
 		project,
 		userData,
 		dir,
 		logFile,
 		replayLog,
-		recording,
+		recording: LIVE ? null : recording,
 		env,
 		launched,
 		problems: [],
@@ -218,6 +254,13 @@ async function checkScreen(run: Run, screen: Screen): Promise<void> {
 	const twice = answered.filter((a, i) => answered.indexOf(a) !== i)
 	if (twice.length) run.problems.push(`topics answered twice: ${[...new Set(twice)].join(", ")}`)
 
+	if (screen.kind === "opening" && record.mode === "from-app") {
+		const lines = await chrome.getByTestId("wizard-statement").allTextContents()
+		const unsourced = lines.filter((line) => !/From \S/.test(line))
+		if (!lines.length) run.problems.push("reading an app, the opening screen shows nothing found")
+		if (unsourced.length) run.problems.push(`${unsourced.length} opening line(s) don't say which file they came from`)
+	}
+
 	if (screen.kind === "question") {
 		if (screen.area !== state.next)
 			run.problems.push(`the question is about ${screen.area}, but the next topic is ${state.next}`)
@@ -234,6 +277,14 @@ async function checkScreen(run: Run, screen: Screen): Promise<void> {
 		const onScreen = await chrome.locator('[data-testid="wizard-question"] [data-testid="wizard-option"]').count()
 		if (onScreen !== question.options.length) {
 			run.problems.push(`${screen.area}: ${onScreen} options on screen, ${question.options.length} in the saved question`)
+		}
+		// "Just finish it" is offered once anything is settled: an answer, or a line agreed on the opening screen.
+		const settledSomething = record.answers.length > 0 || (record.opening?.statements.length ?? 0) > 0
+		const offered = (await chrome.getByTestId("wizard-finish-now").count()) > 0
+		if (offered !== settledSomething) {
+			run.problems.push(
+				`"Just finish it" is ${offered ? "offered" : "missing"} on ${screen.area}, with ${settledSomething ? "something" : "nothing"} settled`,
+			)
 		}
 		const position = (await chrome.getByTestId("wizard-position").textContent())?.trim() ?? ""
 		const expected = `Question ${state.position.index} of ${state.position.total}`
@@ -404,8 +455,49 @@ async function runScript(
 }
 
 async function startInterview(run: Run, script: InterviewScript): Promise<void> {
-	await openDescribe(run.launched.chrome, script.description)
-	await run.launched.chrome.click('[data-testid="foundation-mode-collaborative"]')
+	const chrome = run.launched.chrome
+	if (script.mode === "from-app") {
+		await chrome.waitForSelector('[data-testid="foundation-route-from-app"]', { timeout: 30_000 })
+		await chrome.click('[data-testid="foundation-route-from-app"]')
+		return
+	}
+	await openDescribe(chrome, script.description)
+	await chrome.click('[data-testid="foundation-mode-collaborative"]')
+}
+
+/** Saves a foundation the way an outside agent (for example the chat) does, and waits for it to land. */
+async function agentSavesFoundation(run: Run): Promise<void> {
+	const discovery = await waitFor("the MCP address", () => readDiscovery(run.project), 60_000)
+	const said = await callMcpTool(discovery, "commit_foundation", {
+		candidateId: "editorial-instrument+mono-accent+editorial-open",
+		tags: ["editorial"],
+	})
+	assert(!said.includes('"isError":true'), `saving a foundation through the agent tools failed: ${said.slice(0, 300)}`)
+	await waitFor("the foundation to be saved", async () => {
+		const raw = await fs.readFile(path.join(run.project, ".caret", "tokens", "foundation.json"), "utf8").catch(() => "")
+		return /"committed":\s*true/.test(raw)
+	})
+}
+
+/** Which Foundation screen the tab settles on (a saved interview loads a moment after the tab opens). */
+async function foundationSettlesOn(chrome: Page): Promise<string | null> {
+	const which = async () => {
+		for (const id of [
+			"design-system-view",
+			"wizard-question",
+			"wizard-opening",
+			"wizard-error",
+			"wizard",
+			"foundation-entry",
+			"token-editor",
+		]) {
+			if (await chrome.getByTestId(id).count()) return id
+		}
+		return null
+	}
+	await waitFor("the Foundation tab", which, 30_000)
+	await chrome.waitForTimeout(4000)
+	return which()
 }
 
 /** Presses "Use these foundations" and checks the saved foundation against the finish, field by field. */
@@ -445,7 +537,8 @@ async function commitAndCheck(run: Run, end: Extract<Screen, { kind: "finish" }>
 			run.problems.push(`the saved ${name} is ${JSON.stringify(saved)}; the answers say ${JSON.stringify(answered)}`)
 		}
 	}
-	if (tokens.meta?.source !== "wizard-collaborative") run.problems.push(`saved with source ${tokens.meta?.source}`)
+	const source = end.progress.record.mode === "from-app" ? "wizard-from-app" : "wizard-collaborative"
+	if (tokens.meta?.source !== source) run.problems.push(`saved with source ${tokens.meta?.source}, not ${source}`)
 	if (tokens.meta?.decisions?.length !== 12) run.problems.push(`saved with ${tokens.meta?.decisions?.length} decisions, not 12`)
 	await waitFor("the interview progress to be cleared", async () => !(await readProgress(run.project)), 10_000)
 	return tokens
@@ -453,13 +546,19 @@ async function commitAndCheck(run: Run, end: Extract<Screen, { kind: "finish" }>
 
 /** Every recorded answer used, none missing; no unexpected error in the app log. */
 async function checkEnd(run: Run): Promise<void> {
-	const used = await served(run)
-	if (used !== run.recording.calls.length) {
-		run.problems.push(`the app asked the model ${used} times; the recording has ${run.recording.calls.length} answers`)
-	}
 	const log = await fs.readFile(run.logFile, "utf8")
-	if (!log.includes("[interview] REPLAY backend"))
-		run.problems.push("the app did not use the recording (no REPLAY line in its log)")
+	if (run.recording) {
+		const used = await served(run)
+		if (used !== run.recording.calls.length) {
+			run.problems.push(`the app asked the model ${used} times; the recording has ${run.recording.calls.length} answers`)
+		}
+		if (!log.includes("[interview] REPLAY backend")) {
+			run.problems.push("the app did not use the recording (no REPLAY line in its log)")
+		}
+	}
+	if (run.live && !log.includes("[interview] RECORDING model answers")) {
+		run.problems.push("the live run was not recorded (no RECORDING line in the app log)")
+	}
 	for (const line of log.split("\n").filter((l) => /\bERROR\b/.test(l))) {
 		if (!run.expectedErrors.some((pattern) => pattern.test(line))) {
 			run.problems.push(`unexpected error in the app log: ${line.slice(0, 200)}`)
@@ -503,8 +602,13 @@ interface Case {
 	run(): Promise<string>
 }
 
-async function withRun(id: string, recording: Recording, body: (run: Run) => Promise<void>): Promise<string> {
-	const run = await startRun(id, recording)
+async function withRun(
+	id: string,
+	recording: Recording | null,
+	body: (run: Run) => Promise<void>,
+	options: { sampleApp?: boolean } = {},
+): Promise<string> {
+	const run = await startRun(id, recording, options)
 	try {
 		await body(run)
 		await checkEnd(run)
@@ -685,6 +789,71 @@ const CASES: Case[] = [
 			}),
 	},
 	{
+		id: "7",
+		title: '"Use what my app already has" on a sample Next.js and Tailwind app: values read from its code, one corrected',
+		run: async () =>
+			withRun(
+				"7",
+				await readRecording("from-app"),
+				async (run) => {
+					const script = SCRIPTS["from-app"]
+					await startInterview(run, script)
+					const end = await runScript(run, script)
+					assert(
+						end.kind === "finish",
+						`the interview ended on the ${end.kind} screen${end.kind === "error" ? `: ${end.text}` : ""}`,
+					)
+					const state = deriveState(end.progress.record)
+					const fromCode = Object.values(state.areas).filter((a) => a.via === "opening")
+					if (!fromCode.length) run.problems.push("nothing was taken from the app's code")
+					if (fromCode.some((a) => !a.source))
+						run.problems.push("a value taken from the app's code doesn't say which file")
+					if (state.areas["brand-color"].via === "opening")
+						run.problems.push("the corrected brand colour was not asked again")
+					const tokens = await commitAndCheck(run, end)
+					if (tokens.color?.brand?.seed !== "#3730a3") {
+						run.problems.push(
+							`the brand typed after the correction (#3730a3) was saved as ${tokens.color?.brand?.seed}`,
+						)
+					}
+				},
+				{ sampleApp: true },
+			),
+	},
+	{
+		id: "8",
+		title: 're-running the interview over a saved foundation, an error, then "Set tokens by hand": the interview is gone for good',
+		run: async () => {
+			const full = refusalAt(await readRecording("straight"), "type-scale")
+			// The case leaves at the refusal, so the recording ends there.
+			const refusal = full.calls.findIndex((c) => c.fault === "provider-refusal")
+			const recording = { ...full, calls: full.calls.slice(0, refusal + 1) }
+			return withRun("8", recording, async (run) => {
+				run.expectedErrors.push(/turn failed at type-scale/)
+				const chrome = run.launched.chrome
+				await agentSavesFoundation(run)
+				// The open Foundation tab switches to the saved design system by itself.
+				// Its top-bar button toggles the tab, so clicking it here would leave.
+				await chrome.waitForSelector('[data-testid="design-system-view"]', { timeout: 30_000 })
+				await chrome.click('[data-testid="ds-rerun"]')
+				await startInterview(run, SCRIPTS.straight)
+				const stopped = await runScript(run, SCRIPTS.straight)
+				assert(stopped.kind === "error", `expected the error screen, got the ${stopped.kind} screen`)
+				await chrome.getByRole("button", { name: "Set tokens by hand" }).click()
+				await waitFor("the hand editor", async () => (await chrome.locator("textarea").count()) > 0, 20_000)
+				await waitFor("the interview to be thrown away", async () => !(await readProgress(run.project)), 10_000)
+				run.turns.push('pressed "Set tokens by hand"')
+				await chrome.getByTestId("top-bar").getByRole("button", { name: "Assets" }).click()
+				await chrome.getByTestId("top-bar").getByRole("button", { name: "Foundation" }).click()
+				const landed = await foundationSettlesOn(chrome)
+				await shot(chrome, run.dir, "foundation-after-set-by-hand")
+				if (landed !== "design-system-view")
+					run.problems.push(`after "Set tokens by hand", the Foundation tab showed "${landed}"`)
+				if (await readProgress(run.project)) run.problems.push("the interview is saved again")
+			})
+		},
+	},
+	{
 		id: "9",
 		title: "a foundation saved another way (by an agent) clears the half-finished interview",
 		run: async () => {
@@ -697,33 +866,10 @@ const CASES: Case[] = [
 				await runScript(run, script, { stopAfter: 2 })
 				const chrome = run.launched.chrome
 				await chrome.getByTestId("top-bar").getByRole("button", { name: "Assets" }).click()
-				const discovery = await waitFor("the MCP address", () => readDiscovery(run.project), 60_000)
-				const said = await callMcpTool(discovery, "commit_foundation", {
-					candidateId: "editorial-instrument+mono-accent+editorial-open",
-					tags: ["editorial"],
-				})
-				assert(
-					!said.includes('"isError":true'),
-					`saving a foundation through the agent tools failed: ${said.slice(0, 300)}`,
-				)
-				await waitFor("the foundation to be saved", async () => {
-					const raw = await fs
-						.readFile(path.join(run.project, ".caret", "tokens", "foundation.json"), "utf8")
-						.catch(() => "")
-					return /"committed":\s*true/.test(raw)
-				})
+				await agentSavesFoundation(run)
 				await chrome.waitForTimeout(1500)
 				await chrome.getByTestId("top-bar").getByRole("button", { name: "Foundation" }).click()
-				const which = async () => {
-					for (const id of ["design-system-view", "wizard-question", "wizard-opening", "wizard", "foundation-entry"]) {
-						if (await chrome.getByTestId(id).count()) return id
-					}
-					return null
-				}
-				await waitFor("the Foundation tab", which, 30_000)
-				// A saved interview loads a moment after the tab opens; judge the screen it settles on.
-				await chrome.waitForTimeout(4000)
-				const landed = await which()
+				const landed = await foundationSettlesOn(chrome)
 				await shot(chrome, run.dir, "foundation-after-agent-save")
 				if (landed !== "design-system-view") {
 					run.problems.push(`after an agent saved a foundation, the Foundation tab showed "${landed}" instead of it`)
@@ -734,6 +880,49 @@ const CASES: Case[] = [
 	},
 ]
 
+// Cases 10 and 11 go last: they end early by design.
+CASES.push(
+	{
+		id: "10",
+		title: "no model connected: the connect screen says so, and its way out works",
+		run: async () =>
+			withRun("10", null, async (run) => {
+				const chrome = run.launched.chrome
+				await startInterview(run, SCRIPTS.straight)
+				await chrome.waitForSelector('[data-testid="wizard-needs-backend"]', { timeout: 60_000 })
+				await shot(chrome, run.dir, "needs-backend")
+				await chrome.click('[data-testid="wizard-needs-backend-manual"]')
+				await waitFor("the hand editor", async () => (await chrome.locator("textarea").count()) > 0, 20_000)
+				if (await readProgress(run.project)) run.problems.push("an interview was saved although no model ever ran")
+				run.turns.push("connect screen, then Set it by hand")
+			}),
+	},
+	{
+		id: "11",
+		title: "a check on the tests themselves: a recording made with different instructions fails loudly, never passes",
+		run: async () => {
+			const recording = structuredClone(await readRecording("straight"))
+			const target = recording.calls.find((c) => c.tag === "interview:area" && c.area === "display-type")
+			assert(target, "the recording has no heading font question")
+			target.templateHash = "0000000000000000"
+			return withRun("11", recording, async (run) => {
+				run.expectedErrors.push(/turn failed at display-type/)
+				const script = SCRIPTS.straight
+				await startInterview(run, script)
+				const end = await runScript(run, script)
+				if (end.kind !== "error") {
+					run.problems.push(`an out-of-date recording was used without complaint (ended on the ${end.kind} screen)`)
+					return
+				}
+				if (!/different instructions/.test(end.text))
+					run.problems.push(`the failure doesn't say the recording is out of date: "${end.text}"`)
+				// The planted fault was never answered: the recording's later calls are unused on purpose.
+				run.recording = null
+			})
+		},
+	},
+)
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 async function preflight(): Promise<void> {
@@ -741,13 +930,39 @@ async function preflight(): Promise<void> {
 	assert(bundle, "No built app at out/main/index.js. Run npm run build first.")
 	assert(bundle.includes("CARET_INTERVIEW_REPLAY"), "The built app has no replay switch. Run npm run build first.")
 	assert(bundle.includes("wizard:openingAnswer"), "The built app is the old interview. Run npm run build first.")
+	if (LIVE) assert(LIVE_MODEL, "A live run needs CARET_VERIFY_MODEL, for example opencode-go/deepseek-v4.1-flash.")
+}
+
+/** Which script each live case runs, for saving its recording under that script's name. */
+const SCRIPT_OF_CASE: Record<string, string> = { "1": "straight", "2": "escapes", "6": "finish-early", "7": "from-app" }
+
+/** Saves the live cases' recordings as the test recordings, with what they were made from. */
+async function saveRecordings(): Promise<void> {
+	const gitSha = child_process.execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim()
+	for (const [id, name] of Object.entries(SCRIPT_OF_CASE)) {
+		const made = path.join(SHOTS, `case-${id}`, "recording.json")
+		const recording = JSON.parse(await fs.readFile(made, "utf8")) as Recording
+		const script = SCRIPTS[name]
+		const project = projects.get(id)
+		const saved: Recording = {
+			...recording,
+			format: 2,
+			recorded: { model: LIVE_MODEL, at: new Date().toISOString(), gitSha },
+			script: name,
+			mode: script.mode,
+			description: script.mode === "from-app" && project ? await describeApp(project) : script.description,
+		}
+		await fs.writeFile(path.join(FIXTURES, `${name}.json`), `${JSON.stringify(saved, null, 2)}\n`)
+		console.log(`saved ${saved.calls.length} model calls to test-fixtures/interview/${name}.json`)
+	}
 }
 
 async function main(): Promise<void> {
 	reapOrphanedBackends()
 	await preflight()
-	const chosen = CASES.filter((c) => !ONLY || ONLY.has(c.id))
+	const chosen = CASES.filter((c) => (!ONLY || ONLY.has(c.id)) && (!LIVE || LIVE_CASES.has(c.id)))
 	const results: Array<{ id: string; ok: boolean }> = []
+	console.log(LIVE ? `Live run with ${LIVE_MODEL}: the model's answers are recorded.` : "Recorded model answers.")
 	for (const c of chosen) {
 		const started = Date.now()
 		console.log(`\ncase ${c.id}: ${c.title}`)
@@ -769,7 +984,22 @@ async function main(): Promise<void> {
 		`\n${results.length - failed.length} of ${chosen.length} cases passed${ONLY ? " (a subset: not a full certification)" : ""}.`,
 	)
 	if (results.length !== chosen.length) console.log("Not every case ran.")
-	process.exitCode = failed.length || results.length !== chosen.length ? 1 : 0
+	let ok = !failed.length && results.length === chosen.length
+	if (LIVE && SAVE) {
+		if (!ok || ONLY) {
+			console.log("Recordings NOT saved: only a full live run where every case passed is saved.")
+		} else {
+			await saveRecordings()
+			console.log("\nChecking everything against the new recordings:")
+			const logic = child_process.spawnSync("npx", ["mocha", "--config", ".mocharc.interview.json"], { stdio: "inherit" })
+			const app = child_process.spawnSync("npx", ["tsx", "scripts/verify-interview.ts"], { stdio: "inherit" })
+			ok = logic.status === 0 && app.status === 0
+			console.log(
+				`\nwith the new recordings: logic tests ${logic.status === 0 ? "PASS" : "FAIL"}, real-app tests ${app.status === 0 ? "PASS" : "FAIL"}`,
+			)
+		}
+	}
+	process.exitCode = ok ? 0 : 1
 }
 
 main()

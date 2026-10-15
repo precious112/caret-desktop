@@ -8,12 +8,14 @@
  * inherit another's state.
  */
 import * as child_process from "child_process"
+import * as fsSync from "fs"
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 
 import { type ElectronApplication, _electron as electron, type Page } from "playwright"
 
+import { writeSampleApp } from "../src/core/design/interview/testing/sample-app"
 import { ensureCaretDirectoryExists } from "../src/core/design/scaffold"
 
 export function assert(condition: unknown, message: string): asserts condition {
@@ -46,25 +48,24 @@ const APP_SOURCE = `export default function App() {
 }
 `
 
-/** A folder Caret recognises as a project, with a little app code and a git commit. */
-export async function buildProject(template?: string): Promise<string> {
+/**
+ * A folder Caret recognises as a project, with a little app code and a git
+ * commit. With `sampleApp`, the app is the shared sample app (a Next.js and
+ * Tailwind dashboard), set up exactly as scripts/record-interview.ts sets it
+ * up, so the "Use what my app already has" requests match its recordings.
+ */
+export async function buildProject(template?: string, options: { sampleApp?: boolean } = {}): Promise<string> {
 	const dir = await fs.mkdtemp(path.join(os.tmpdir(), "caret-interview-"))
+	if (options.sampleApp) {
+		await writeSampleApp(dir)
+		await ensureCaretDirectoryExists(dir)
+		copyDependencies(template, dir)
+		return dir
+	}
 	await ensureCaretDirectoryExists(dir)
 	await fs.mkdir(path.join(dir, "src"), { recursive: true })
 	await fs.writeFile(path.join(dir, "src", "App.tsx"), APP_SOURCE)
-	// Reuse the preview dependencies another test project already installed.
-	// A clone on macOS is near-instant; if anything is missing, Caret's own
-	// check reinstalls, so a bad copy costs time, never correctness.
-	if (template) {
-		for (const name of ["node_modules", "package.json", "package-lock.json"]) {
-			const from = path.join(template, ".caret", name)
-			const exists = await fs
-				.access(from)
-				.then(() => true)
-				.catch(() => false)
-			if (exists) child_process.execFileSync("cp", ["-cR", from, path.join(dir, ".caret", name)])
-		}
-	}
+	copyDependencies(template, dir)
 	const git = (args: string[]) => child_process.execFileSync("git", args, { cwd: dir, stdio: "ignore" })
 	git(["init", "-q"])
 	git(["config", "user.email", "caret@local"])
@@ -73,6 +74,19 @@ export async function buildProject(template?: string): Promise<string> {
 	git(["add", "-A"])
 	git(["commit", "-q", "-m", "fixture", "--no-verify"])
 	return dir
+}
+
+/**
+ * Reuses the preview dependencies another test project already installed. A
+ * clone on macOS is near-instant; if anything is missing, Caret's own check
+ * reinstalls, so a bad copy costs time, never correctness.
+ */
+function copyDependencies(template: string | undefined, dir: string): void {
+	if (!template) return
+	for (const name of ["node_modules", "package.json", "package-lock.json"]) {
+		const from = path.join(template, ".caret", name)
+		if (fsSync.existsSync(from)) child_process.execFileSync("cp", ["-cR", from, path.join(dir, ".caret", name)])
+	}
 }
 
 export interface LaunchedApp {
