@@ -4426,49 +4426,78 @@ export default function CatalogDemo() {
 		return "history replaced the chat, and back restored it"
 	})
 
-	await scenario("dp. the Design pass is gone, and the libraries stay: listed, keyed, switchable, remembered", async () => {
-		await ensureChatOpen(chrome)
-		// Removed on 2026-10-15: no switch or line under the composer.
-		await chrome.getByTestId("chat-mode-act").waitFor({ timeout: 10_000 })
-		for (const id of ["design-pass-switch", "design-pass-line"]) {
-			assert((await chrome.getByTestId(id).count()) === 0, `${id} is still on screen`)
-		}
+	await scenario(
+		"dp. the Design pass is gone; the Libraries tab lists, installs, keys and switches libraries per project",
+		async () => {
+			await ensureChatOpen(chrome)
+			// Removed on 2026-10-15: no switch or line under the composer. The
+			// project's design skill shows there instead.
+			await chrome.getByTestId("chat-skill").waitFor({ timeout: 10_000 })
+			assert(
+				(await chrome.getByTestId("chat-skill").textContent()) === "Skill: none",
+				"the chat names a design skill nobody chose",
+			)
+			for (const id of ["design-pass-switch", "design-pass-line"]) {
+				assert((await chrome.getByTestId(id).count()) === 0, `${id} is still on screen`)
+			}
 
-		await chrome.getByTestId("top-bar").getByRole("button", { name: "Backend" }).click()
-		const section = chrome.getByTestId("libraries-section")
-		await section.waitFor({ timeout: 15_000 })
-		assert((await chrome.getByTestId("design-pass-section").count()) === 0, "the Backend tab still has a Design pass section")
-		await waitFor(
-			"the five libraries to be listed",
-			async () => ((await chrome.getByTestId("library-row").count()) === 5 ? true : null),
-			60_000,
-		)
-		const names = await chrome
-			.getByTestId("library-row")
-			.evaluateAll((rows) => rows.map((row) => row.getAttribute("data-library")))
-		assert(names.join(",") === "shadcn,aceternity,lazyweb,gummble,twentyfirst", `unexpected libraries: ${names.join(",")}`)
-		// 21st.dev needs a key until one is pasted; nothing to install, nothing to configure.
-		const twentyfirst = chrome.locator('[data-library="twentyfirst"]')
-		assert((await twentyfirst.getByTestId("library-key").count()) === 1, "21st.dev does not offer to take a key")
+			await chrome.getByTestId("top-bar").getByRole("button", { name: "Libraries", exact: true }).click()
+			await chrome.getByTestId("libraries-view").waitFor({ timeout: 15_000 })
+			const cards = await chrome
+				.getByTestId("library-card")
+				.evaluateAll((all) => all.map((card) => card.getAttribute("data-id")))
+			assert(
+				cards.join(",") === "shadcn,aceternity,twentyfirst,lazyweb,gummble",
+				`Browse lists ${cards.join(",")} (components, then references)`,
+			)
 
-		// A library can be switched off, and it is remembered.
-		await twentyfirst.getByTestId("library-toggle").click()
-		await waitFor(
-			"21st.dev to read off",
-			async () => ((await twentyfirst.getByTestId("library-toggle").textContent()) === "Off" ? true : null),
-			15_000,
-		)
-		const afterToggle = JSON.parse(await fs.readFile(path.join(userData, "preferences.json"), "utf-8")) as {
-			librariesOff?: string[]
-		}
-		assert(afterToggle.librariesOff?.includes("twentyfirst"), "switching a library off was not remembered")
-		await twentyfirst.getByTestId("library-toggle").click()
-		await shot(chrome, "dp-libraries")
+			await chrome.getByTestId("catalog-tab-installed").click()
+			await waitFor(
+				"the three libraries that need no account to be installed",
+				async () => ((await chrome.getByTestId("library-row").count()) === 3 ? true : null),
+				30_000,
+			)
+			const rows = await chrome
+				.getByTestId("library-row")
+				.evaluateAll((all) => all.map((row) => row.getAttribute("data-library")))
+			assert(rows.join(",") === "shadcn,aceternity,lazyweb", `installed by default: ${rows.join(",")}`)
 
-		await chrome.getByTestId("top-bar").getByRole("button", { name: "Backend" }).click()
-		await ensureChatOpen(chrome)
-		return "no Design pass switch or section; the Backend tab lists the five libraries, 21st.dev asks for a key, switching off is remembered"
-	})
+			// 21st.dev is paid: installing it asks for the key, nothing else to configure.
+			await chrome.getByTestId("catalog-tab-browse").click()
+			await chrome.locator('[data-testid="library-card"][data-id="twentyfirst"]').getByTestId("library-install").click()
+			await chrome.getByTestId("catalog-tab-installed").click()
+			const twentyfirst = chrome.locator('[data-library="twentyfirst"]')
+			await twentyfirst.waitFor({ timeout: 15_000 })
+			assert((await twentyfirst.getByTestId("library-key").count()) === 1, "21st.dev does not offer to take a key")
+
+			// A library can be switched off in this project, and it is remembered for this project.
+			const aceternity = chrome.locator('[data-library="aceternity"]')
+			await aceternity.getByTestId("library-toggle").click()
+			await waitFor(
+				"Aceternity to read off",
+				async () => ((await aceternity.getByTestId("library-toggle").textContent()) === "Off" ? true : null),
+				15_000,
+			)
+			const afterToggle = JSON.parse(await fs.readFile(path.join(userData, "preferences.json"), "utf-8")) as {
+				librariesOff?: Record<string, string[]>
+			}
+			assert(
+				Object.entries(afterToggle.librariesOff ?? {}).some(
+					([project, off]) => path.basename(project) === path.basename(fixture) && off.includes("aceternity"),
+				),
+				`switching a library off was not remembered for this project: ${JSON.stringify(afterToggle.librariesOff)}`,
+			)
+			await shot(chrome, "dp-libraries")
+
+			// Leave the libraries as later scenarios expect them.
+			await aceternity.getByTestId("library-toggle").click()
+			await twentyfirst.getByTestId("library-remove").click()
+			await waitFor("21st.dev to be removed", async () => ((await twentyfirst.count()) === 0 ? true : null), 15_000)
+			await chrome.getByTestId("libraries-view").getByRole("button", { name: "Done" }).click()
+			await ensureChatOpen(chrome)
+			return "no Design pass; the chat shows the project's skill; Libraries lists five, installs the free three, takes 21st.dev's key, and remembers a per-project switch"
+		},
+	)
 
 	await scenario("ce. an overlay move edit gets measured geometry and lands centered, verified by re-measure", async () => {
 		// The spatial feedback loop end to end: two images, one askew; the overlay

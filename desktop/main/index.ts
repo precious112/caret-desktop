@@ -34,6 +34,7 @@ import { buildMenu } from "./menu"
 import { loadPrefs } from "./prefs"
 import { setLibrariesOnSource } from "./rules/context"
 import { regenerateRulesFiles } from "./rules/generate"
+import { skillsSourceFromEnv, startSkillService } from "./skills/skills"
 import { WindowManager } from "./window-manager"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -130,7 +131,10 @@ async function main(): Promise<void> {
 	if (testLibrary)
 		Logger.info(`[main] TEST LIBRARY from ${testLibrary.connection.kind === "stdio" ? testLibrary.connection.args[0] : ""}`)
 	const libraries = startLibraryHub({ extra: testLibrary ? [testLibrary] : [] })
-	setLibrariesOnSource(() => libraries.onLibraries())
+	const skillsSource = skillsSourceFromEnv(process.env, app.isPackaged)
+	if (skillsSource) Logger.info(`[main] TEST SKILLS SOURCE ${skillsSource}`)
+	const skills = startSkillService(skillsSource)
+	setLibrariesOnSource((projectPath) => libraries.onLibraries(projectPath))
 	void libraries.warm()
 
 	const launcherOptions: LauncherWindowOptions = {
@@ -148,11 +152,20 @@ async function main(): Promise<void> {
 	registerIpcHandlers(windows)
 	buildMenu(windows)
 
+	// Every open window's Skills tab and chat label follow a change.
+	skills.onChange((projectPath) => {
+		for (const window of windows.list()) {
+			if (!projectPath || window.projectPath === projectPath) window.sendToChrome("skills:changed", window.projectPath)
+		}
+	})
+
 	// The rules name the libraries that are on, so a change rewrites every open
 	// project's rules files.
-	libraries.onChange(() => {
+	libraries.onChange((projectPath) => {
 		for (const window of windows.list()) {
+			if (projectPath && window.projectPath !== projectPath) continue
 			void regenerateRulesFiles(window.projectPath).catch((err) => Logger.warn(`[main] rules regen failed: ${err}`))
+			window.sendToChrome("libraries:changed", window.projectPath)
 		}
 	})
 

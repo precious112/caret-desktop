@@ -46,7 +46,7 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 | `app_launched` | `restored_windows` (count) |
 | `app_quit` | `session_duration_s` |
 | `project_opened` | `open_windows` (count); `has_app_code` (bool: whether the folder already held app code, never what it was) |
-| `surface_switched` | `surface`: canvas / foundation / agent / assets; `initial` (true only for the automatic landing on Foundation when a project has no design system yet) |
+| `surface_switched` | `surface`: canvas / foundation / agent / assets / skills / libraries; `initial` (true only for the automatic landing on Foundation when a project has no design system yet) |
 
 ### Foundation interview (onboarding)
 
@@ -113,13 +113,17 @@ Screen names, routes and file paths are never sent.
 | `catalog_install_completed` | same |
 | `catalog_install_denied` | same |
 
-### Libraries
+### Skills, libraries and coding tools
 
-Library names and failure kinds only.
+Skill, library and tool names from Caret's own lists, and failure kinds. Never a skill's text, a search, or anything from your project.
 
 | Event | Properties |
 |---|---|
-| `library_failure` | `library`: shadcn / aceternity / lazyweb / gummble / twentyfirst; `kind`: rate-limit / auth / unavailable |
+| `skill_installed` | `skill`: frontend-design / impeccable / taste-skill / emil-design-eng / shadcn / web-design-guidelines |
+| `skill_chosen` | `skill`: one of the above, or none |
+| `library_installed` | `library`: shadcn / aceternity / lazyweb / gummble / twentyfirst |
+| `library_failure` | `library`: as above; `kind`: rate-limit / auth / unavailable |
+| `coding_tool_set_up` | `tool`: claude / codex / cursor / opencode |
 
 ### Errors
 

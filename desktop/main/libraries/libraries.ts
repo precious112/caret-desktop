@@ -67,8 +67,30 @@ export interface LibraryHubOptions {
 	open?: (connection: LibraryConnection, definition: LibraryDefinition, auth: SignInAuth | null) => Promise<LiveLibrary>
 	/** Caret's own data folder, where the shadcn registry list lives. */
 	dataDir?: () => string
-	/** Where the switched-off libraries are kept; Caret's preferences unless a test says otherwise. */
-	offStore?: { get(): string[]; set(off: string[]): Promise<void> }
+	/** Which libraries are installed and which are off per project; Caret's preferences unless a test says otherwise. */
+	choices?: LibraryChoices
+}
+
+/**
+ * The user's library choices: what is installed (for every project), and what
+ * is switched off in each project.
+ */
+export interface LibraryChoices {
+	/** Undefined until the user installs or removes one: then the default set applies. */
+	installed(): string[] | undefined
+	setInstalled(ids: string[]): Promise<void>
+	offIn(projectPath: string): string[]
+	setOffIn(projectPath: string, ids: string[]): Promise<void>
+}
+
+/** Installed until the user says otherwise: the libraries that need no account. */
+export const DEFAULT_INSTALLED = ["shadcn", "aceternity", "lazyweb"]
+
+const PREFS_CHOICES: LibraryChoices = {
+	installed: () => getPrefs().librariesInstalled,
+	setInstalled: (ids) => setPref("librariesInstalled", ids),
+	offIn: (projectPath) => getPrefs().librariesOff[projectPath] ?? [],
+	setOffIn: (projectPath, ids) => setPref("librariesOff", { ...getPrefs().librariesOff, [projectPath]: ids }),
 }
 
 type Connecting = {
@@ -81,21 +103,18 @@ type Connecting = {
 export class LibraryHub {
 	private readonly connections = new Map<string, Connecting>()
 	private readonly resting = new Map<string, { until: number; why: string }>()
-	private readonly listeners = new Set<() => void>()
+	private readonly listeners = new Set<(projectPath: string | null) => void>()
 	private readonly extra: NonNullable<LibraryHubOptions["extra"]>
 	/** A free Lazyweb token when the keychain cannot store one: good for this run. */
 	private lazywebInMemory = ""
 	private shadcnDir = ""
 	private readonly gummble = new SignInAuth("gummble")
 
-	private readonly offStore: NonNullable<LibraryHubOptions["offStore"]>
+	private readonly choices: LibraryChoices
 
 	constructor(private readonly options: LibraryHubOptions = {}) {
 		this.extra = options.extra ?? []
-		this.offStore = options.offStore ?? {
-			get: () => getPrefs().librariesOff,
-			set: (off) => setPref("librariesOff", off),
-		}
+		this.choices = options.choices ?? PREFS_CHOICES
 	}
 
 	/** Every library Caret knows, built-in first. */
@@ -107,44 +126,71 @@ export class LibraryHub {
 		return this.definitions().find((library) => library.id === id)
 	}
 
-	/** Called whenever which libraries are usable may have changed (the rules depend on it). */
-	onChange(listener: () => void): () => void {
+	/**
+	 * Called whenever which libraries are usable may have changed (the rules
+	 * depend on it): for one project, or null for every project.
+	 */
+	onChange(listener: (projectPath: string | null) => void): () => void {
 		this.listeners.add(listener)
 		return () => this.listeners.delete(listener)
 	}
 
-	private changed(): void {
+	private changed(projectPath: string | null = null): void {
 		for (const listener of this.listeners) {
 			try {
-				listener()
+				listener(projectPath)
 			} catch (err) {
 				Logger.warn(`[libraries] change listener failed: ${err}`)
 			}
 		}
 	}
 
-	enabled(id: string): boolean {
-		return !this.offStore.get().includes(id)
+	/** Installed libraries, for every project. The development-only test library is always installed. */
+	installedIds(): string[] {
+		const chosen = this.choices.installed() ?? DEFAULT_INSTALLED
+		return [...chosen.filter((id) => this.definition(id)), ...this.extra.map((e) => e.definition.id)]
 	}
 
-	async setEnabled(id: string, on: boolean): Promise<void> {
-		const off = new Set(this.offStore.get())
-		if (on) off.delete(id)
-		else off.add(id)
-		await this.offStore.set([...off])
-		if (!on) await this.disconnect(id)
-		else void this.warm()
+	async install(id: string): Promise<void> {
+		if (!this.definition(id) || this.installedIds().includes(id)) return
+		await this.choices.setInstalled([...(this.choices.installed() ?? DEFAULT_INSTALLED), id])
+		Logger.info(`[libraries] installed ${id}`)
+		capture("library_installed", { library: id })
+		void this.warm()
 		this.changed()
 	}
 
+	async uninstall(id: string): Promise<void> {
+		await this.choices.setInstalled((this.choices.installed() ?? DEFAULT_INSTALLED).filter((other) => other !== id))
+		await this.disconnect(id)
+		Logger.info(`[libraries] removed ${id}`)
+		this.changed()
+	}
+
+	/** Installed, and not switched off in this project (with no project: installed). */
+	enabled(id: string, projectPath: string | null): boolean {
+		if (!this.installedIds().includes(id)) return false
+		return !projectPath || !this.choices.offIn(projectPath).includes(id)
+	}
+
+	async setEnabled(projectPath: string, id: string, on: boolean): Promise<void> {
+		const off = new Set(this.choices.offIn(projectPath))
+		if (on) off.delete(id)
+		else off.add(id)
+		await this.choices.setOffIn(projectPath, [...off])
+		if (on) void this.warm()
+		this.changed(projectPath)
+	}
+
 	/**
-	 * Libraries that are on and have what they need (a key, a sign-in). Whether
-	 * they answer right now does not matter here: this is what the rules name.
+	 * Libraries that are on in this project and have what they need (a key, a
+	 * sign-in). Whether they answer right now does not matter here: this is
+	 * what the rules name.
 	 */
-	async onLibraries(): Promise<LibraryDefinition[]> {
+	async onLibraries(projectPath: string | null): Promise<LibraryDefinition[]> {
 		const result: LibraryDefinition[] = []
 		for (const library of this.definitions()) {
-			if (!this.enabled(library.id)) continue
+			if (!this.enabled(library.id, projectPath)) continue
 			if (library.access === "key" && !(await this.credential(library.id))) continue
 			if (library.access === "sign-in" && !this.signInFor(library.id)?.signedIn()) continue
 			result.push(library)
@@ -152,14 +198,14 @@ export class LibraryHub {
 		return result
 	}
 
-	/** Starts connecting every library that is on, so the first tool list finds them ready. */
+	/** Starts connecting every installed library, so the first tool list finds them ready. */
 	async warm(): Promise<void> {
-		for (const library of await this.onLibraries()) void this.connect(library).catch(() => {})
+		for (const library of await this.onLibraries(null)) void this.connect(library).catch(() => {})
 	}
 
-	/** The tools to pass on: each usable library's allowed tools, renamed and made safe. */
-	async tools(): Promise<Tool[]> {
-		const libraries = (await this.onLibraries()).filter((library) => !this.isResting(library.id))
+	/** The tools to pass on in this project: each usable library's allowed tools, renamed and made safe. */
+	async tools(projectPath: string | null): Promise<Tool[]> {
+		const libraries = (await this.onLibraries(projectPath)).filter((library) => !this.isResting(library.id))
 		const lists = await Promise.all(
 			libraries.map(async (library) => {
 				const pending = this.connect(library).catch(() => null)
@@ -188,11 +234,11 @@ export class LibraryHub {
 	}
 
 	/** Calls a passed-on tool. A rate limit, lost sign-in or outage rests the library. */
-	async call(name: string, args: Record<string, unknown>): Promise<CallToolResult> {
+	async call(projectPath: string | null, name: string, args: Record<string, unknown>): Promise<CallToolResult> {
 		const split = splitPassedOnName(name, this.definitions())
 		if (!split) return errorResult(`${name} is not a library tool.`)
 		const { library, tool } = split
-		if (!this.enabled(library.id)) return errorResult(`${library.name} is switched off in Caret.`)
+		if (!this.enabled(library.id, projectPath)) return errorResult(`${library.name} is switched off in Caret.`)
 		const rest = this.restOf(library.id)
 		if (rest) return errorResult(`${library.name} is resting after a ${rest}; use another library or build it yourself.`)
 		try {
@@ -229,8 +275,9 @@ export class LibraryHub {
 		return this.restOf(id) !== null
 	}
 
-	/** Each library's row in the Libraries list. */
-	async list(): Promise<LibraryWire[]> {
+	/** Each library's card and row in the Libraries tab, for this project. */
+	async list(projectPath: string | null): Promise<LibraryWire[]> {
+		const installed = this.installedIds()
 		return Promise.all(
 			this.definitions().map(async (library) => ({
 				id: library.id,
@@ -239,14 +286,15 @@ export class LibraryHub {
 				kind: library.kind,
 				access: library.access,
 				site: library.site,
-				enabled: this.enabled(library.id),
-				state: await this.stateOf(library),
+				installed: installed.includes(library.id),
+				enabled: this.enabled(library.id, projectPath),
+				state: await this.stateOf(library, projectPath),
 			})),
 		)
 	}
 
-	private async stateOf(library: LibraryDefinition): Promise<LibraryWire["state"]> {
-		if (!this.enabled(library.id)) return "off"
+	private async stateOf(library: LibraryDefinition, projectPath: string | null): Promise<LibraryWire["state"]> {
+		if (!this.enabled(library.id, projectPath)) return "off"
 		if (this.isResting(library.id)) return "resting"
 		if (library.access === "key" && !(await this.credential(library.id))) return "key"
 		if (library.access === "sign-in" && !this.signInFor(library.id)?.signedIn()) return "sign-in"

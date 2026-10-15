@@ -41,7 +41,8 @@
 		"preview:wizard": "npx tsx scripts/preview-wizard.ts",
 		"test:interview": "npm run build && tsx scripts/test-interview.ts",
 		"test:interview:live": "npm run build && tsx scripts/verify-interview.ts --live",
-		"test:skills": "npm run build && tsx scripts/verify-skills.ts"
+		"test:skills": "npm run build && tsx scripts/verify-skills.ts",
+		"test:skills:live": "npm run build && tsx scripts/verify-skills.ts --live"
 	},
 	"dependencies": {
 		"@babel/parser": "^7.29.8",

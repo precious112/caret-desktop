@@ -95,7 +95,7 @@ const HARD_RULES = `- Style with Tailwind utility classes only. Never \`style={{
   what is missing.`
 
 /** The libraries that are on, as the rules name them. Set by main at startup; none until then. */
-let librariesOn: () => Promise<ReadonlyArray<Pick<LibraryDefinition, "id" | "name" | "kind">>> = async () => []
+let librariesOn: (projectPath: string) => Promise<ReadonlyArray<Pick<LibraryDefinition, "id" | "name" | "kind">>> = async () => []
 
 export function setLibrariesOnSource(source: typeof librariesOn): void {
 	librariesOn = source
@@ -109,7 +109,7 @@ export async function buildCore(projectPath: string): Promise<string> {
 		readPromotedRules(projectPath).catch(() => ({ version: 1 as const, rules: [] })),
 		readCatalogLock(projectPath).catch(() => ({ version: 1 as const, installed: [] })),
 	])
-	const librarySearch = librarySearchParagraph(await librariesOn().catch(() => []))
+	const librarySearch = librarySearchParagraph(await librariesOn(projectPath).catch(() => []))
 	const pageCount = pages.filter((p) => !p.variantOf).length
 	const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`
 

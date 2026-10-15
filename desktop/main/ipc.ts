@@ -61,11 +61,13 @@ import {
 	requestTakes,
 } from "./generate-assets"
 import { answerInterviewPrompt, currentPrompt } from "./interview"
+import { listCodingTools, setUpCodingTool } from "./coding-tools"
 import { libraryHub } from "./libraries/libraries"
 import { refreshMenu } from "./menu"
 import { forgetRecentProject, getPrefs, setPref, setPrefs } from "./prefs"
 import { regenerateRulesFiles } from "./rules/generate"
 import { clearSecret, type SecretName, secretStatus, setSecret } from "./secrets"
+import { skillService } from "./skills/skills"
 import { type LaneTask, listTaskModels, setTaskModel, taskModel } from "./task-models"
 import {
 	abandonWizard,
@@ -771,13 +773,40 @@ export function registerIpcHandlers(windows: WindowManager): void {
 		},
 	)
 
+	// ── design skills ─────────────────────────────────────────────────────────
+
+	handle("skills:list", (_event, projectPath: string | null) => skillService().list(projectPath))
+
+	handle("skills:install", (_event, id: string) => skillService().install(id))
+
+	handle("skills:remove", (_event, projectPath: string | null, id: string) => skillService().remove(id, projectPath))
+
+	handle("skills:choose", (_event, projectPath: string, id: string | null) => skillService().choose(projectPath, id))
+
+	// ── your coding tools ─────────────────────────────────────────────────────
+
+	handle("codingTools:list", () => listCodingTools())
+
+	handle("codingTools:setUp", (_event, id: string) => {
+		if (!["claude", "codex", "cursor", "opencode"].includes(id)) return { ok: false, error: "Caret doesn't know that tool." }
+		return setUpCodingTool(id as "claude" | "codex" | "cursor" | "opencode")
+	})
+
 	// ── component and reference libraries ─────────────────────────────────────
 
-	handle("libraries:list", () => libraryHub().list())
+	handle("libraries:list", (_event, projectPath: string | null) => libraryHub().list(projectPath))
 
-	handle("libraries:set", async (_event, id: string, on: boolean) => {
+	handle("libraries:install", async (_event, id: string) => {
+		await libraryHub().install(id)
+	})
+
+	handle("libraries:remove", async (_event, id: string) => {
+		await libraryHub().uninstall(id)
+	})
+
+	handle("libraries:set", async (_event, projectPath: string, id: string, on: boolean) => {
 		if (!libraryHub().definition(id)) return
-		await libraryHub().setEnabled(id, on)
+		await libraryHub().setEnabled(projectPath, id, on)
 	})
 
 	handle("libraries:setKey", (_event, _projectPath: string | null, id: string, key: string) => {

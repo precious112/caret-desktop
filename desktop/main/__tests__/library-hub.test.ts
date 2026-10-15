@@ -36,13 +36,18 @@ const TOOLS: Record<string, Tool[]> = {
 function hub(fail: Record<string, string> = {}) {
 	const opened: string[] = []
 	const calls: string[] = []
-	let off: string[] = []
+	let installed: string[] | undefined
+	const off: Record<string, string[]> = {}
 	const libraries = new LibraryHub({
 		dataDir: () => os.tmpdir(),
-		offStore: {
-			get: () => off,
-			set: async (next) => {
-				off = next
+		choices: {
+			installed: () => installed,
+			setInstalled: async (ids) => {
+				installed = ids
+			},
+			offIn: (projectPath) => off[projectPath] ?? [],
+			setOffIn: async (projectPath, ids) => {
+				off[projectPath] = ids
 			},
 		},
 		open: async (_connection, definition: LibraryDefinition): Promise<LiveLibrary> => {
@@ -62,18 +67,43 @@ function hub(fail: Record<string, string> = {}) {
 	return { libraries, opened, calls }
 }
 
+/** The project every test works in. */
+const P = "/projects/a"
+
 const lazywebToken = (async () =>
 	new Response(JSON.stringify({ token: "free-token" }), { status: 200 })) as unknown as typeof globalThis.fetch
 
 describe("the library manager", () => {
+	it("installs the libraries that need no account until the user says otherwise; install and remove change that", async () => {
+		const { libraries } = hub()
+		assert.deepEqual(libraries.installedIds(), ["shadcn", "aceternity", "lazyweb"])
+		await libraries.install("twentyfirst")
+		assert.deepEqual(libraries.installedIds(), ["shadcn", "aceternity", "lazyweb", "twentyfirst"])
+		await libraries.uninstall("aceternity")
+		assert.deepEqual(libraries.installedIds(), ["shadcn", "lazyweb", "twentyfirst"])
+		const rows = await libraries.list(P)
+		assert.equal(rows.find((row) => row.id === "aceternity")?.installed, false)
+		assert.equal(rows.find((row) => row.id === "aceternity")?.state, "off")
+	})
+
+	it("switching a library off in one project leaves it on in another", async () => {
+		await mockFetchForTesting(lazywebToken, async () => {
+			const { libraries } = hub()
+			await libraries.setEnabled(P, "shadcn", false)
+			assert.ok(!(await libraries.tools(P)).some((tool) => tool.name.startsWith("shadcn_")))
+			assert.ok((await libraries.tools("/projects/b")).some((tool) => tool.name.startsWith("shadcn_")))
+			assert.equal((await libraries.call("/projects/b", "shadcn_search_items_in_registries", {})).isError, undefined)
+		})
+	})
+
 	it("counts a library as on only when it is switched on and has what it needs", async () => {
 		await mockFetchForTesting(lazywebToken, async () => {
 			const { libraries } = hub()
-			const on = (await libraries.onLibraries()).map((library) => library.id)
+			const on = (await libraries.onLibraries(P)).map((library) => library.id)
 			assert.deepEqual(on, ["shadcn", "aceternity", "lazyweb"], "21st.dev has no key and Gummble no sign-in")
-			await libraries.setEnabled("aceternity", false)
+			await libraries.setEnabled(P, "aceternity", false)
 			assert.deepEqual(
-				(await libraries.onLibraries()).map((library) => library.id),
+				(await libraries.onLibraries(P)).map((library) => library.id),
 				["shadcn", "lazyweb"],
 			)
 		})
@@ -82,7 +112,7 @@ describe("the library manager", () => {
 	it("passes on only the allowed tools, renamed to their library, with input formats made safe", async () => {
 		await mockFetchForTesting(lazywebToken, async () => {
 			const { libraries } = hub()
-			const tools = await libraries.tools()
+			const tools = await libraries.tools(P)
 			const names = tools.map((tool) => tool.name).sort()
 			assert.deepEqual(names, [
 				"aceternity_search_components",
@@ -100,11 +130,11 @@ describe("the library manager", () => {
 	it("sends a call to its library under the library's own tool name, and refuses a tool it does not pass on", async () => {
 		await mockFetchForTesting(lazywebToken, async () => {
 			const { libraries, calls } = hub()
-			const result = await libraries.call("shadcn_search_items_in_registries", { query: "x" })
+			const result = await libraries.call(P, "shadcn_search_items_in_registries", { query: "x" })
 			assert.equal(result.isError, undefined)
 			assert.deepEqual(calls, ["shadcn:search_items_in_registries"])
 			assert.equal(libraries.owns("shadcn_add_command"), false)
-			const refused = await libraries.call("shadcn_add_command", {})
+			const refused = await libraries.call(P, "shadcn_add_command", {})
 			assert.equal(refused.isError, true)
 			assert.deepEqual(calls, ["shadcn:search_items_in_registries"], "a refused tool reached the library")
 		})
@@ -115,14 +145,14 @@ describe("the library manager", () => {
 			const { libraries, calls } = hub({ aceternity: "HTTP 429 Too Many Requests" })
 			let changes = 0
 			libraries.onChange(() => changes++)
-			await libraries.call("aceternity_search_components", {})
+			await libraries.call(P, "aceternity_search_components", {})
 			assert.equal(changes, 1, "the rules were not told the library is resting")
 			assert.equal(REST_MS, 15 * 60_000)
-			assert.ok(!(await libraries.tools()).some((tool) => tool.name.startsWith("aceternity_")))
-			const second = await libraries.call("aceternity_search_components", {})
+			assert.ok(!(await libraries.tools(P)).some((tool) => tool.name.startsWith("aceternity_")))
+			const second = await libraries.call(P, "aceternity_search_components", {})
 			assert.match(String((second.content as Array<{ text: string }>)[0].text), /resting/)
 			assert.equal(calls.filter((call) => call.startsWith("aceternity")).length, 1)
-			const row = (await libraries.list()).find((library) => library.id === "aceternity")
+			const row = (await libraries.list(P)).find((library) => library.id === "aceternity")
 			assert.equal(row?.state, "resting")
 		})
 	})
@@ -130,17 +160,17 @@ describe("the library manager", () => {
 	it("does not rest a library over a bad argument the AI can fix", async () => {
 		await mockFetchForTesting(lazywebToken, async () => {
 			const { libraries } = hub({ shadcn: "Invalid arguments: query is required" })
-			await libraries.call("shadcn_search_items_in_registries", {})
-			assert.ok((await libraries.tools()).some((tool) => tool.name.startsWith("shadcn_")))
+			await libraries.call(P, "shadcn_search_items_in_registries", {})
+			assert.ok((await libraries.tools(P)).some((tool) => tool.name.startsWith("shadcn_")))
 		})
 	})
 
 	it("a switched-off library offers no tools and its calls are refused", async () => {
 		await mockFetchForTesting(lazywebToken, async () => {
 			const { libraries, calls } = hub()
-			await libraries.setEnabled("shadcn", false)
-			assert.ok(!(await libraries.tools()).some((tool) => tool.name.startsWith("shadcn_")))
-			const refused = await libraries.call("shadcn_search_items_in_registries", {})
+			await libraries.setEnabled(P, "shadcn", false)
+			assert.ok(!(await libraries.tools(P)).some((tool) => tool.name.startsWith("shadcn_")))
+			const refused = await libraries.call(P, "shadcn_search_items_in_registries", {})
 			assert.equal(refused.isError, true)
 			assert.equal(calls.length, 0)
 		})

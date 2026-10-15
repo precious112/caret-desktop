@@ -183,7 +183,13 @@ export class CaretMcpServer {
 
 		// The component and reference libraries, passed on: Caret's chat and any
 		// coding tool connected to Caret see the same ones, and keys stay here.
-		passLibrariesOn(mcp, libraryHub())
+		const libraries = libraryHub()
+		const projectPath = this.options.projectPath
+		passLibrariesOn(mcp, {
+			tools: () => libraries.tools(projectPath),
+			owns: (name) => libraries.owns(name),
+			call: (name, args) => libraries.call(projectPath, name, args),
+		})
 	}
 
 	private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {

@@ -451,6 +451,29 @@ export interface GeneratedProvenanceWire {
 	}
 }
 
+/** One hand-picked design skill's card and row. */
+export interface SkillWire {
+	id: string
+	name: string
+	by: string
+	does: string
+	licence: string
+	installed: boolean
+	/** Whether this project uses it (one skill per project). */
+	chosen: boolean
+}
+
+/** One coding tool's row in the Backend tab's "Your coding tools". */
+export interface CodingToolWire {
+	id: "claude" | "codex" | "cursor" | "opencode"
+	name: string
+	found: boolean
+	/** Connected to Caret. */
+	setUp: boolean
+	/** The project folder where it reads the chosen design skill. */
+	skillsFolder: string
+}
+
 /** One component or reference library's row. */
 export interface LibraryWire {
 	id: string
@@ -459,6 +482,9 @@ export interface LibraryWire {
 	kind: "components" | "inspiration"
 	access: "none" | "free-token" | "sign-in" | "key"
 	site?: string
+	/** Installed for every project. */
+	installed: boolean
+	/** Installed and switched on in this project. */
 	enabled: boolean
 	state: "ready" | "connecting" | "sign-in" | "key" | "resting" | "failed" | "off"
 }
@@ -885,8 +911,20 @@ export interface IpcRequests {
 	 * the composer only clears the draft it actually spent.
 	 */
 	"agent:setMode": (projectPath: string, mode: "read-only" | "write", steering?: string) => { executed: boolean }
+	"skills:list": (projectPath: string | null) => SkillWire[]
+	"skills:install": (id: string) => WriteResult
+	/** Removes a skill from Caret, and from this project when it was the project's skill. */
+	"skills:remove": (projectPath: string | null, id: string) => void
+	/** One skill per project; null for none. */
+	"skills:choose": (projectPath: string, id: string | null) => WriteResult
+	"codingTools:list": () => CodingToolWire[]
+	/** Connects a coding tool to Caret; a file Caret won't edit comes back with what to paste. */
+	"codingTools:setUp": (id: string) => { ok: boolean; error?: string; snippet?: string }
 	"libraries:list": (projectPath: string | null) => LibraryWire[]
-	"libraries:set": (id: string, on: boolean) => void
+	"libraries:install": (id: string) => void
+	"libraries:remove": (id: string) => void
+	/** On or off in one project. */
+	"libraries:set": (projectPath: string, id: string, on: boolean) => void
 	"libraries:setKey": (projectPath: string | null, id: string, key: string) => WriteResult
 	"libraries:signIn": (projectPath: string, id: string) => WriteResult
 	/** The plan card's Discard. Sync plans also clear their pending record. */
@@ -1000,6 +1038,10 @@ export interface IpcEvents {
 	"wizard:progress": (progress: { projectPath: string; attempt: number; max: number }) => void
 	/** The asset index changed — by the UI, an agent, or a file dropped in Finder. */
 	"assets:changed": (projectPath: string) => void
+	/** Installed skills or a project's skill changed; null means every project. */
+	"skills:changed": (projectPath: string | null) => void
+	/** Installed libraries or a project's switches changed; null means every project. */
+	"libraries:changed": (projectPath: string | null) => void
 	/** An exploration opened or resolved — the Canvas button badges while one is open. */
 	"explore:open-changed": (projectPath: string, open: boolean) => void
 	/** The chat moved on: a token streamed, a permission was raised, a turn ended. */

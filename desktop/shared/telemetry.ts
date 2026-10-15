@@ -71,7 +71,7 @@ export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 /** The only event names the renderer may submit over `analytics:event`. */
 export const RENDERER_EVENTS: ReadonlySet<string> = new Set(["surface_switched", "renderer_exception", "setup_route_chosen"])
 
-const SURFACES = ["canvas", "foundation", "agent", "assets"] as const
+const SURFACES = ["canvas", "foundation", "agent", "assets", "skills", "libraries"] as const
 const SETUP_ROUTES = ["from-app", "ai-new-look", "ai-describe", "manual"] as const
 
 /**
@@ -145,7 +145,7 @@ const SANITIZED = /^(?:<[a-zA-Z]+>(?:\/[^\s'"]*)?|(?:out|node_modules|app\.asar)
  * app/file.tsx" after its space split it. Two or more segments, not one of the
  * kept code locations, not after a scheme or a token.
  */
-const LEFTOVER_PATH = /(?<![\w<>/.:-])(?!(?:out|node_modules|app\.asar)\/)[\w.\-]+(?:\/[\w.\-]+)+/g
+const LEFTOVER_PATH = /(?<![\w<>/.:-])(?!(?:out|node_modules|app\.asar)\/)[\w.-]+(?:\/[\w.-]+)+/g
 
 /** A placeholder followed by words and then more path — one path broken by spaces. */
 const PATH_CONTINUATION = /(<path>|<[a-zA-Z]+>\/…)(?:(?:\s+[^\s"'()<>/\\]+)*\s+[^\s"'()<>]*[/\\][^\s"'()<>]*)+/g

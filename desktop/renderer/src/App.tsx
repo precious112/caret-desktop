@@ -14,14 +14,16 @@ import { AssetViewer } from "./views/AssetViewer"
 import { BackendPanel } from "./views/BackendPanel"
 import { CHAT_SIDEBAR_WIDTH, ChatSidebar } from "./views/ChatSidebar"
 import { FoundationView } from "./views/FoundationView"
+import { LibrariesView } from "./views/LibrariesView"
 import { NotificationStack } from "./views/NotificationStack"
 import { ProjectPicker } from "./views/ProjectPicker"
 import { AssetsBeforeSetup, CanvasSetup, FIRST_PAGE_SEED, setupStepOf } from "./views/Setup"
+import { SkillsView } from "./views/SkillsView"
 import { TelemetryNotice } from "./views/TelemetryNotice"
 import { TopBar } from "./views/TopBar"
 
 /** Which full-window surface is covering the canvas, if any. */
-export type Surface = "canvas" | "foundation" | "agent" | "assets"
+export type Surface = "canvas" | "foundation" | "agent" | "assets" | "skills" | "libraries"
 
 export function App() {
 	const [project, setProject] = useState<ProjectState | null>(null)
@@ -265,6 +267,20 @@ export function App() {
 						/>
 					)}
 					{surface === "agent" && <BackendPanel onClose={() => requestSurface("canvas")} project={project} />}
+					{surface === "skills" && (
+						<SkillsView
+							onClose={() => requestSurface("canvas")}
+							onOpenCodingTools={() => requestSurface("agent")}
+							project={project}
+						/>
+					)}
+					{surface === "libraries" && (
+						<LibrariesView
+							onClose={() => requestSurface("canvas")}
+							onOpenCodingTools={() => requestSurface("agent")}
+							project={project}
+						/>
+					)}
 					{surface === "assets" &&
 						(!project.hasFoundation && !assetsLookAround ? (
 							<AssetsBeforeSetup
@@ -281,6 +297,7 @@ export function App() {
 					<ChatSidebar
 						onClose={() => setChatOpen(false)}
 						onOpenBackendSetup={() => requestSurface("agent")}
+						onOpenSkills={() => requestSurface("skills")}
 						onViewAsset={setViewerTag}
 						project={project}
 						seed={chatSeed}

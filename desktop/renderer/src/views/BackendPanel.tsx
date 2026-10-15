@@ -28,7 +28,7 @@ import type {
 import { ProviderDoorRow } from "../components/ProviderDoorRow"
 import { invoke } from "../ipc"
 import { cn } from "../lib/utils"
-import { LibrariesSettings } from "./LibrariesSettings"
+import { CodingToolsSection } from "./CodingToolsSection"
 
 /** One line per backend about how it is paid for. Routes, not prices. */
 const BILLING_NOTE: Record<string, string> = {
@@ -179,8 +179,6 @@ export function BackendPanel({ project, onClose }: { project: ProjectState; onCl
 
 				<ProvidersSection onChanged={refresh} />
 
-				<LibrariesSettings project={project} />
-
 				<KeySection
 					blurb={
 						<>
@@ -208,6 +206,8 @@ export function BackendPanel({ project, onClose }: { project: ProjectState; onCl
 					testId="tripo-key"
 					title="Generated 3D objects"
 				/>
+
+				<CodingToolsSection project={project} />
 
 				<McpSection project={project} />
 

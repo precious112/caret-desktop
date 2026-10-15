@@ -32,6 +32,7 @@ import {
 } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
 import { getPrefs, setPref } from "./prefs"
+import { skillService } from "./skills/skills"
 
 /** Sent with every chat turn, last in the system prompt. */
 export const CARET_PRECEDENCE =
@@ -277,6 +278,11 @@ export class AgentService {
 	 * conflict is decided.
 	 */
 	private async systemPrompt(): Promise<string | undefined> {
-		return CARET_PRECEDENCE
+		// The project's design skill, when it has one, read fresh every turn so a
+		// switch takes effect on the next message.
+		const skill = await skillService()
+			.chatInstructions(this.options.projectPath)
+			.catch(() => null)
+		return skill ? `${CARET_PRECEDENCE}\n\n${skill}` : CARET_PRECEDENCE
 	}
 }
