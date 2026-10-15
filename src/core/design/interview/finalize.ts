@@ -16,6 +16,7 @@ import { withDerivedScales } from "../derive"
 import { SHAPE_PRESETS } from "../foundation-library"
 import { generateTokenScale } from "../token-scales"
 import type { ColorTokens, FoundationTokens } from "../types"
+import { RANGES } from "./areas"
 import { type FoundationProposal, normalizeHex } from "./widgets"
 
 export class ProposalError extends Error {
@@ -94,10 +95,12 @@ export function finalizeProposal(proposal: FoundationProposal, description: stri
 	}
 	if (!proposal.rule?.trim()) throw new ProposalError("The restraint rule is missing — one sentence on how colour is used.")
 
-	// Clamped rather than refused: the ranges are where the scale derivations
-	// stay sane, and a model that says 1.62 meant "dramatic", not "invalid".
-	const scaleRatio = clamp(proposal.scaleRatio, 1.05, 1.5)
-	const baseSize = Math.round(clamp(proposal.baseSize, 12, 20))
+	// The interview only ever hands over values inside RANGES (it refuses
+	// anything else on screen), so these clamps change nothing it sends. They
+	// stay for proposals from elsewhere, and share RANGES so the two can never
+	// drift apart again (the screen once accepted 22px and this saved 20px).
+	const scaleRatio = clamp(proposal.scaleRatio, RANGES.scaleRatio.min, RANGES.scaleRatio.max)
+	const baseSize = Math.round(clamp(proposal.baseSize, RANGES.baseSize.min, RANGES.baseSize.max))
 	const spacingUnit: 4 | 8 = proposal.spacingUnit <= 6 ? 4 : 8
 
 	const semantic = { ...DEFAULT_SEMANTIC }

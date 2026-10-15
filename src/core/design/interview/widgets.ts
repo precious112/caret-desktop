@@ -337,13 +337,5 @@ export const WIZARD_TURN_SCHEMA: Record<string, unknown> = {
 	},
 }
 
-const HEX = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
-
-/** `#abc` and `abc123` become `#aabbcc` / `#abc123`; anything else is null. */
-export function normalizeHex(value: string | undefined): string | null {
-	if (!value) return null
-	const match = HEX.exec(value.trim())
-	if (!match) return null
-	const hex = match[1].toLowerCase()
-	return `#${hex.length === 3 ? [...hex].map((c) => c + c).join("") : hex}`
-}
+/** One definition, in the shared topic rules. */
+export { normalizeHex } from "./areas"
