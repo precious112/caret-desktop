@@ -61,8 +61,8 @@ import { STRUCTURED_OUTPUT_TOOL } from "./protocol"
 import { ensureOpencodeServer, type RunningServer, stopOpencodeServer } from "./server"
 
 /**
- * The agent every one-off answer runs as (interview turns, the Design pass's
- * checks and judges, asset briefs, image checks). Its own short prompt
+ * The agent every one-off answer runs as (interview turns, asset briefs,
+ * image checks). Its own short prompt
  * REPLACES OpenCode's built-in coding-agent prompt, and it may use nothing
  * until a call switches a tool on. Measured on the same one-line request:
  * about 8,000 input tokens as the default agent, under 500 as this one — the
@@ -305,9 +305,8 @@ export class OpencodeBackend implements CodingBackend {
 	 */
 	async structured<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
 		// A schema-constrained answer forces the model's tool choice to the
-		// answer itself, so it never calls the tools it was handed (measured: the
-		// Design pass's designer made zero library calls and invented its
-		// references). The pinned server also cannot read such a session's
+		// answer itself, so it never calls the tools it was handed (measured: a
+		// designer step made zero library calls and invented its references). The pinned server also cannot read such a session's
 		// messages back (400 on its stored format). A call that needs tools asks
 		// in words and parses the answer instead.
 		const model = req.model ?? "(default)"
@@ -361,7 +360,7 @@ export class OpencodeBackend implements CodingBackend {
 					...(native ? { format: { type: "json_schema", schema: req.schema } } : {}),
 					// The model is answering a question, not doing work. Every tool it
 					// could reach for here is a way to spend minutes and get it wrong —
-					// unless the caller hands it specific ones (the Design pass's libraries).
+					// unless the caller hands it specific ones.
 					...answerSetup(req),
 				},
 				signal: req.signal,
@@ -819,7 +818,7 @@ export class OpencodeBackend implements CodingBackend {
 /**
  * Tool switches every prompt in a project carries, before its own.
  *
- * The Design pass's libraries are MCP servers added to the project's instance,
+ * The component and reference libraries are MCP servers added to the project's instance,
  * so their tools would otherwise reach every session there — the chat, the
  * interview, a one-off structured answer. Two reasons that must not happen
  * unfiltered: a library's write tools (21st.dev's server can delete components
@@ -856,13 +855,11 @@ export function mergeTools(...layers: Array<Record<string, boolean> | undefined>
 
 /**
  * Which agent answers and with which tools. Every answer is Caret's lean agent
- * (its agent denies all tools; a call opts back into reads), except the
- * planner, which keeps the built-in prompt with every tool off but reads, and
- * the designer, which also gets the project's library allowlist.
+ * (its agent denies all tools; a call opts back into reads); one that needs
+ * tools also gets the project's library allowlist.
  */
 export function answerSetup(req: StructuredRequest): { agent?: string; tools: Record<string, boolean> } {
 	const reads = req.reads ? READ_TOOLS : undefined
-	if (req.openCodePrompt) return { tools: mergeTools({ "*": false, StructuredOutput: true }, reads, req.tools) }
 	if (req.allowTools) return { agent: ANSWER_AGENT, tools: toolsFor(req.workingDirectory, reads, req.tools) }
 	return { agent: ANSWER_AGENT, tools: mergeTools(reads, req.tools) }
 }

@@ -34,18 +34,6 @@ export type TranscriptEntry =
 	| { kind: "error"; id: string; message: string }
 	/** Caret's own voice — never the model's. */
 	| { kind: "note"; id: string; text: string }
-	/** The Design pass's named steps, as the user watches them happen. */
-	| { kind: "design-pass"; id: string; steps: DesignPassStepView[] }
-
-export type DesignPassStepId = "plan" | "check" | "questions" | "polish" | "build"
-export type DesignPassStepState = "pending" | "active" | "done" | "failed"
-
-export interface DesignPassStepView {
-	step: DesignPassStepId
-	state: DesignPassStepState
-	/** "removed 7", "2 design questions", "looked at 4 reference pages". */
-	detail?: string
-}
 
 export interface Usage {
 	inputTokens: number
@@ -209,45 +197,6 @@ export function markPlanEntry(state: TranscriptState): string | null {
 
 export function addNote(state: TranscriptState, text: string): void {
 	state.entries.push({ kind: "note", id: nextId("note"), text })
-}
-
-/** The steps every pass shows from the start; "questions" appears only when there are some. */
-const PASS_STEPS: DesignPassStepId[] = ["plan", "check", "polish", "build"]
-
-export function addDesignPass(state: TranscriptState): string {
-	const id = nextId("design-pass")
-	state.entries.push({ kind: "design-pass", id, steps: PASS_STEPS.map((step) => ({ step, state: "pending" })) })
-	return id
-}
-
-/** Updates one step of a pass entry, inserting "questions" in its place the first time it is reported. */
-export function updateDesignPass(
-	state: TranscriptState,
-	id: string,
-	step: DesignPassStepId,
-	stepState: DesignPassStepState,
-	detail?: string,
-): void {
-	const entry = state.entries.find((e) => e.kind === "design-pass" && e.id === id)
-	if (!entry || entry.kind !== "design-pass") return
-	let view = entry.steps.find((s) => s.step === step)
-	if (!view) {
-		view = { step, state: "pending" }
-		entry.steps.splice(
-			entry.steps.findIndex((s) => s.step === "polish"),
-			0,
-			view,
-		)
-	}
-	view.state = stepState
-	if (detail !== undefined) view.detail = detail
-}
-
-/** A pass that stops: whatever was under way failed, and nothing after it started. */
-export function failDesignPass(state: TranscriptState, id: string): void {
-	const entry = state.entries.find((e) => e.kind === "design-pass" && e.id === id)
-	if (!entry || entry.kind !== "design-pass") return
-	for (const view of entry.steps) if (view.state === "active") view.state = "failed"
 }
 
 export function addUserMessage(state: TranscriptState, text: string): void {

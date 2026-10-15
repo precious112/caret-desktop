@@ -1,6 +1,5 @@
 /**
- * Installs a component the Design pass's designer chose: any shadcn-style
- * registry item (`@magicui/marquee`) or a 21st.dev component (`21st:10635`).
+ * Installs a component the AI chose: any shadcn-style registry item (`@magicui/marquee`) or a 21st.dev component (`21st:10635`).
  *
  * The same machinery as the old catalog's registry tier — the lock file, the
  * design layer's own package.json, hex colours rebound to foundation tokens —
@@ -19,7 +18,6 @@ import * as path from "path"
 
 import { fetch } from "@/shared/net"
 import { Logger } from "@/shared/services/Logger"
-import { REGISTRIES } from "../design-pass/libraries"
 import { readFoundationTokens } from "../tokens"
 import { tokenClassForHex } from "../visual-editing/token-colors"
 import {
@@ -31,6 +29,7 @@ import {
 	rebindHexClasses,
 	writeComponentFile,
 } from "./install"
+import { REGISTRIES } from "./registries"
 
 export type ComponentRef = { kind: "registry"; registry: string; name: string } | { kind: "21st"; id: string }
 
@@ -306,7 +305,7 @@ export async function installComponentRef(
 			namedExport = await namedExportFromDisk(workspacePath, main)
 		} else {
 			if (!options.twentyfirstKey)
-				throw new Error("21st.dev needs a key: paste one in the backend tab's Design pass section")
+				throw new Error("21st.dev needs a key: paste one in the Backend tab's Libraries section")
 			const parsed = parse21stAnswer(await call21st(options.twentyfirstKey, ref.id))
 			if (!parsed) throw new Error("21st.dev's answer had no component source")
 			main = `21st/${ref.id}/${parsed.fileName}.tsx`

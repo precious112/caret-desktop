@@ -12,8 +12,8 @@
  *
  * Engine only (reads the overused-defaults list file).
  */
-import { commonValues, type UserChoices } from "../design-pass/foundation-check"
-import { activeHabits } from "../design-pass/slop-list"
+import { commonValues, type UserChoices } from "../defaults/foundation-check"
+import { activeHabits } from "../defaults/slop-list"
 import type { AreaOption } from "./answers"
 import type { AreaId } from "./areas"
 import type { InterviewRecord } from "./state"

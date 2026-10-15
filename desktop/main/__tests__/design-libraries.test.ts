@@ -4,7 +4,7 @@ import * as os from "os"
 import type { CodingBackend, McpServerStatus } from "../../../src/core/design/agent/backend"
 import { setOpencodeToolPolicy, toolsFor } from "../../../src/core/design/agent/opencode"
 import { mockFetchForTesting } from "../../../src/shared/net"
-import { DesignLibraries, REST_MS } from "../design-pass/libraries"
+import { DesignLibraries, REST_MS } from "../libraries/libraries"
 
 /** An OpenCode instance's MCP routes, in memory: add, status, and a dispose that forgets everything. */
 function fakeBackend() {
@@ -36,7 +36,7 @@ function fakeBackend() {
 	return { backend: { mcp } as unknown as CodingBackend, added, dispose: () => servers.clear() }
 }
 
-describe("the Design pass's libraries", () => {
+describe("the component and reference libraries", () => {
 	// The manager installs a process-wide tool policy; leave none behind.
 	after(() => setOpencodeToolPolicy(() => ({})))
 	// Never reach the network: Lazyweb's free token request is answered here.

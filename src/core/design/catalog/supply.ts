@@ -10,12 +10,11 @@
  * stays visibly unresolved and the design checks name it.
  *
  * There is no budget on how many components a page may use: whether a
- * component earns its place is the Design pass's judge's call, made before the
- * build, with the page's own reasons in front of it.
+ * component earns its place is the AI's call.
  */
 import type { CheckFinding } from "../design-checks"
-import { REGISTRIES } from "../design-pass/libraries"
 import type { CatalogLock } from "./install"
+import { REGISTRIES } from "./registries"
 
 export interface CatalogImportRef {
 	/** The import target relative to `components/catalog/`, without an extension (`magicui/marquee`). */

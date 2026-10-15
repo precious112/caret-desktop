@@ -2,7 +2,7 @@ import { commonValues, commonValuesComplaint } from "../foundation-check"
 
 const none = { words: "", colours: [], fonts: [] }
 
-describe("design pass · foundation suggestions", () => {
+describe("overused defaults · foundation suggestions", () => {
 	it("finds a cream, a terracotta, Inter and Fraunces among the suggestions", () => {
 		const found = commonValues({ colours: ["#F5F0E6", "#D97757", "#1F6FEB"], fonts: ["Fraunces", "Inter", "Manrope"] }, none)
 		found.map((f) => f.value).should.eql(["#F5F0E6", "#D97757", "Fraunces", "Inter"])

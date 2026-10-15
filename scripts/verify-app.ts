@@ -3996,7 +3996,7 @@ export default function ShaderDemo() {
 			// source lands from the registry with its lock entry, the `cn` helper
 			// and its deps; the rules list it as installed. Then a second write with
 			// two more imports: the registry one is supplied (there is no per-page
-			// budget any more — component choice is the Design pass judge's call),
+			// budget any more — component choice is the AI's call),
 			// and the one no registry supplies is named by the design checks.
 			const caretDir = path.join(fixture, ".caret")
 			const catalog = path.join(caretDir, "components", "catalog")
@@ -4426,95 +4426,48 @@ export default function CatalogDemo() {
 		return "history replaced the chat, and back restored it"
 	})
 
-	await scenario("dp. the Design pass is on by default, says so, and turning it off is one confirmed click", async () => {
+	await scenario("dp. the Design pass is gone, and the libraries stay: listed, keyed, switchable, remembered", async () => {
 		await ensureChatOpen(chrome)
-		const toggle = chrome.getByTestId("design-pass-switch")
-		const line = chrome.getByTestId("design-pass-line")
-		await toggle.waitFor({ timeout: 10_000 })
-
-		// On by default, and visibly so: the pass is slower, so the user must
-		// always be able to see why.
-		assert((await toggle.getAttribute("aria-pressed")) === "true", "the Design pass is not on by default")
-		assert(
-			(await line.textContent())?.includes("Design pass is on"),
-			`the line under the composer does not say it is on: ${await line.textContent()}`,
-		)
-
-		// Turning it off asks first, and says what is lost. "Keep it on" changes nothing.
-		await toggle.click()
-		const confirm = chrome.getByTestId("design-pass-confirm")
-		await confirm.waitFor({ timeout: 5_000 })
-		assert((await confirm.textContent())?.includes("Turn off the Design pass?"), "the confirmation does not ask")
-		await shot(chrome, "dp-design-pass-confirm")
-		await chrome.getByTestId("design-pass-keep").click()
-		assert((await toggle.getAttribute("aria-pressed")) === "true", "Keep it on turned it off")
-
-		// Off, for this project, remembered in preferences.
-		await toggle.click()
-		await chrome.getByTestId("design-pass-turn-off").click()
-		await waitFor(
-			"the switch to read off",
-			async () => ((await toggle.getAttribute("aria-pressed")) === "false" ? true : null),
-			10_000,
-		)
-		assert((await line.textContent())?.includes("Design pass is off"), "the line does not say it is off")
-		const prefs = JSON.parse(await fs.readFile(path.join(userData, "preferences.json"), "utf-8")) as {
-			designPassOff?: string[]
+		// Removed on 2026-10-15: no switch or line under the composer.
+		await chrome.getByTestId("chat-mode-act").waitFor({ timeout: 10_000 })
+		for (const id of ["design-pass-switch", "design-pass-line"]) {
+			assert((await chrome.getByTestId(id).count()) === 0, `${id} is still on screen`)
 		}
-		assert(
-			prefs.designPassOff?.some((p) => p.endsWith(path.basename(fixture))),
-			"turning it off was not remembered for this project",
-		)
 
-		// Back on is one click: there is nothing to warn about.
-		await toggle.click()
-		await waitFor(
-			"the switch to read on again",
-			async () => ((await toggle.getAttribute("aria-pressed")) === "true" ? true : null),
-			10_000,
-		)
-
-		// The popover's settings link lands on the backend tab's Design pass section.
-		await toggle.click()
-		await chrome.getByTestId("design-pass-settings").click()
-		const section = chrome.getByTestId("design-pass-section")
+		await chrome.getByTestId("top-bar").getByRole("button", { name: "Backend" }).click()
+		const section = chrome.getByTestId("libraries-section")
 		await section.waitFor({ timeout: 15_000 })
-		const helper = chrome.getByTestId("design-pass-helper")
-		assert((await helper.inputValue()) === "", "the helper model does not start on Automatic")
-		assert(
-			(await helper.locator("option").first().textContent())?.startsWith("Automatic (fastest connected)"),
-			"the Automatic option is misnamed",
-		)
+		assert((await chrome.getByTestId("design-pass-section").count()) === 0, "the Backend tab still has a Design pass section")
 		await waitFor(
 			"the five libraries to be listed",
-			async () => ((await chrome.getByTestId("design-pass-library").count()) === 5 ? true : null),
+			async () => ((await chrome.getByTestId("library-row").count()) === 5 ? true : null),
 			60_000,
 		)
 		const names = await chrome
-			.getByTestId("design-pass-library")
+			.getByTestId("library-row")
 			.evaluateAll((rows) => rows.map((row) => row.getAttribute("data-library")))
 		assert(names.join(",") === "shadcn,aceternity,lazyweb,gummble,twentyfirst", `unexpected libraries: ${names.join(",")}`)
 		// 21st.dev needs a key until one is pasted; nothing to install, nothing to configure.
 		const twentyfirst = chrome.locator('[data-library="twentyfirst"]')
-		assert((await twentyfirst.getByTestId("design-pass-library-key").count()) === 1, "21st.dev does not offer to take a key")
+		assert((await twentyfirst.getByTestId("library-key").count()) === 1, "21st.dev does not offer to take a key")
 
 		// A library can be switched off, and it is remembered.
-		await twentyfirst.getByTestId("design-pass-library-toggle").click()
+		await twentyfirst.getByTestId("library-toggle").click()
 		await waitFor(
 			"21st.dev to read off",
-			async () => ((await twentyfirst.getByTestId("design-pass-library-toggle").textContent()) === "Off" ? true : null),
+			async () => ((await twentyfirst.getByTestId("library-toggle").textContent()) === "Off" ? true : null),
 			15_000,
 		)
 		const afterToggle = JSON.parse(await fs.readFile(path.join(userData, "preferences.json"), "utf-8")) as {
-			designPassLibrariesOff?: string[]
+			librariesOff?: string[]
 		}
-		assert(afterToggle.designPassLibrariesOff?.includes("twentyfirst"), "switching a library off was not remembered")
-		await twentyfirst.getByTestId("design-pass-library-toggle").click()
-		await shot(chrome, "dp-design-pass-settings")
+		assert(afterToggle.librariesOff?.includes("twentyfirst"), "switching a library off was not remembered")
+		await twentyfirst.getByTestId("library-toggle").click()
+		await shot(chrome, "dp-libraries")
 
 		await chrome.getByTestId("top-bar").getByRole("button", { name: "Backend" }).click()
 		await ensureChatOpen(chrome)
-		return "on by default with its line, off only after confirming, remembered per project; settings section lists the five libraries"
+		return "no Design pass switch or section; the Backend tab lists the five libraries, 21st.dev asks for a key, switching off is remembered"
 	})
 
 	await scenario("ce. an overlay move edit gets measured geometry and lands centered, verified by re-measure", async () => {
@@ -5983,132 +5936,6 @@ export default function CatalogDemo() {
 
 		return `app drift → model-written proposal → accepted by click → mapping refreshed, home reads clean`
 	})
-
-	// The pass has no time limit by design (a limit would make results depend on
-	// a provider's speed that day), so its scenario budget is the build's plus the
-	// pass's, not the shared inference budget.
-	const DESIGN_PASS_BUDGET_MS = 60 * 60_000
-	const designPassScenario = model
-		? (name: string, run: () => Promise<string>) => scenario(name, run, DESIGN_PASS_BUDGET_MS)
-		: (name: string, _run: () => Promise<string>) => void skip(name, NO_MODEL_REASON)
-
-	await designPassScenario(
-		"dq. a page request runs the Design pass: named steps, the questions card, then a build from the plan",
-		async () => {
-			await ensureChatOpen(chrome)
-			// A page request in a fresh chat, in Act: a message typed while a sync
-			// conversation is current continues that sync, and a Plan-mode turn
-			// builds nothing, so neither runs the pass.
-			await chrome.getByRole("button", { name: "New chat" }).click()
-			if ((await chrome.getByTestId("chat-mode-act").getAttribute("aria-pressed")) !== "true") {
-				await chrome.getByTestId("chat-mode-act").click()
-			}
-			await waitFor(
-				"the chat to be ready",
-				async () => ((await chrome.getByTestId("chat-input").isDisabled()) ? null : true),
-				30_000,
-			)
-			const pagesBefore = new Set(await fs.readdir(path.join(fixture, ".caret", "pages")))
-			const request =
-				"Create a new page called ferries: a landing page for Ferrylink, a booking app for the small passenger ferries between the Greek islands, showing live departures and which boats still have seats."
-			await chrome.getByTestId("chat-input").fill(request)
-			await chrome.getByTestId("chat-send").click()
-
-			// The steps appear once the request is read as page work. A model that
-			// reads it as something else is model behaviour, not Caret's: inconclusive.
-			const steps = chrome.getByTestId("design-pass-steps").last()
-			await steps.waitFor({ timeout: 300_000 }).catch(() => {
-				throw new Inconclusive("the helper model did not read a new-page request as page work")
-			})
-			const stepState = async (step: string) =>
-				(await steps
-					.locator(`[data-step="${step}"]`)
-					.getAttribute("data-state")
-					.catch(() => null)) ?? "missing"
-			assert((await stepState("build")) === "pending", "the build started before the pass finished")
-
-			// The user's words stay what the chat shows; the plan only ever goes to the model.
-			const transcript = chrome.getByTestId("chat-transcript")
-			assert(
-				(await transcript.textContent())?.includes("Create a new page called ferries"),
-				"the chat does not show the request as typed",
-			)
-
-			// Walk the pass: answer the questions card if it comes (Remove all), until the build starts.
-			let questioned = 0
-			await waitFor(
-				"the pass to reach the build",
-				async () => {
-					const card = chrome.getByTestId("design-questions")
-					if ((await card.count()) > 0) {
-						const text = (await card.textContent()) ?? ""
-						assert(text.includes("Possible AI slop spotted"), `the questions card is misheaded: ${text.slice(0, 80)}`)
-						assert(text.includes("Keep them anyway?"), "the questions card does not ask")
-						// The card is an instant event; the row rides the next (coalesced) state push.
-						await waitFor(
-							"the working row to say the pass is waiting on the user",
-							async () => {
-								const working =
-									(await chrome
-										.getByTestId("chat-working")
-										.textContent()
-										.catch(() => "")) ?? ""
-								return working.includes("Waiting for you:") ? true : null
-							},
-							10_000,
-						)
-						questioned = await chrome.getByTestId("design-question").count()
-						await shot(chrome, "dq-design-questions")
-						await chrome.getByTestId("design-questions-remove-all").click()
-					}
-					for (const step of ["plan", "check", "polish"]) {
-						if ((await stepState(step)) === "failed") {
-							const tail = ((await transcript.textContent()) ?? "").slice(-400)
-							throw new Inconclusive(`the pass stopped at "${step}": ${tail}`)
-						}
-					}
-					const build = await stepState("build")
-					return build === "active" || build === "done" ? true : null
-				},
-				1_200_000,
-			)
-			for (const step of ["plan", "check", "polish"])
-				assert((await stepState(step)) === "done", `step ${step} did not finish before the build`)
-			await shot(chrome, "dq-design-pass-steps")
-
-			// The build writes a new page; its steps row settles.
-			const newPage = await waitFor(
-				"the build to write a new page",
-				async () => {
-					const now = await fs.readdir(path.join(fixture, ".caret", "pages"))
-					const added = now.filter((id) => !pagesBefore.has(id) && !id.includes("--v"))
-					for (const id of added) {
-						const file = path.join(fixture, ".caret", "pages", id, "index.tsx")
-						if ((await fs.readFile(file, "utf-8").catch(() => "")).length > 200) return id
-					}
-					return null
-				},
-				900_000,
-			)
-			await waitFor("the build step to settle", async () => ((await stepState("build")) === "done" ? true : null), 600_000)
-
-			// Every component the page imports resolves to something installed.
-			const source = await fs.readFile(path.join(fixture, ".caret", "pages", newPage, "index.tsx"), "utf-8")
-			const lock = JSON.parse(
-				await fs
-					.readFile(path.join(fixture, ".caret", "components", "catalog", "catalog-lock.json"), "utf-8")
-					.catch(() => '{"installed":[]}'),
-			) as { installed: Array<{ files: string[] }> }
-			const installed = new Set(lock.installed.flatMap((e) => e.files.map((f) => f.replace(/\.tsx?$/, ""))))
-			for (const m of source.matchAll(/components\/catalog\/([\w./-]+)["']/g)) {
-				assert(
-					installed.has(m[1].replace(/\.tsx?$/, "")),
-					`the page imports a catalog component that was never installed: ${m[1]}`,
-				)
-			}
-			return `steps ran in order${questioned ? `, ${questioned} question(s) answered` : ", no questions"}, page "${newPage}" built from the plan`
-		},
-	)
 
 	// ── the authored and 3D lanes, for real ────────────────────────────────────
 	// Both spend someone's money or credits, so both are gated on the credentials

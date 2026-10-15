@@ -2,9 +2,8 @@
  * Components' host half: consent, installs, and the auto-supply loop.
  *
  * Components come from shadcn-style registries and 21st.dev (see
- * `registry-install.ts`). Three roads lead here: the Design pass's designer
- * chose one and its judge agreed; an agent called `install_component`; or a
- * page imports `../../components/catalog/<registry>/<item>` that is not
+ * `registry-install.ts`). Two roads lead here: an agent called
+ * `install_component`; or a page imports `../../components/catalog/<registry>/<item>` that is not
  * installed yet (the healer routes every page write here), and Caret makes the
  * import true. Consent is per library per project, asked once with real
  * buttons, in the chat.
@@ -13,13 +12,13 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import { hostFor, planSupply, readCatalogLock } from "../../src/core/design"
+import { REGISTRIES } from "../../src/core/design/catalog/registries"
 import {
 	folderOf,
 	type InstallOutcome,
 	installComponentRef,
 	parseComponentRef,
 } from "../../src/core/design/catalog/registry-install"
-import { REGISTRIES } from "../../src/core/design/design-pass/libraries"
 import { Logger } from "../../src/shared/services/Logger"
 import { capture } from "./analytics"
 import { askUser, type InterviewPrompt } from "./interview"
@@ -114,7 +113,7 @@ export class CatalogService {
 	 * Installs one component, consent first. `why` says, in the consent
 	 * question, what asked for it.
 	 */
-	async installRef(ref: string, why: string, initiator: "agent" | "auto" | "design-pass"): Promise<InstallOutcome> {
+	async installRef(ref: string, why: string, initiator: "agent" | "auto"): Promise<InstallOutcome> {
 		const parsed = parseComponentRef(ref)
 		if (!parsed)
 			return {
@@ -141,11 +140,6 @@ export class CatalogService {
 	/** The MCP tool's road. */
 	install(ref: string): Promise<InstallOutcome> {
 		return this.installRef(ref, `An agent asked for ${ref}.`, "agent")
-	}
-
-	/** The Design pass's road: the designer chose it, the judge agreed. */
-	installChosen(ref: string, job: string): Promise<InstallOutcome> {
-		return this.installRef(ref, `The Design pass chose ${ref} (${job}).`, "design-pass")
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /**
- * The Design pass's libraries, kept alive on each project's OpenCode instance.
+ * The component and reference libraries, kept alive on each project's OpenCode instance.
  *
  * Users install and configure nothing. A library is added to the instance the
  * moment it can be (no key needed, a key pasted, or a sign-in done), re-added
@@ -25,11 +25,11 @@ import {
 	libraryToolPolicy,
 	mcpConfigFor,
 	shadcnComponentsJson,
-} from "../../../src/core/design/design-pass/libraries"
+} from "../../../src/core/design/libraries/catalog"
 import { systemSpawnEnv } from "../../../src/core/design/spawn-env"
 import { fetch } from "../../../src/shared/net"
 import { Logger } from "../../../src/shared/services/Logger"
-import type { DesignLibraryWire } from "../../shared/ipc"
+import type { LibraryWire } from "../../shared/ipc"
 import { capture } from "../analytics"
 import { getPrefs, setPref } from "../prefs"
 import { getSecret, type SecretName, setSecret } from "../secrets"
@@ -58,14 +58,14 @@ export class DesignLibraries {
 	}
 
 	enabled(id: LibraryId): boolean {
-		return !getPrefs().designPassLibrariesOff.includes(id)
+		return !getPrefs().librariesOff.includes(id)
 	}
 
 	async setEnabled(id: LibraryId, on: boolean): Promise<void> {
-		const off = new Set(getPrefs().designPassLibrariesOff)
+		const off = new Set(getPrefs().librariesOff)
 		if (on) off.delete(id)
 		else off.add(id)
-		await setPref("designPassLibrariesOff", [...off])
+		await setPref("librariesOff", [...off])
 	}
 
 	/** Libraries the designer may use in this project right now (sync: the tool policy needs it per prompt). */
@@ -96,7 +96,7 @@ export class DesignLibraries {
 		try {
 			status = await mcp.status(directory)
 		} catch (err) {
-			Logger.warn(`[design-pass] library status failed: ${err}`)
+			Logger.warn(`[libraries] library status failed: ${err}`)
 			return new Set()
 		}
 		const context = await this.configContext()
@@ -111,7 +111,7 @@ export class DesignLibraries {
 				if (current === "disabled") {
 					await mcp
 						.connect(directory, library.id)
-						.catch((err) => Logger.warn(`[design-pass] ${library.id} connect failed: ${err}`))
+						.catch((err) => Logger.warn(`[libraries] ${library.id} connect failed: ${err}`))
 					return
 				}
 				const credential = await this.credential(library.id)
@@ -120,7 +120,7 @@ export class DesignLibraries {
 				try {
 					await mcp.add(directory, library.id, config as unknown as Record<string, unknown>)
 				} catch (err) {
-					Logger.warn(`[design-pass] adding ${library.id} failed: ${err}`)
+					Logger.warn(`[libraries] adding ${library.id} failed: ${err}`)
 				}
 			}),
 		)
@@ -143,9 +143,9 @@ export class DesignLibraries {
 			const library = libraryOfTool(call.tool)
 			const outage = library ? isLibraryOutage(call.error ?? "") : null
 			if (!library || !outage) continue
-			if (!this.resting.has(library)) capture("design_pass_mcp_failure", { library, kind: outage })
+			if (!this.resting.has(library)) capture("library_failure", { library, kind: outage })
 			this.resting.set(library, { until: Date.now() + REST_MS, why: outage })
-			Logger.info(`[design-pass] ${library} rests for ${REST_MS / 60_000} minutes: ${outage}`)
+			Logger.info(`[libraries] ${library} rests for ${REST_MS / 60_000} minutes: ${outage}`)
 		}
 	}
 
@@ -158,7 +158,7 @@ export class DesignLibraries {
 	}
 
 	/** Each library's row in the backend tab. */
-	async list(directory: string | null): Promise<DesignLibraryWire[]> {
+	async list(directory: string | null): Promise<LibraryWire[]> {
 		if (directory) await this.ensure(directory).catch(() => {})
 		const status = directory ? (this.statusByDirectory.get(directory) ?? {}) : {}
 		return Promise.all(
@@ -175,7 +175,7 @@ export class DesignLibraries {
 		)
 	}
 
-	private async stateOf(library: LibraryDefinition, status: McpServerStatus | undefined): Promise<DesignLibraryWire["state"]> {
+	private async stateOf(library: LibraryDefinition, status: McpServerStatus | undefined): Promise<LibraryWire["state"]> {
 		if (!this.enabled(library.id)) return "off"
 		if (this.isResting(library.id)) return "resting"
 		if (library.access === "key" && !(await this.credential(library.id))) return "key"
@@ -252,7 +252,7 @@ export class DesignLibraries {
 			if (!saved.ok) this.lazywebInMemory = token
 			return token
 		} catch (err) {
-			Logger.warn(`[design-pass] could not get a Lazyweb token: ${err}`)
+			Logger.warn(`[libraries] could not get a Lazyweb token: ${err}`)
 			return undefined
 		}
 	}
@@ -261,7 +261,7 @@ export class DesignLibraries {
 
 	private async configContext() {
 		if (!this.shadcnDir) {
-			this.shadcnDir = path.join(this.dataDir(), "design-pass", "shadcn")
+			this.shadcnDir = path.join(this.dataDir(), "libraries", "shadcn")
 			await fs.mkdir(this.shadcnDir, { recursive: true })
 			await fs.writeFile(path.join(this.shadcnDir, "components.json"), shadcnComponentsJson(), "utf-8")
 		}

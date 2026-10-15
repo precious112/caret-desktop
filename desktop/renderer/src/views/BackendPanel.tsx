@@ -28,7 +28,7 @@ import type {
 import { ProviderDoorRow } from "../components/ProviderDoorRow"
 import { invoke } from "../ipc"
 import { cn } from "../lib/utils"
-import { DesignPassSettings } from "./DesignPassSettings"
+import { LibrariesSettings } from "./LibrariesSettings"
 
 /** One line per backend about how it is paid for. Routes, not prices. */
 const BILLING_NOTE: Record<string, string> = {
@@ -36,16 +36,7 @@ const BILLING_NOTE: Record<string, string> = {
 		"Connect a subscription you already pay for — ChatGPT, Kimi For Coding, a GLM coding plan, Copilot — or bring an API key. OpenCode's own Go and Zen plans work too.",
 }
 
-export function BackendPanel({
-	project,
-	onClose,
-	focus = null,
-}: {
-	project: ProjectState
-	onClose(): void
-	/** A section to scroll to on open. */
-	focus?: "design-pass" | null
-}) {
+export function BackendPanel({ project, onClose }: { project: ProjectState; onClose(): void }) {
 	const [backends, setBackends] = useState<BackendReportWire[] | null>(null)
 	const [selected, setSelected] = useState<string | null>(null)
 	const [model, setModel] = useState("")
@@ -188,7 +179,7 @@ export function BackendPanel({
 
 				<ProvidersSection onChanged={refresh} />
 
-				<DesignPassSettings focus={focus === "design-pass"} groups={groups} project={project} />
+				<LibrariesSettings project={project} />
 
 				<KeySection
 					blurb={

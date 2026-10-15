@@ -23,18 +23,7 @@ describe("what each one-off answer runs as", () => {
 		assert.deepEqual(answerSetup({ ...base, reads: true }).tools, { read: true, glob: true, grep: true, list: true })
 	})
 
-	it("the planner: the backend's own prompt, every tool off but reads and the answer itself", () => {
-		const setup = answerSetup({ ...base, openCodePrompt: true, reads: true })
-		assert.equal(setup.agent, undefined)
-		const keys = Object.keys(setup.tools)
-		assert.equal(keys[0], "*", "the off switch must come first so the named tools win")
-		assert.equal(setup.tools["*"], false)
-		assert.equal(setup.tools.StructuredOutput, true)
-		assert.equal(setup.tools.read, true)
-		assert.equal(setup.tools.bash, undefined)
-	})
-
-	it("the designer: the lean agent with the project's library allowlist and the tools it asks for", () => {
+	it("an answer that needs tools: the lean agent with the project's library allowlist and the tools it asks for", () => {
 		const setup = answerSetup({ ...base, allowTools: true, tools: { caret_view_reference: true } })
 		assert.equal(setup.agent, ANSWER_AGENT)
 		assert.equal(setup.tools.shadcn_search_items_in_registries, true)

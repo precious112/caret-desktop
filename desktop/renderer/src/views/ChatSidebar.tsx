@@ -56,7 +56,6 @@ import { invoke, on } from "../ipc"
 import { cn } from "../lib/utils"
 import { AssetMentionList, type AssetMentions, useAssetMentions } from "./AssetMentions"
 import { splitAssetTags } from "./asset-tags"
-import { DesignPassLine, DesignPassSteps, DesignPassSwitch, DesignQuestionsBlock, waitingDesignQuestions } from "./DesignPass"
 import { Markdown } from "./Markdown"
 
 export const CHAT_SIDEBAR_WIDTH = 380
@@ -69,8 +68,8 @@ type TakesPromptWire = Extract<InterviewPromptWire, { kind: "takes" }>
 interface ChatSidebarProps {
 	project: ProjectState
 	onClose(): void
-	/** Opens the backend tab; `"design-pass"` scrolls to that section. */
-	onOpenBackendSetup(section?: "design-pass"): void
+	/** Opens the backend tab. */
+	onOpenBackendSetup(): void
 	/** Opens the asset viewer over the canvas. State lives in App, not here. */
 	onViewAsset(tag: string): void
 	/** Text placed in the composer (never sent) — a new nonce re-applies it. */
@@ -133,17 +132,8 @@ export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset,
 		}
 		void invoke("interview:pending").then(keep)
 		const offPrompt = on("interview:prompt", keep)
-		// The asker gave up (Stop during the Design pass's questions): drop the
-		// card and surface whatever is queued behind it.
-		const offWithdrawn = on("interview:withdrawn", (id) => {
-			setDocked((current) => (current?.id === id ? null : current))
-			void invoke("interview:pending").then((next) => {
-				if (next && landsInChat(next)) setDocked(next)
-			})
-		})
 		return () => {
 			offPrompt()
-			offWithdrawn()
 		}
 	}, [])
 
@@ -260,8 +250,6 @@ export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset,
 		onOpenBackendSetup,
 		onStop: () => void invoke("agent:abort", project.path),
 		onReferenceAsset: mentions.begin,
-		designPass: state?.designPass ?? false,
-		setDesignPass: (on: boolean) => void invoke("designPass:set", project.path, on, "composer"),
 	}
 
 	return (
@@ -354,10 +342,7 @@ export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset,
 						))}
 
 						{state?.streaming && (
-							<WorkingRow
-								lastEventAt={state.lastEventAt}
-								waitingOn={pendingAsk?.summary ?? waitingDesignQuestions(entries)}
-							/>
+							<WorkingRow lastEventAt={state.lastEventAt} waitingOn={pendingAsk?.summary ?? null} />
 						)}
 
 						<FileChanges files={state?.transcript.files ?? []} />
@@ -378,7 +363,6 @@ export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset,
 					{docked?.kind === "takes" && (
 						<TakesBlock onDismiss={() => resolveDocked(null)} onPick={resolveDocked} prompt={docked} />
 					)}
-					{docked?.kind === "design-questions" && <DesignQuestionsBlock onAnswer={resolveDocked} prompt={docked} />}
 
 					{pendingAsk ? (
 						<PermissionDock
@@ -418,14 +402,11 @@ interface ComposerProps {
 	notice: ModelNotice | null
 	setNotice(notice: ModelNotice | null): void
 	effort: string
-	onOpenBackendSetup(section?: "design-pass"): void
+	onOpenBackendSetup(): void
 	onReferenceAsset(): void
 	onStop(): void
 	inputRef: React.RefObject<HTMLTextAreaElement | null>
 	mentions: AssetMentions
-	/** Whether the Design pass is on for this project. */
-	designPass: boolean
-	setDesignPass(on: boolean): void
 }
 
 const PLACEHOLDER = "Ask for a change, @ for an asset…"
@@ -520,14 +501,7 @@ function Composer(props: ComposerProps) {
 			    into the effort pill at this width. */}
 			<div className="relative mt-1.5 flex items-center gap-2 px-1">
 				<ModeToggle disabled={!props.ready} flipMode={props.flipMode} mode={props.mode} />
-				<DesignPassSwitch
-					disabled={!props.ready}
-					on={props.designPass}
-					onOpenSettings={() => props.onOpenBackendSetup("design-pass")}
-					onSet={props.setDesignPass}
-				/>
 			</div>
-			{props.ready && <DesignPassLine on={props.designPass} />}
 		</footer>
 	)
 }
@@ -1200,8 +1174,6 @@ function Entry({
 			return (
 				<p className="border-l-2 border-shell-border pl-3 text-[11.5px] leading-relaxed text-shell-muted">{entry.text}</p>
 			)
-		case "design-pass":
-			return <DesignPassSteps entry={entry} />
 	}
 }
 

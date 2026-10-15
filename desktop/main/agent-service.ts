@@ -22,8 +22,6 @@ import {
 	ExploreLane,
 	type ExploreTakeStatus,
 	getBackend,
-	type PrepareApi,
-	type PreparedTurn,
 	type RunOutcome,
 	type RunRequest,
 	runSyncApply,
@@ -55,11 +53,6 @@ export interface AgentServiceOptions {
 	onTurnComplete?(conversation: AgentConversation, outcome: RunOutcome, request: RunRequest): void
 	/** Narrates each screen of an app import (code → design) as it generates. */
 	onImportStatus?(status: ExploreTakeStatus): void
-	/** The Design pass for the chat (only the chat: lanes never plan a page). */
-	designPass?: {
-		isOn(): boolean
-		prepare(message: string, api: PrepareApi): Promise<PreparedTurn | null>
-	}
 }
 
 export class AgentService {
@@ -105,8 +98,6 @@ export class AgentService {
 			systemPrompt: () => this.systemPrompt(),
 			onChange: (state) => options.onState(state),
 			onTurnComplete: (outcome, request) => options.onTurnComplete?.(this.conversation, outcome, request),
-			designPassOn: () => options.designPass?.isOn() ?? false,
-			designPass: options.designPass ? (message, api) => options.designPass!.prepare(message, api) : undefined,
 		})
 
 		this.editLane = new EditLaneBridge(
@@ -283,7 +274,7 @@ export class AgentService {
 	 * Sending the guide again here was a second full copy every turn. What stays
 	 * is the precedence line: the backend's built-in prompt carries its own
 	 * advice about looks and placeholders, and Caret's text sits last, where a
-	 * conflict is decided. A turn can add its own (the Design pass's plan).
+	 * conflict is decided.
 	 */
 	private async systemPrompt(): Promise<string | undefined> {
 		return CARET_PRECEDENCE

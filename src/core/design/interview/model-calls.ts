@@ -24,8 +24,8 @@ import {
 	type ReasoningEffort,
 	type StructuredRequest,
 } from "../agent/backend"
-import { closeMatch, parseHex } from "../design-pass/colour"
-import type { UserChoices } from "../design-pass/foundation-check"
+import { closeMatch, parseHex } from "../defaults/colour"
+import type { UserChoices } from "../defaults/foundation-check"
 import type { AreaOption, AreaQuestion } from "./answers"
 import {
 	AREA_ORDER,

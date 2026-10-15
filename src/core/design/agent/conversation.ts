@@ -27,18 +27,13 @@ import {
 } from "./backend"
 import { type AppWritePolicy, rulePermission } from "./permissions"
 import {
-	addDesignPass,
 	addNote,
 	addUserMessage,
 	applyEvent,
-	type DesignPassStepId,
-	type DesignPassStepState,
 	emptyTranscript,
-	failDesignPass,
 	markPlanEntry,
 	resolvePermission,
 	type TranscriptState,
-	updateDesignPass,
 } from "./transcript"
 
 export type ActivityKind = "chat" | "edit" | "sync-plan" | "sync-apply" | "flow-sync"
@@ -113,23 +108,6 @@ export interface ConversationState {
 	 */
 	model: string | null
 	effort: string | null
-	/** Whether the Design pass is on for this project. */
-	designPass: boolean
-}
-
-/** What a turn's preparation (the Design pass) can do while the user watches. */
-export interface PrepareApi {
-	/** Aborted when the user presses Stop. */
-	signal: AbortSignal
-	/** Shows a step of the pass in the transcript; the step list appears on the first call. */
-	progress(step: DesignPassStepId, state: DesignPassStepState, detail?: string): void
-}
-
-/** What a turn's preparation hands the turn: a different prompt, and text for this turn's system prompt. */
-export interface PreparedTurn {
-	prompt?: string
-	/** Appended to the system prompt for this turn only (the Design pass's approved plan). */
-	system?: string
 }
 
 export interface ConversationDeps {
@@ -150,14 +128,6 @@ export interface ConversationDeps {
 	 * turn itself.
 	 */
 	onTurnComplete?(outcome: RunOutcome, request: RunRequest): void
-	/** Whether the Design pass is on for this project. */
-	designPassOn?(): boolean
-	/**
-	 * Runs the Design pass for a typed chat message in Act mode. Resolves to the
-	 * build turn's prompt, or null when the message is not page work (the turn
-	 * then runs exactly as it would with the pass off).
-	 */
-	designPass?(prompt: string, api: PrepareApi): Promise<PreparedTurn | null>
 	/** Overrides the stall watchdog's threshold. Tests only. */
 	stallMs?: number
 	/** Overrides the running-tool stall ceiling. Tests only. */
@@ -199,11 +169,6 @@ export interface RunRequest {
 	 * reads it.
 	 */
 	context?: Record<string, unknown>
-	/**
-	 * Work between the echo and the session: the Design pass. Resolves to what
-	 * the turn should carry instead, or null to run it unchanged.
-	 */
-	prepare?(api: PrepareApi): Promise<PreparedTurn | null>
 }
 
 export interface RunOutcome {
@@ -314,11 +279,6 @@ export function readsTheRules(event: Extract<BackendEvent, { type: "tool-end" }>
 	return forward.includes("/.caret/") || forward.endsWith("/.caret")
 }
 
-function joinSystem(base: string | undefined, turn: string | undefined): string | undefined {
-	if (!turn) return base
-	return base ? `${base}\n\n${turn}` : turn
-}
-
 function firstLine(text: string): string {
 	const line = text.trim().split("\n")[0] ?? ""
 	return line.length > 60 ? `${line.slice(0, 57)}…` : line
@@ -338,8 +298,6 @@ export class AgentConversation {
 	private stopRequested = false
 	/** Sessions that have read the design layer's rules; design writes wait for it. */
 	private readonly rulesReadIn = new Set<string>()
-	/** The Design pass under way for this turn, so Stop reaches it before any session exists. */
-	private preparing: AbortController | null = null
 	private backendName: string | null = null
 	private providerName: string | null = null
 	private blocked: string | null = null
@@ -368,7 +326,6 @@ export class AgentConversation {
 			appWrites: this.deps.appWrites(),
 			model: this.deps.model() ?? null,
 			effort: this.deps.effort() ?? null,
-			designPass: this.deps.designPassOn?.() ?? false,
 		}
 	}
 
@@ -431,46 +388,6 @@ export class AgentConversation {
 		this.lastEventAt = Date.now()
 		this.push(true)
 
-		let modelPrompt = request.prompt
-		let turnSystem: string | undefined
-		let passEntry: string | null = null
-		if (request.prepare) {
-			const controller = new AbortController()
-			this.preparing = controller
-			const api: PrepareApi = {
-				signal: controller.signal,
-				progress: (step, state, detail) => {
-					passEntry ??= addDesignPass(this.transcript)
-					updateDesignPass(this.transcript, passEntry, step, state, detail)
-					this.lastEventAt = Date.now()
-					this.push()
-				},
-			}
-			try {
-				const prepared = await request.prepare(api)
-				modelPrompt = prepared?.prompt ?? request.prompt
-				turnSystem = prepared?.system
-			} catch (err) {
-				// A pass that fails or is stopped ends the turn here, named. It never
-				// falls through to building without it: that would be skipping steps.
-				this.preparing = null
-				this.streaming = false
-				if (passEntry) failDesignPass(this.transcript, passEntry)
-				if (!controller.signal.aborted) {
-					applyEvent(this.transcript, {
-						type: "error",
-						message: err instanceof Error ? err.message : String(err),
-						recoverable: true,
-					})
-				}
-				this.push(true)
-				return { ok: false, sessionId: null, text: "", closingText: "", filesChanged: [] }
-			}
-			this.preparing = null
-			if (passEntry) updateDesignPass(this.transcript, passEntry, "build", "active")
-			this.push(true)
-		}
-
 		// The session title is what the History panel shows, and a list reading
 		// "Chat, Chat, Chat" identifies nothing. A chat is named by its opening
 		// message — the user's own words are the best available summary of what
@@ -488,7 +405,7 @@ export class AgentConversation {
 				effort: this.deps.effort(),
 				title: sessionTitle,
 				resumeSessionId: request.resumeSessionId,
-				systemPrompt: joinSystem(await this.deps.systemPrompt(), turnSystem),
+				systemPrompt: await this.deps.systemPrompt(),
 			})
 		} catch (err) {
 			// The echo promised work; a failure to even open the session has to
@@ -545,7 +462,7 @@ export class AgentConversation {
 		let nudged = false
 		try {
 			let input: { text: string; images?: string[]; disabledTools?: string[] } = {
-				text: modelPrompt,
+				text: request.prompt,
 				images: request.images,
 				disabledTools: request.disabledTools,
 			}
@@ -738,11 +655,6 @@ export class AgentConversation {
 			this.push(true)
 		}
 
-		if (passEntry) {
-			updateDesignPass(this.transcript, passEntry, "build", ok ? "done" : "failed")
-			this.push(true)
-		}
-
 		const outcome: RunOutcome = { ok, sessionId: session.id, text, closingText, filesChanged: [...this.transcript.files] }
 		emitDesignEvent("agent_turn_completed", {
 			kind: request.kind,
@@ -794,19 +706,11 @@ export class AgentConversation {
 			displayPrompt: prompt === text ? undefined : text,
 			...(images && images.length > 0 ? { images } : {}),
 			resumeSessionId: current?.sessionId,
-			// The Design pass only ever prepares a building turn the user typed.
-			...(this.deps.designPass &&
-			this.deps.designPassOn?.() &&
-			this.conversationMode === "write" &&
-			(current?.kind ?? "chat") === "chat"
-				? { prepare: (api: PrepareApi) => this.deps.designPass!(prompt, api) }
-				: {}),
 		})
 	}
 
 	async abort(): Promise<void> {
 		this.stopRequested = true
-		this.preparing?.abort()
 		emitDesignEvent("agent_turn_aborted", { kind: this.activity?.kind ?? "chat" })
 		await this.session?.abort()
 		this.streaming = false

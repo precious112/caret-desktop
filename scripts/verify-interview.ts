@@ -37,7 +37,7 @@ import * as path from "path"
 import type { Page } from "playwright"
 
 import type { RecordedCall, Recording } from "../src/core/design/agent/replay"
-import { closeMatch, parseHex } from "../src/core/design/design-pass/colour"
+import { closeMatch, parseHex } from "../src/core/design/defaults/colour"
 import { AREAS, type AreaId } from "../src/core/design/interview/areas"
 import { flaggedOptions, userChoicesFrom } from "../src/core/design/interview/defaults"
 import { describeApp } from "../src/core/design/interview/describe-app"

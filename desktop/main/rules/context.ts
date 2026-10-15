@@ -14,8 +14,8 @@ import {
 	readFoundationTokens,
 	readPromotedRules,
 } from "../../../src/core/design"
-import { foundationSummary } from "../../../src/core/design/design-pass/foundation-summary"
-import { bannedHabitLines } from "../../../src/core/design/design-pass/slop-list"
+import { foundationSummary } from "../../../src/core/design/defaults/foundation-summary"
+import { bannedHabitLines } from "../../../src/core/design/defaults/slop-list"
 
 /**
  * What every MCP tool reply carries, so the foundation cannot be skipped: the

@@ -28,8 +28,6 @@ export {
 	AgentConversation,
 	type ConversationDeps,
 	type ConversationState,
-	type PrepareApi,
-	type PreparedTurn,
 	type RunOutcome,
 	type RunRequest,
 	type SettledPlan,

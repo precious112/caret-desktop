@@ -1,8 +1,8 @@
 /**
  * What a one-off answer costs before the model reads a word of the request.
  *
- * Caret asks the bundled backend many single questions (interview turns, the
- * Design pass's checks and judges, asset briefs). Each runs as a full coding
+ * Caret asks the bundled backend many single questions (interview turns,
+ * asset briefs). Each runs as a full coding
  * agent: OpenCode's built-in system prompt, the project's AGENTS.md, every
  * tool's schema (Caret's MCP tools and the libraries' included). This sends
  * the same trivial request under each setup and reports the input tokens, and

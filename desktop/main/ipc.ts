@@ -39,8 +39,7 @@ import {
 	withDerivedScales,
 	writeFoundationTokens,
 } from "../../src/core/design"
-import { pickHelperModel } from "../../src/core/design/design-pass/helper-model"
-import { type LibraryId, libraryById } from "../../src/core/design/design-pass/libraries"
+import { type LibraryId, libraryById } from "../../src/core/design/libraries/catalog"
 import { Logger } from "../../src/shared/services/Logger"
 import type { AssetRequestWire, ComposerImage, IpcRequestChannel, IpcRequests } from "../shared/ipc"
 import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps } from "../shared/telemetry"
@@ -48,7 +47,6 @@ import { buildAgentClientConfigs } from "./agent-configs"
 import { capture, captureError, scrubForTelemetry, setTelemetryEnabled } from "./analytics"
 import { acceptMark, authorMark, discardMark, holdMark } from "./authored-marks"
 import { acceptShader, authorShader, discardShader, holdShader, refineHeldShader, type ShaderOutcome } from "./authored-shaders"
-import { designLibraries } from "./design-pass/libraries"
 import { resolveNotification } from "./electron-host"
 import { acceptModel3d, discardModel3d, generateModel3d } from "./generate-3d"
 import {
@@ -64,6 +62,7 @@ import {
 	requestTakes,
 } from "./generate-assets"
 import { answerInterviewPrompt, currentPrompt } from "./interview"
+import { designLibraries } from "./libraries/libraries"
 import { refreshMenu } from "./menu"
 import { forgetRecentProject, getPrefs, setPref, setPrefs } from "./prefs"
 import { regenerateRulesFiles } from "./rules/generate"
@@ -778,37 +777,23 @@ export function registerIpcHandlers(windows: WindowManager): void {
 		},
 	)
 
-	// ── the Design pass ───────────────────────────────────────────────────────
+	// ── component and reference libraries ─────────────────────────────────────
 
-	handle("designPass:set", async (_event, projectPath: string, on: boolean, where: "composer" | "settings") => {
-		const window = windows.get(projectPath)
-		if (!window) return
-		await window.designPass.setOn(on, where)
-		window.getAgent().conversation.touch()
-	})
+	handle("libraries:list", (_event, projectPath: string | null) => designLibraries().list(projectPath))
 
-	handle("designPass:libraries", (_event, projectPath: string | null) => designLibraries().list(projectPath))
-
-	handle("designPass:setLibrary", async (_event, id: string, on: boolean) => {
+	handle("libraries:set", async (_event, id: string, on: boolean) => {
 		if (!libraryById(id)) return
 		await designLibraries().setEnabled(id as LibraryId, on)
 	})
 
-	handle("designPass:setKey", (_event, projectPath: string | null, id: string, key: string) => {
+	handle("libraries:setKey", (_event, projectPath: string | null, id: string, key: string) => {
 		if (!libraryById(id)) return { ok: false as const, error: "Unknown library." }
 		return designLibraries().setKey(projectPath, id as LibraryId, key)
 	})
 
-	handle("designPass:signIn", (_event, projectPath: string, id: string) => {
+	handle("libraries:signIn", (_event, projectPath: string, id: string) => {
 		if (!libraryById(id)) return { ok: false as const, error: "Unknown library." }
 		return designLibraries().signIn(projectPath, id as LibraryId)
-	})
-
-	/** What "Automatic (fastest connected)" resolves to right now, for the dropdown's label. */
-	handle("designPass:automaticHelper", async () => {
-		const backend = await catalogueBackend()
-		const groups = (await backend?.listModels?.().catch(() => [])) ?? []
-		return pickHelperModel(groups, "", getPrefs().backendModel || undefined).label
 	})
 
 	handle("agent:setMode", (_event, projectPath: string, mode: "read-only" | "write", steering?: string) => {

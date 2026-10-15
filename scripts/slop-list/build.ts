@@ -1,11 +1,11 @@
 /**
- * Compiles the slop list Caret ships: `src/core/design/design-pass/slop-list.json`.
+ * Compiles the slop list Caret ships: `src/core/design/defaults/slop-list.json`.
  *
  * Development only. The research files (`research/*.json`, format in
  * `research/SCHEMA.md`) are reports of AI design habits gathered from the web;
  * `groups.json` groups those reports once, so one habit has one source count and
  * its name stays stable across refreshes. This script joins the two and writes
- * the compact file the Design pass reads at runtime. Nothing here runs on a
+ * the compact file the AI interview and the rules read at runtime. Nothing here runs on a
  * user's machine — the list ships inside Caret updates, never downloaded live.
  *
  *   npx tsx scripts/slop-list/build.ts
@@ -28,7 +28,7 @@ export interface ResearchEntry {
 }
 
 const HERE = path.dirname(new URL(import.meta.url).pathname)
-const OUT = path.resolve(HERE, "../../src/core/design/design-pass/slop-list.json")
+const OUT = path.resolve(HERE, "../../src/core/design/defaults/slop-list.json")
 
 /** Habits about corner radius: a foundation radius the user approved exempts them. */
 const RADIUS_HABITS = new Set(["pill-buttons", "over-rounded-surfaces", "untouched-component-defaults"])

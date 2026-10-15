@@ -23,9 +23,9 @@ import {
 	sessionDurationSeconds,
 	shutdownAnalytics,
 } from "./analytics"
-import { designLibraries } from "./design-pass/libraries"
 import { registerIpcHandlers } from "./ipc"
 import { closeLauncherWindow, hasLauncherWindow, type LauncherWindowOptions, openLauncherWindow } from "./launcher-window"
+import { designLibraries } from "./libraries/libraries"
 import { startFileLog } from "./log-file"
 import { ensureMcpBridge } from "./mcp/stdio-bridge"
 import { MUTATING_TOOL_NAMES } from "./mcp/tools"

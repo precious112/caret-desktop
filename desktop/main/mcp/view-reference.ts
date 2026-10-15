@@ -1,5 +1,5 @@
 /**
- * `view_reference`: shows the Design pass's designer a reference screenshot.
+ * `view_reference`: shows the AI a reference screenshot from a library.
  *
  * Lazyweb and 21st.dev return screenshots as links, and a link in a tool result
  * never reaches the model as a picture — only an image the tool returns itself
@@ -7,7 +7,7 @@
  *
  * The URL comes from a model, so it is treated as untrusted: public https
  * hosts only (Caret's own servers and the OpenCode server listen on loopback,
- * and nothing on the user's network is the designer's business), images only,
+ * and nothing on the user's network is the AI's business), images only,
  * and a size cap. Large screenshots are scaled down so one reference does not
  * cost a whole context window.
  */

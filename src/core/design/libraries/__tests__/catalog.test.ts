@@ -10,11 +10,11 @@ import {
 	mcpConfigFor,
 	REGISTRIES,
 	shadcnComponentsJson,
-} from "../libraries"
+} from "../catalog"
 
 const context = { npx: "npx", shadcnDir: "/caret/shadcn" }
 
-describe("design pass · libraries", () => {
+describe("libraries · libraries", () => {
 	it("hides every library tool, then re-allows only the usable libraries' read tools, globs first", () => {
 		const policy = libraryToolPolicy(new Set<LibraryId>(["twentyfirst"]))
 		const keys = Object.keys(policy)
@@ -78,7 +78,7 @@ describe("design pass · libraries", () => {
 	})
 })
 
-describe("design pass · tool switches per prompt", () => {
+describe("libraries · tool switches per prompt", () => {
 	beforeEach(() => setOpencodeToolPolicy(() => ({})))
 
 	it("lets a later layer's key win and also come later", () => {

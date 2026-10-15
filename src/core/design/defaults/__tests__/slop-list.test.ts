@@ -14,7 +14,7 @@ import {
 	levelOf,
 } from "../slop-list"
 
-describe("design pass · colour", () => {
+describe("overused defaults · colour", () => {
 	it("parses 3, 4, 6 and 8 digit hex and refuses anything else", () => {
 		should(parseHex("#fff")).eql({ r: 255, g: 255, b: 255 })
 		should(parseHex("#F4F1EA")).eql({ r: 244, g: 241, b: 234 })
@@ -53,7 +53,7 @@ describe("design pass · colour", () => {
 	})
 })
 
-describe("design pass · slop list levels", () => {
+describe("overused defaults · slop list levels", () => {
 	it("bans at 10 sources, bans 7–9 only when repeated, and asks for a defence below", () => {
 		levelOf(BAN, 1).should.equal(1)
 		levelOf(26, 1).should.equal(1)
@@ -99,7 +99,7 @@ describe("design pass · slop list levels", () => {
 	})
 })
 
-describe("design pass · slop list compile", () => {
+describe("overused defaults · slop list compile", () => {
 	const evidence = (...urls: string[]) => urls.map((url) => ({ url }))
 
 	it("counts distinct source links, ignoring anchors, queries and trailing slashes", () => {

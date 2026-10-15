@@ -1,5 +1,5 @@
 /**
- * The libraries the Design pass's designer explores, as MCP servers.
+ * The component and reference libraries the AI can search, as MCP servers.
  *
  * Users install and configure nothing: each library is ready, needs one browser
  * sign-in, or needs a pasted key, and Caret adds it to the project's OpenCode
@@ -8,6 +8,10 @@
  * profile — and that allowlist also keeps a library's odd tool schemas away
  * from providers that reject a whole turn over one of them.
  */
+
+import { REGISTRIES } from "../catalog/registries"
+
+export { REGISTRIES }
 
 export type LibraryId = "shadcn" | "aceternity" | "lazyweb" | "gummble" | "twentyfirst"
 
@@ -33,18 +37,6 @@ export interface LibraryDefinition {
 	site?: string
 	/** The tool names the server itself uses; OpenCode prefixes them `<id>_`. */
 	allowedTools: string[]
-}
-
-/**
- * shadcn-style registries the shadcn MCP searches, and the installer fetches
- * from. One list for both, so whatever the designer can find, Caret can install.
- */
-export const REGISTRIES: Record<string, string> = {
-	"@shadcn": "https://ui.shadcn.com/r/styles/new-york-v4/{name}.json",
-	"@magicui": "https://magicui.design/r/{name}.json",
-	"@aceternity": "https://ui.aceternity.com/registry/{name}.json",
-	"@smoothui": "https://smoothui.dev/r/{name}.json",
-	"@kokonutui": "https://kokonutui.com/r/{name}.json",
 }
 
 export const LIBRARIES: readonly LibraryDefinition[] = [

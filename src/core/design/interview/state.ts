@@ -10,7 +10,7 @@
  *
  * Shared with the screen: no Node, no `@/` aliases.
  */
-import { closeMatch, parseHex } from "../design-pass/colour"
+import { closeMatch, parseHex } from "../defaults/colour"
 import {
 	AREA_ORDER,
 	AREAS,

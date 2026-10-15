@@ -244,24 +244,17 @@ export interface StructuredRequest {
 	/** Cancels the answer: the session is aborted and the call rejects. */
 	signal?: AbortSignal
 	/**
-	 * The answer may need tool calls first (the Design pass's designer browses
-	 * libraries). A schema-constrained answer forces the model straight to the
-	 * answer, so this asks in words and parses instead.
+	 * The answer may need tool calls first. A schema-constrained answer forces
+	 * the model straight to the answer, so this asks in words and parses instead.
 	 */
 	allowTools?: boolean
-	/** The answer may read the project (read, glob, grep, list): the from-app interview, the import survey, the planner. */
+	/** The answer may read the project (read, glob, grep, list): the from-app interview, the import survey. */
 	reads?: boolean
 	/**
 	 * The answer needs nothing from the project: run it in a scratch folder, so
 	 * the project's AGENTS.md and MCP servers stay out of its context.
 	 */
 	scratch?: boolean
-	/**
-	 * Keep the backend's own built-in system prompt (the Design pass's planner).
-	 * Every other answer runs as Caret's lean answer agent, whose short prompt
-	 * replaces it.
-	 */
-	openCodePrompt?: boolean
 	/**
 	 * What this call is ("interview:area" and the topic), for recordings and
 	 * replay. Backends that talk to a model ignore it.

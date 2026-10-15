@@ -8,7 +8,7 @@
  * test), so a mistake in the shared code can't hide by agreeing with itself.
  */
 import { strict as assert } from "assert"
-import { closeMatch, parseHex } from "../../design-pass/colour"
+import { closeMatch, parseHex } from "../../defaults/colour"
 import { type AreaQuestion, acceptAnswer, type OwnRaw, optionAnswer, ownAnswer, skipAnswer } from "../answers"
 import { AREA_ORDER, AREAS, type AreaId, type AreaValue, describeValue } from "../areas"
 import { finalizeProposal } from "../finalize"
