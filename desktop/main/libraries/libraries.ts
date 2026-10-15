@@ -1,30 +1,35 @@
 /**
- * The component and reference libraries, kept alive on each project's OpenCode instance.
+ * The component and reference libraries, connected by Caret itself.
  *
- * Users install and configure nothing. A library is added to the instance the
- * moment it can be (no key needed, a key pasted, or a sign-in done), re-added
- * after anything that resets the instance (a credential change disposes it, and
- * runtime-added servers go with it), and rested for a while when it rate-limits
- * or fails, so the designer moves straight on to the next one.
+ * Caret is the one client of every library: it starts the local ones
+ * (shadcn, Aceternity), connects to the hosted ones (Lazyweb, Gummble,
+ * 21st.dev) with the user's key or sign-in, and passes their read and search
+ * tools on through its own connection (`server.ts`). Caret's chat and any
+ * coding tool connected to Caret therefore see the same libraries through the
+ * same path, and keys never leave Caret.
+ *
+ * One manager for the app: a library resting after a rate limit is resting for
+ * every project, and one connection per library serves them all.
  */
-
-import { app, shell } from "electron"
+import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js"
+import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js"
+import { app } from "electron"
 import * as fs from "fs/promises"
 import * as path from "path"
 
-import type { CodingBackend, McpServerStatus, ToolCallRecord } from "../../../src/core/design/agent/backend"
-import { setOpencodeToolPolicy } from "../../../src/core/design/agent/opencode"
-import { getBackend } from "../../../src/core/design/agent/registry"
 import {
+	connectionFor,
 	isLibraryOutage,
 	LIBRARIES,
+	type LibraryConnection,
 	type LibraryDefinition,
-	type LibraryId,
-	libraryById,
-	libraryOfTool,
-	libraryToolPolicy,
-	mcpConfigFor,
+	passedOnName,
+	safeInputSchema,
 	shadcnComponentsJson,
+	splitPassedOnName,
 } from "../../../src/core/design/libraries/catalog"
 import { systemSpawnEnv } from "../../../src/core/design/spawn-env"
 import { fetch } from "../../../src/shared/net"
@@ -33,136 +38,201 @@ import type { LibraryWire } from "../../shared/ipc"
 import { capture } from "../analytics"
 import { getPrefs, setPref } from "../prefs"
 import { getSecret, type SecretName, setSecret } from "../secrets"
+import { SignInAuth } from "./sign-in"
 
 /** How long a library that rate-limited or failed sits out. */
 export const REST_MS = 15 * 60_000
 
-const SECRET_OF: Partial<Record<LibraryId, SecretName>> = { lazyweb: "lazywebToken", twentyfirst: "twentyfirstApiKey" }
+/** How long a tool list waits for a library still connecting before answering without it. */
+const LIST_WAIT_MS = 8_000
+
+/** A library tool call's ceiling: a hosted search can be slow, never this slow. */
+const CALL_MS = 120_000
+
+const SECRET_OF: Record<string, SecretName> = { lazyweb: "lazywebToken", twentyfirst: "twentyfirstApiKey" }
 
 const LAZYWEB_TOKEN_URL = "https://www.lazyweb.com/api/mcp/install-token?install_channel=caret"
 
-export class DesignLibraries {
-	private readonly resting = new Map<LibraryId, { until: number; why: string }>()
-	private readonly usableByDirectory = new Map<string, Set<LibraryId>>()
-	private readonly statusByDirectory = new Map<string, Record<string, McpServerStatus>>()
-	private readonly ensuring = new Map<string, Promise<Set<LibraryId>>>()
+/** One live connection to a library. */
+export interface LiveLibrary {
+	tools: Tool[]
+	call(tool: string, args: Record<string, unknown>): Promise<CallToolResult>
+	close(): Promise<void>
+}
+
+export interface LibraryHubOptions {
+	/** Libraries beyond the built-in list (the development-only test library). */
+	extra?: Array<{ definition: LibraryDefinition; connection: LibraryConnection }>
+	/** Opens a connection; tests replace it. */
+	open?: (connection: LibraryConnection, definition: LibraryDefinition, auth: SignInAuth | null) => Promise<LiveLibrary>
+	/** Caret's own data folder, where the shadcn registry list lives. */
+	dataDir?: () => string
+	/** Where the switched-off libraries are kept; Caret's preferences unless a test says otherwise. */
+	offStore?: { get(): string[]; set(off: string[]): Promise<void> }
+}
+
+type Connecting = {
+	state: "connecting" | "ready" | "failed" | "sign-in" | "key"
+	live?: LiveLibrary
+	error?: string
+	ready: Promise<void>
+}
+
+export class LibraryHub {
+	private readonly connections = new Map<string, Connecting>()
+	private readonly resting = new Map<string, { until: number; why: string }>()
+	private readonly listeners = new Set<() => void>()
+	private readonly extra: NonNullable<LibraryHubOptions["extra"]>
 	/** A free Lazyweb token when the keychain cannot store one: good for this run. */
 	private lazywebInMemory = ""
+	private shadcnDir = ""
+	private readonly gummble = new SignInAuth("gummble")
 
-	constructor(
-		private readonly backend: () => Promise<CodingBackend | null>,
-		/** Caret's own data folder, where the shadcn registry list lives. */
-		private readonly dataDir: () => string = () => app.getPath("userData"),
-	) {
-		setOpencodeToolPolicy((directory) => libraryToolPolicy(this.usable(directory)))
+	private readonly offStore: NonNullable<LibraryHubOptions["offStore"]>
+
+	constructor(private readonly options: LibraryHubOptions = {}) {
+		this.extra = options.extra ?? []
+		this.offStore = options.offStore ?? {
+			get: () => getPrefs().librariesOff,
+			set: (off) => setPref("librariesOff", off),
+		}
 	}
 
-	enabled(id: LibraryId): boolean {
-		return !getPrefs().librariesOff.includes(id)
+	/** Every library Caret knows, built-in first. */
+	definitions(): LibraryDefinition[] {
+		return [...LIBRARIES, ...this.extra.map((e) => e.definition)]
 	}
 
-	async setEnabled(id: LibraryId, on: boolean): Promise<void> {
-		const off = new Set(getPrefs().librariesOff)
+	definition(id: string): LibraryDefinition | undefined {
+		return this.definitions().find((library) => library.id === id)
+	}
+
+	/** Called whenever which libraries are usable may have changed (the rules depend on it). */
+	onChange(listener: () => void): () => void {
+		this.listeners.add(listener)
+		return () => this.listeners.delete(listener)
+	}
+
+	private changed(): void {
+		for (const listener of this.listeners) {
+			try {
+				listener()
+			} catch (err) {
+				Logger.warn(`[libraries] change listener failed: ${err}`)
+			}
+		}
+	}
+
+	enabled(id: string): boolean {
+		return !this.offStore.get().includes(id)
+	}
+
+	async setEnabled(id: string, on: boolean): Promise<void> {
+		const off = new Set(this.offStore.get())
 		if (on) off.delete(id)
 		else off.add(id)
-		await setPref("librariesOff", [...off])
-	}
-
-	/** Libraries the designer may use in this project right now (sync: the tool policy needs it per prompt). */
-	usable(directory: string): Set<LibraryId> {
-		const now = Date.now()
-		return new Set(
-			[...(this.usableByDirectory.get(directory) ?? [])].filter((id) => this.enabled(id) && !this.isResting(id, now)),
-		)
+		await this.offStore.set([...off])
+		if (!on) await this.disconnect(id)
+		else void this.warm()
+		this.changed()
 	}
 
 	/**
-	 * Adds every enabled library this project's instance is missing, and returns
-	 * the usable ones. Concurrent calls for one project share the work.
+	 * Libraries that are on and have what they need (a key, a sign-in). Whether
+	 * they answer right now does not matter here: this is what the rules name.
 	 */
-	ensure(directory: string): Promise<Set<LibraryId>> {
-		const running = this.ensuring.get(directory)
-		if (running) return running
-		const work = this.doEnsure(directory).finally(() => this.ensuring.delete(directory))
-		this.ensuring.set(directory, work)
-		return work
+	async onLibraries(): Promise<LibraryDefinition[]> {
+		const result: LibraryDefinition[] = []
+		for (const library of this.definitions()) {
+			if (!this.enabled(library.id)) continue
+			if (library.access === "key" && !(await this.credential(library.id))) continue
+			if (library.access === "sign-in" && !this.signInFor(library.id)?.signedIn()) continue
+			result.push(library)
+		}
+		return result
 	}
 
-	private async doEnsure(directory: string): Promise<Set<LibraryId>> {
-		const backend = await this.backend()
-		const mcp = backend?.mcp
-		if (!mcp) return new Set()
-		let status: Record<string, McpServerStatus> = {}
-		try {
-			status = await mcp.status(directory)
-		} catch (err) {
-			Logger.warn(`[libraries] library status failed: ${err}`)
-			return new Set()
-		}
-		const context = await this.configContext()
-		await Promise.all(
-			LIBRARIES.map(async (library) => {
-				if (!this.enabled(library.id)) {
-					if (status[library.id]?.status === "connected") await mcp.disconnect(directory, library.id).catch(() => {})
-					return
-				}
-				const current = status[library.id]?.status
-				if (current === "connected" || current === "needs_auth") return
-				if (current === "disabled") {
-					await mcp
-						.connect(directory, library.id)
-						.catch((err) => Logger.warn(`[libraries] ${library.id} connect failed: ${err}`))
-					return
-				}
-				const credential = await this.credential(library.id)
-				const config = mcpConfigFor(library.id, { ...context, credential })
-				if (!config) return
-				try {
-					await mcp.add(directory, library.id, config as unknown as Record<string, unknown>)
-				} catch (err) {
-					Logger.warn(`[libraries] adding ${library.id} failed: ${err}`)
-				}
+	/** Starts connecting every library that is on, so the first tool list finds them ready. */
+	async warm(): Promise<void> {
+		for (const library of await this.onLibraries()) void this.connect(library).catch(() => {})
+	}
+
+	/** The tools to pass on: each usable library's allowed tools, renamed and made safe. */
+	async tools(): Promise<Tool[]> {
+		const libraries = (await this.onLibraries()).filter((library) => !this.isResting(library.id))
+		const lists = await Promise.all(
+			libraries.map(async (library) => {
+				const pending = this.connect(library).catch(() => null)
+				const live = await Promise.race([
+					pending,
+					new Promise<null>((resolve) => setTimeout(() => resolve(null), LIST_WAIT_MS)),
+				])
+				if (!live) return []
+				return live.tools
+					.filter((tool) => library.allowedTools.includes(tool.name))
+					.map(
+						(tool): Tool => ({
+							name: passedOnName(library.id, tool.name),
+							description: `${library.name}: ${tool.description ?? ""}`.trim(),
+							inputSchema: safeInputSchema(tool.inputSchema) as Tool["inputSchema"],
+						}),
+					)
 			}),
 		)
-		try {
-			status = await mcp.status(directory)
-		} catch {}
-		this.statusByDirectory.set(directory, status)
-		const usable = new Set(LIBRARIES.filter((l) => status[l.id]?.status === "connected").map((l) => l.id))
-		this.usableByDirectory.set(directory, usable)
-		return this.usable(directory)
+		return lists.flat()
 	}
 
-	/**
-	 * Watches the designer's tool calls: a rate limit, quota, lost sign-in or
-	 * outage rests that library, so the next session goes straight to another.
-	 */
-	noteToolCalls(calls: ToolCallRecord[]): void {
-		for (const call of calls) {
-			if (call.ok) continue
-			const library = libraryOfTool(call.tool)
-			const outage = library ? isLibraryOutage(call.error ?? "") : null
-			if (!library || !outage) continue
-			if (!this.resting.has(library)) capture("library_failure", { library, kind: outage })
-			this.resting.set(library, { until: Date.now() + REST_MS, why: outage })
-			Logger.info(`[libraries] ${library} rests for ${REST_MS / 60_000} minutes: ${outage}`)
+	/** Whether a tool name is a library tool Caret passes on. */
+	owns(name: string): boolean {
+		return splitPassedOnName(name, this.definitions()) !== null
+	}
+
+	/** Calls a passed-on tool. A rate limit, lost sign-in or outage rests the library. */
+	async call(name: string, args: Record<string, unknown>): Promise<CallToolResult> {
+		const split = splitPassedOnName(name, this.definitions())
+		if (!split) return errorResult(`${name} is not a library tool.`)
+		const { library, tool } = split
+		if (!this.enabled(library.id)) return errorResult(`${library.name} is switched off in Caret.`)
+		const rest = this.restOf(library.id)
+		if (rest) return errorResult(`${library.name} is resting after a ${rest}; use another library or build it yourself.`)
+		try {
+			const live = await this.connect(library)
+			const result = await live.call(tool, args)
+			if (result.isError) this.noteFailure(library, textOf(result))
+			return result
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err)
+			this.noteFailure(library, message)
+			return errorResult(`${library.name} failed: ${message}`)
 		}
 	}
 
-	private isResting(id: LibraryId, now = Date.now()): boolean {
-		const rest = this.resting.get(id)
-		if (!rest) return false
-		if (rest.until > now) return true
-		this.resting.delete(id)
-		return false
+	private noteFailure(library: LibraryDefinition, error: string): void {
+		const outage = isLibraryOutage(error)
+		if (!outage) return
+		if (!this.resting.has(library.id)) capture("library_failure", { library: library.id, kind: outage })
+		this.resting.set(library.id, { until: Date.now() + REST_MS, why: outage })
+		Logger.info(`[libraries] ${library.id} rests for ${REST_MS / 60_000} minutes: ${outage}`)
+		void this.disconnect(library.id)
+		this.changed()
 	}
 
-	/** Each library's row in the backend tab. */
-	async list(directory: string | null): Promise<LibraryWire[]> {
-		if (directory) await this.ensure(directory).catch(() => {})
-		const status = directory ? (this.statusByDirectory.get(directory) ?? {}) : {}
+	private restOf(id: string): string | null {
+		const rest = this.resting.get(id)
+		if (!rest) return null
+		if (rest.until > Date.now()) return rest.why === "rate-limit" ? "rate limit" : "failure"
+		this.resting.delete(id)
+		return null
+	}
+
+	private isResting(id: string): boolean {
+		return this.restOf(id) !== null
+	}
+
+	/** Each library's row in the Libraries list. */
+	async list(): Promise<LibraryWire[]> {
 		return Promise.all(
-			LIBRARIES.map(async (library) => ({
+			this.definitions().map(async (library) => ({
 				id: library.id,
 				name: library.name,
 				gives: library.gives,
@@ -170,69 +240,110 @@ export class DesignLibraries {
 				access: library.access,
 				site: library.site,
 				enabled: this.enabled(library.id),
-				state: await this.stateOf(library, status[library.id]),
+				state: await this.stateOf(library),
 			})),
 		)
 	}
 
-	private async stateOf(library: LibraryDefinition, status: McpServerStatus | undefined): Promise<LibraryWire["state"]> {
+	private async stateOf(library: LibraryDefinition): Promise<LibraryWire["state"]> {
 		if (!this.enabled(library.id)) return "off"
 		if (this.isResting(library.id)) return "resting"
 		if (library.access === "key" && !(await this.credential(library.id))) return "key"
-		if (status?.status === "needs_auth" || status?.status === "needs_client_registration") return "sign-in"
-		if (status?.status === "connected") return "ready"
-		if (status?.status === "failed") return "failed"
-		return "connecting"
+		if (library.access === "sign-in" && !this.signInFor(library.id)?.signedIn()) return "sign-in"
+		const connection = this.connections.get(library.id)
+		if (!connection) {
+			void this.connect(library).catch(() => {})
+			return "connecting"
+		}
+		return connection.state
 	}
 
-	/** Stores a pasted key and connects the library with it. */
-	async setKey(directory: string | null, id: LibraryId, key: string): Promise<{ ok: true } | { ok: false; error: string }> {
+	/** Stores a pasted key and reconnects the library with it. */
+	async setKey(id: string, key: string): Promise<{ ok: true } | { ok: false; error: string }> {
 		const name = SECRET_OF[id]
 		if (!name) return { ok: false, error: "This library does not take a key." }
 		const stored = await setSecret(name, key)
 		if (!stored.ok) return stored
-		if (directory) await this.readd(directory, id)
+		this.resting.delete(id)
+		await this.disconnect(id)
+		const library = this.definition(id)
+		if (library) await this.connect(library).catch(() => {})
+		this.changed()
 		return { ok: true }
 	}
 
-	/** Starts the library's browser sign-in, then waits for the backend to report it connected. */
-	async signIn(directory: string, id: LibraryId): Promise<{ ok: true } | { ok: false; error: string }> {
-		const library = libraryById(id)
-		const mcp = (await this.backend())?.mcp
-		if (!library || library.access !== "sign-in" || !mcp) return { ok: false, error: "This library has no sign-in." }
-		await this.ensure(directory)
-		try {
-			const { authorizationUrl } = await mcp.startAuth(directory, id)
-			await shell.openExternal(authorizationUrl)
-		} catch (err) {
-			return { ok: false, error: err instanceof Error ? err.message : String(err) }
-		}
-		// The browser step is the user's, so the wait is long; the sign-in itself
-		// has no time limit on the backend, only this poll does.
-		const deadline = Date.now() + 5 * 60_000
-		while (Date.now() < deadline) {
-			await new Promise((resolve) => setTimeout(resolve, 2000))
-			const status = await mcp.status(directory).catch(() => ({}) as Record<string, McpServerStatus>)
-			if (status[id]?.status === "connected") {
-				this.statusByDirectory.set(directory, status)
-				this.usableByDirectory.set(directory, new Set([...(this.usableByDirectory.get(directory) ?? []), id]))
-				return { ok: true }
-			}
-		}
-		return { ok: false, error: "The sign-in did not finish. Try again when the browser page says you're connected." }
-	}
-
-	private async readd(directory: string, id: LibraryId): Promise<void> {
-		const mcp = (await this.backend())?.mcp
-		if (!mcp) return
-		const config = mcpConfigFor(id, { ...(await this.configContext()), credential: await this.credential(id) })
-		if (config) await mcp.add(directory, id, config as unknown as Record<string, unknown>).catch(() => {})
+	/** The browser sign-in, for libraries that use one. */
+	async signIn(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+		const library = this.definition(id)
+		const auth = this.signInFor(id)
+		if (!library || library.access !== "sign-in" || !auth) return { ok: false, error: "This library has no sign-in." }
+		const connection = connectionFor(id, await this.context())
+		if (!connection || connection.kind !== "http") return { ok: false, error: "This library has no sign-in." }
+		const result = await auth.signIn(connection.url)
+		if (!result.ok) return result
 		this.resting.delete(id)
-		this.statusByDirectory.delete(directory)
-		await this.ensure(directory)
+		await this.disconnect(id)
+		await this.connect(library).catch(() => {})
+		this.changed()
+		return { ok: true }
 	}
 
-	private async credential(id: LibraryId): Promise<string | undefined> {
+	private signInFor(id: string): SignInAuth | null {
+		return id === "gummble" ? this.gummble : null
+	}
+
+	/** Closes every connection (Caret is quitting). */
+	async close(): Promise<void> {
+		await Promise.all([...this.connections.keys()].map((id) => this.disconnect(id)))
+	}
+
+	private async disconnect(id: string): Promise<void> {
+		const connection = this.connections.get(id)
+		this.connections.delete(id)
+		await connection?.live?.close().catch(() => {})
+	}
+
+	/** The library's live connection, opening it once; a failed one is retried on the next call. */
+	private async connect(library: LibraryDefinition): Promise<LiveLibrary> {
+		const existing = this.connections.get(library.id)
+		if (existing) {
+			await existing.ready
+			if (existing.live) return existing.live
+			if (existing.state !== "failed" || this.connections.get(library.id) !== existing) {
+				throw new Error(existing.error ?? `${library.name} is not connected`)
+			}
+			this.connections.delete(library.id)
+		}
+		const entry: Connecting = { state: "connecting", ready: Promise.resolve() }
+		entry.ready = (async () => {
+			try {
+				const connection = await this.connectionOf(library)
+				if (!connection) throw new Error(`${library.name} needs a key first`)
+				entry.live = await (this.options.open ?? openLibrary)(connection, library, this.signInFor(library.id))
+				entry.state = "ready"
+				Logger.info(`[libraries] ${library.id} connected (${entry.live.tools.length} tools)`)
+			} catch (err) {
+				entry.error = err instanceof Error ? err.message : String(err)
+				const refused = /\b401\b|\b403\b|unauthori[sz]ed|forbidden|invalid.?(api.?)?key|sign.?in/i.test(entry.error)
+				// A refused key asks for the key again; a refused sign-in asks to sign in again.
+				entry.state =
+					refused && library.access === "key" ? "key" : refused && library.access === "sign-in" ? "sign-in" : "failed"
+				Logger.warn(`[libraries] ${library.id} did not connect: ${entry.error}`)
+			}
+		})()
+		this.connections.set(library.id, entry)
+		await entry.ready
+		if (!entry.live) throw new Error(entry.error ?? `${library.name} is not connected`)
+		return entry.live
+	}
+
+	private async connectionOf(library: LibraryDefinition): Promise<LibraryConnection | null> {
+		const extra = this.extra.find((e) => e.definition.id === library.id)
+		if (extra) return extra.connection
+		return connectionFor(library.id, { ...(await this.context()), credential: await this.credential(library.id) })
+	}
+
+	private async credential(id: string): Promise<string | undefined> {
 		if (id === "twentyfirst") return getSecret("twentyfirstApiKey") || undefined
 		if (id !== "lazyweb") return undefined
 		const stored = getSecret("lazywebToken") || this.lazywebInMemory
@@ -257,11 +368,9 @@ export class DesignLibraries {
 		}
 	}
 
-	private shadcnDir = ""
-
-	private async configContext() {
+	private async context() {
 		if (!this.shadcnDir) {
-			this.shadcnDir = path.join(this.dataDir(), "libraries", "shadcn")
+			this.shadcnDir = path.join((this.options.dataDir ?? (() => app.getPath("userData")))(), "libraries", "shadcn")
 			await fs.mkdir(this.shadcnDir, { recursive: true })
 			await fs.writeFile(path.join(this.shadcnDir, "components.json"), shadcnComponentsJson(), "utf-8")
 		}
@@ -273,17 +382,57 @@ export class DesignLibraries {
 	}
 }
 
-let shared: DesignLibraries | null = null
+/** Connects to one library as an MCP client and reads its tools once. */
+async function openLibrary(
+	connection: LibraryConnection,
+	_library: LibraryDefinition,
+	auth: SignInAuth | null,
+): Promise<LiveLibrary> {
+	const transport: Transport =
+		connection.kind === "stdio"
+			? new StdioClientTransport({
+					command: connection.command,
+					args: connection.args,
+					env: { ...(process.env as Record<string, string>), ...(connection.env ?? {}) },
+					stderr: "ignore",
+				})
+			: new StreamableHTTPClientTransport(new URL(connection.url), {
+					requestInit: connection.headers ? { headers: connection.headers } : undefined,
+					fetch: fetch as never,
+					...(auth ? { authProvider: auth.provider() } : {}),
+				})
+	const client = new Client({ name: "caret", version: "1.0.0" })
+	await client.connect(transport, { timeout: 90_000 })
+	const { tools } = await client.listTools(undefined, { timeout: 60_000 })
+	return {
+		tools,
+		call: async (tool, args) =>
+			(await client.callTool({ name: tool, arguments: args }, undefined, { timeout: CALL_MS })) as CallToolResult,
+		close: () => client.close(),
+	}
+}
 
-/**
- * The one library manager for the app. One, because the tool policy it installs
- * is process-wide (every prompt to the shared OpenCode server carries it), and
- * because a library resting after a rate limit is resting for every project.
- */
-export function designLibraries(): DesignLibraries {
-	shared ??= new DesignLibraries(async () => {
-		const id = getPrefs().backendId
-		return id ? getBackend(id) : null
-	})
+function errorResult(text: string): CallToolResult {
+	return { content: [{ type: "text", text }], isError: true }
+}
+
+function textOf(result: CallToolResult): string {
+	return (result.content ?? [])
+		.map((part) => (part.type === "text" ? part.text : ""))
+		.join(" ")
+		.trim()
+}
+
+let shared: LibraryHub | null = null
+
+/** Creates the one manager for the app (main, at startup). */
+export function startLibraryHub(options: LibraryHubOptions = {}): LibraryHub {
+	shared ??= new LibraryHub(options)
+	return shared
+}
+
+/** The one manager for the app. */
+export function libraryHub(): LibraryHub {
+	shared ??= new LibraryHub()
 	return shared
 }

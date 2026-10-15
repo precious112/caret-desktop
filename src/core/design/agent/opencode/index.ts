@@ -26,7 +26,6 @@ import {
 	type BackendSessionSummary,
 	type CodingBackend,
 	isProviderRefusal,
-	type McpControl,
 	type ModelGroup,
 	type OauthChallenge,
 	type PermissionDecision,
@@ -639,32 +638,6 @@ export class OpencodeBackend implements CodingBackend {
 	}
 
 	/**
-	 * The project's runtime MCP servers (`POST /mcp` and friends, measured on the
-	 * pinned binary by `scripts/probe-mcp-runtime.ts`). Servers added this way
-	 * belong to one directory's instance and are dropped when that instance is
-	 * disposed (`reloadCredentials`), so callers re-add what is missing before use.
-	 */
-	readonly mcp: McpControl = {
-		status: async (directory) => request(await this.server(), "/mcp", { query: { directory } }),
-		add: async (directory, name, config) =>
-			request(await this.server(), "/mcp", { method: "POST", query: { directory }, body: { name, config } }),
-		connect: async (directory, name) => {
-			await request(await this.server(), `/mcp/${encodeURIComponent(name)}/connect`, {
-				method: "POST",
-				query: { directory },
-			})
-		},
-		disconnect: async (directory, name) => {
-			await request(await this.server(), `/mcp/${encodeURIComponent(name)}/disconnect`, {
-				method: "POST",
-				query: { directory },
-			})
-		},
-		startAuth: async (directory, name) =>
-			request(await this.server(), `/mcp/${encodeURIComponent(name)}/auth`, { method: "POST", query: { directory } }),
-	}
-
-	/**
 	 * Ask a model one trivial question, and report what it says if it refuses.
 	 *
 	 * Tools are all switched off: this is about whether the model answers at all,
@@ -815,31 +788,6 @@ export class OpencodeBackend implements CodingBackend {
 	}
 }
 
-/**
- * Tool switches every prompt in a project carries, before its own.
- *
- * The component and reference libraries are MCP servers added to the project's instance,
- * so their tools would otherwise reach every session there — the chat, the
- * interview, a one-off structured answer. Two reasons that must not happen
- * unfiltered: a library's write tools (21st.dev's server can delete components
- * and edit your profile), and one tool with a top-level `oneOf` in its schema
- * makes Anthropic refuse the WHOLE turn (measured: Lazyweb's public server,
- * `scripts/probe-mcp-runtime.ts`). The policy is an allowlist per library.
- */
-let toolPolicy: (directory: string) => Record<string, boolean> = () => ({})
-
-export function setOpencodeToolPolicy(policy: (directory: string) => Record<string, boolean>): void {
-	toolPolicy = policy
-}
-
-/**
- * The project's policy, then the call's own switches, in that order: OpenCode
- * lets the last matching key win, so a call can re-enable what the policy hides.
- */
-export function toolsFor(directory: string, ...layers: Array<Record<string, boolean> | undefined>): Record<string, boolean> {
-	return mergeTools(toolPolicy(directory), ...layers)
-}
-
 /** Tool switches merged in order, the later key winning and also coming later. */
 export function mergeTools(...layers: Array<Record<string, boolean> | undefined>): Record<string, boolean> {
 	const merged: Record<string, boolean> = {}
@@ -855,12 +803,11 @@ export function mergeTools(...layers: Array<Record<string, boolean> | undefined>
 
 /**
  * Which agent answers and with which tools. Every answer is Caret's lean agent
- * (its agent denies all tools; a call opts back into reads); one that needs
- * tools also gets the project's library allowlist.
+ * (its agent denies all tools; a call opts back into reads or names the tools
+ * it needs).
  */
 export function answerSetup(req: StructuredRequest): { agent?: string; tools: Record<string, boolean> } {
 	const reads = req.reads ? READ_TOOLS : undefined
-	if (req.allowTools) return { agent: ANSWER_AGENT, tools: toolsFor(req.workingDirectory, reads, req.tools) }
 	return { agent: ANSWER_AGENT, tools: mergeTools(reads, req.tools) }
 }
 
@@ -1077,15 +1024,9 @@ class OpencodeSessionHandle implements BackendSession {
 					...(this.options.systemPrompt ? { system: this.options.systemPrompt } : {}),
 					...(modelRef(this.options.model, this.options.effort) ?? {}),
 					// Same per-prompt `tools` map the structured path uses on /message:
-					// false removes the tool from this turn entirely.
-					// A lean session uses no tools at all (its agent denies everything);
-					// a coding session gets the project's library allowlist.
-					tools: this.options.lean
-						? mergeTools(Object.fromEntries((input.disabledTools ?? []).map((tool) => [tool, false])))
-						: toolsFor(
-								this.options.workingDirectory,
-								Object.fromEntries((input.disabledTools ?? []).map((tool) => [tool, false])),
-							),
+					// false removes the tool from this turn entirely. A lean session uses
+					// no tools at all (its agent denies everything).
+					tools: mergeTools(Object.fromEntries((input.disabledTools ?? []).map((tool) => [tool, false]))),
 					// The Plan agent is a second line of defence, never the boundary:
 					// upstream subagents have been reported not to inherit it.
 					...(this.options.lean ? { agent: ANSWER_AGENT } : this.options.mode === "read-only" ? { agent: "plan" } : {}),

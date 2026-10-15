@@ -25,12 +25,15 @@ import {
 } from "./analytics"
 import { registerIpcHandlers } from "./ipc"
 import { closeLauncherWindow, hasLauncherWindow, type LauncherWindowOptions, openLauncherWindow } from "./launcher-window"
-import { designLibraries } from "./libraries/libraries"
+import { startLibraryHub } from "./libraries/libraries"
+import { testLibraryFromEnv } from "./libraries/test-library"
 import { startFileLog } from "./log-file"
 import { ensureMcpBridge } from "./mcp/stdio-bridge"
 import { MUTATING_TOOL_NAMES } from "./mcp/tools"
 import { buildMenu } from "./menu"
 import { loadPrefs } from "./prefs"
+import { setLibrariesOnSource } from "./rules/context"
+import { regenerateRulesFiles } from "./rules/generate"
 import { WindowManager } from "./window-manager"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -120,9 +123,15 @@ async function main(): Promise<void> {
 	} catch (err) {
 		Logger.warn(`[main] chat agent will have no Caret tools: ${err}`)
 	}
-	// Installs the per-prompt tool policy before any session exists, so a Design
-	// pass library's tools never reach a prompt unfiltered.
-	designLibraries()
+	// Caret connects to the component and reference libraries itself and passes
+	// their tools on through its own connection; started early so the first
+	// tool list finds them ready.
+	const testLibrary = testLibraryFromEnv(process.env, app.isPackaged, process.execPath)
+	if (testLibrary)
+		Logger.info(`[main] TEST LIBRARY from ${testLibrary.connection.kind === "stdio" ? testLibrary.connection.args[0] : ""}`)
+	const libraries = startLibraryHub({ extra: testLibrary ? [testLibrary] : [] })
+	setLibrariesOnSource(() => libraries.onLibraries())
+	void libraries.warm()
 
 	const launcherOptions: LauncherWindowOptions = {
 		chromeEntry: resolveChromeEntry(),
@@ -138,6 +147,14 @@ async function main(): Promise<void> {
 
 	registerIpcHandlers(windows)
 	buildMenu(windows)
+
+	// The rules name the libraries that are on, so a change rewrites every open
+	// project's rules files.
+	libraries.onChange(() => {
+		for (const window of windows.list()) {
+			void regenerateRulesFiles(window.projectPath).catch((err) => Logger.warn(`[main] rules regen failed: ${err}`))
+		}
+	})
 
 	app.on("second-instance", (_event, argv) => {
 		const fromArgv = projectPathFromArgv(argv)
@@ -199,6 +216,8 @@ async function main(): Promise<void> {
 		Logger.info(`[main] before-quit fired (windows open: ${BrowserWindow.getAllWindows().length})`)
 		capture("app_quit", { session_duration_s: sessionDurationSeconds() })
 		void windows.closeAll()
+		// The local libraries are child processes too.
+		void libraries.close()
 		// The embedded backend is a child process. Left running it would outlive
 		// the app and keep holding a port.
 		void disposeBackends()

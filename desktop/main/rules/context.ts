@@ -16,6 +16,7 @@ import {
 } from "../../../src/core/design"
 import { foundationSummary } from "../../../src/core/design/defaults/foundation-summary"
 import { bannedHabitLines } from "../../../src/core/design/defaults/slop-list"
+import { type LibraryDefinition, librarySearchParagraph } from "../../../src/core/design/libraries/catalog"
 
 /**
  * What every MCP tool reply carries, so the foundation cannot be skipped: the
@@ -93,6 +94,13 @@ const HARD_RULES = `- Style with Tailwind utility classes only. Never \`style={{
 - Never invent an image URL and never leave a grey placeholder box: use the project's assets, or say
   what is missing.`
 
+/** The libraries that are on, as the rules name them. Set by main at startup; none until then. */
+let librariesOn: () => Promise<ReadonlyArray<Pick<LibraryDefinition, "id" | "name" | "kind">>> = async () => []
+
+export function setLibrariesOnSource(source: typeof librariesOn): void {
+	librariesOn = source
+}
+
 export async function buildCore(projectPath: string): Promise<string> {
 	const [tokens, pages, assets, promoted, lock] = await Promise.all([
 		readFoundationTokens(projectPath).catch(() => null),
@@ -101,6 +109,7 @@ export async function buildCore(projectPath: string): Promise<string> {
 		readPromotedRules(projectPath).catch(() => ({ version: 1 as const, rules: [] })),
 		readCatalogLock(projectPath).catch(() => ({ version: 1 as const, installed: [] })),
 	])
+	const librarySearch = librarySearchParagraph(await librariesOn().catch(() => []))
 	const pageCount = pages.filter((p) => !p.variantOf).length
 	const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`
 
@@ -134,7 +143,7 @@ ${bannedHabitLines()
 
 Plan the page section by section, then build it, then check it: call \`run_design_checks\` on every
 page you wrote and fix what it reports. Make it work like a normal app, and look like this product.
-
+${librarySearch ? `\n## Component and reference libraries\n\n${librarySearch}\n` : ""}
 ## Where everything is
 
 - Pages: ${plural(pageCount, "page")}. \`get_project\` lists them, a page at a time.

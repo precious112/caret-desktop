@@ -5185,14 +5185,26 @@ export default function CatalogDemo() {
 			// chat busy (Stop where Send should be), and the next scenario that types
 			// in the chat fails on a turn that isn't its own: dq timed out on this.
 			const stop = chrome.getByTestId("chat-stop")
-			if (await stop.count()) await stop.click().catch(() => {})
+			let clicked = "no Stop button was showing"
+			if (await stop.count()) {
+				clicked = await stop
+					.click({ timeout: 10_000 })
+					.then(() => "Stop clicked")
+					.catch((err) => `Stop click failed: ${String(err).split("\n")[0]}`)
+			}
 			const stopped = await waitFor(
 				"the chat to be free after stopping the apply turn",
 				async () => (await chrome.getByTestId("chat-stop").count()) === 0,
 				60_000,
 			).catch(() => false)
+			// When Stop does not free the chat, say what was on screen: a known
+			// chain (gg gives up, then bq, bq2 and by fail on leftover work) has no
+			// cause yet, and the next occurrence should name it.
+			const after = stopped
+				? ""
+				: ` After Stop: ${clicked}; permission dock showing: ${await chrome.getByTestId("chat-permission").count()}; chat tail: …${((await chrome.textContent('[data-testid="chat-transcript"]').catch(() => null)) ?? "").slice(-300)}`
 			throw new Inconclusive(
-				`the model was still working after 7 minutes${stopped ? " (stopped, so the chat is free for what follows)" : "; Stop did not free the chat"}; last of the chat: …${transcript.slice(-400)}`,
+				`the model was still working after 7 minutes${stopped ? " (stopped, so the chat is free for what follows)" : `; Stop did not free the chat.${after}`}; last of the chat before Stop: …${transcript.slice(-400)}`,
 			)
 		}
 

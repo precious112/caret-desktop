@@ -1,38 +1,22 @@
 import should from "should"
 
-import { setOpencodeToolPolicy, toolsFor } from "../../agent/opencode"
+import { mergeTools } from "../../agent/opencode"
 import {
+	connectionFor,
 	isLibraryOutage,
 	LIBRARIES,
-	type LibraryId,
-	libraryOfTool,
-	libraryToolPolicy,
-	mcpConfigFor,
+	librarySearchParagraph,
+	passedOnName,
 	REGISTRIES,
+	safeInputSchema,
 	shadcnComponentsJson,
+	splitPassedOnName,
 } from "../catalog"
 
 const context = { npx: "npx", shadcnDir: "/caret/shadcn" }
 
-describe("libraries · libraries", () => {
-	it("hides every library tool, then re-allows only the usable libraries' read tools, globs first", () => {
-		const policy = libraryToolPolicy(new Set<LibraryId>(["twentyfirst"]))
-		const keys = Object.keys(policy)
-		keys.slice(0, LIBRARIES.length)
-			.every((k) => k.endsWith("_*"))
-			.should.be.true()
-		Object.values(policy)
-			.slice(0, LIBRARIES.length)
-			.every((v) => v === false)
-			.should.be.true()
-		policy.twentyfirst_search.should.be.true()
-		policy.twentyfirst_get_inspiration.should.be.true()
-		should(policy.twentyfirst_delete_component).be.undefined()
-		should(policy.shadcn_search_items_in_registries).be.undefined()
-		keys.indexOf("twentyfirst_*").should.be.below(keys.indexOf("twentyfirst_search"))
-	})
-
-	it("never allows a write or install tool", () => {
+describe("libraries · the list", () => {
+	it("never passes on a write or install tool", () => {
 		for (const library of LIBRARIES) {
 			for (const tool of library.allowedTools)
 				tool.should.not.match(/delete|create|update|install|add_command|publish|edit|write/)
@@ -40,24 +24,26 @@ describe("libraries · libraries", () => {
 	})
 
 	it("needs a credential for Lazyweb and 21st.dev, and none for the rest", () => {
-		should(mcpConfigFor("twentyfirst", context)).be.null()
-		should(mcpConfigFor("lazyweb", context)).be.null()
-		mcpConfigFor("twentyfirst", { ...context, credential: "k" })!.should.containDeep({
-			type: "remote",
+		should(connectionFor("twentyfirst", context)).be.null()
+		should(connectionFor("lazyweb", context)).be.null()
+		connectionFor("twentyfirst", { ...context, credential: "k" })!.should.containDeep({
+			kind: "http",
 			headers: { "x-api-key": "k" },
 		})
-		mcpConfigFor("lazyweb", { ...context, credential: "t" })!.should.containDeep({ headers: { Authorization: "Bearer t" } })
-		mcpConfigFor("gummble", context)!.should.containDeep({ type: "remote", url: "https://mcp.gummble.com/mcp" })
-		const shadcn = mcpConfigFor("shadcn", context)!
-		shadcn.should.containDeep({ type: "local" })
-		;(shadcn as { command: string[] }).command.should.containEql("--cwd")
-		;(shadcn as { command: string[] }).command.should.containEql("/caret/shadcn")
+		connectionFor("lazyweb", { ...context, credential: "t" })!.should.containDeep({ headers: { Authorization: "Bearer t" } })
+		connectionFor("gummble", context)!.should.containDeep({ kind: "http", url: "https://mcp.gummble.com/mcp" })
+		const shadcn = connectionFor("shadcn", context)!
+		shadcn.should.containDeep({ kind: "stdio", command: "npx" })
+		;(shadcn as { args: string[] }).args.should.containEql("--cwd")
+		;(shadcn as { args: string[] }).args.should.containEql("/caret/shadcn")
 	})
 
-	it("names the library a prefixed tool belongs to", () => {
-		should(libraryOfTool("lazyweb_lazyweb_execute")).equal("lazyweb")
-		should(libraryOfTool("twentyfirst_search")).equal("twentyfirst")
-		should(libraryOfTool("caret_view_reference")).be.null()
+	it("names a passed-on tool after its library, and only recognises tools it passes on", () => {
+		passedOnName("lazyweb", "lazyweb_execute").should.equal("lazyweb_lazyweb_execute")
+		splitPassedOnName("lazyweb_lazyweb_execute", LIBRARIES)!.tool.should.equal("lazyweb_execute")
+		splitPassedOnName("twentyfirst_search", LIBRARIES)!.library.id.should.equal("twentyfirst")
+		should(splitPassedOnName("twentyfirst_delete_component", LIBRARIES)).be.null()
+		should(splitPassedOnName("get_project", LIBRARIES)).be.null()
 	})
 
 	it("tells an outage from a bad argument", () => {
@@ -69,7 +55,7 @@ describe("libraries · libraries", () => {
 		should(isLibraryOutage("Invalid arguments: query is required")).be.null()
 	})
 
-	it("gives the shadcn MCP the same registries the installer fetches from", () => {
+	it("gives the shadcn library the same registries the installer fetches from", () => {
 		const json = JSON.parse(shadcnComponentsJson())
 		for (const [name, url] of Object.entries(REGISTRIES)) {
 			if (name === "@shadcn") continue
@@ -78,12 +64,52 @@ describe("libraries · libraries", () => {
 	})
 })
 
-describe("libraries · tool switches per prompt", () => {
-	beforeEach(() => setOpencodeToolPolicy(() => ({})))
+describe("libraries · input formats made safe", () => {
+	it("folds a top-level oneOf, anyOf or allOf into one plain object, nothing required", () => {
+		for (const key of ["oneOf", "anyOf", "allOf"]) {
+			const safe = safeInputSchema({
+				type: "object",
+				required: ["a"],
+				[key]: [{ properties: { a: { type: "string" } } }, { properties: { b: { type: "number" } } }],
+			})
+			should(safe[key]).be.undefined()
+			should(safe.required).be.undefined()
+			should(safe.type).equal("object")
+			Object.keys(safe.properties as object).should.eql(["a", "b"])
+		}
+	})
 
+	it("leaves an ordinary format exactly as the library wrote it", () => {
+		const schema = { type: "object", properties: { q: { type: "string" } }, required: ["q"] }
+		safeInputSchema(schema).should.eql(schema)
+	})
+})
+
+describe("libraries · the paragraph in the rules", () => {
+	const shadcn = { id: "shadcn", name: "shadcn registries", kind: "components" as const }
+	const lazyweb = { id: "lazyweb", name: "Lazyweb", kind: "inspiration" as const }
+
+	it("is absent when no library is on", () => {
+		should(librarySearchParagraph([])).be.null()
+	})
+
+	it("names exactly the libraries that are on, under components or references", () => {
+		const text = librarySearchParagraph([shadcn, lazyweb])!
+		text.should.match(/When you create a page, first search these libraries/)
+		text.should.match(/Components: shadcn registries \(tools named `shadcn_…`\)\./)
+		text.should.match(/References: Lazyweb \(tools named `lazyweb_…`\)\./)
+		text.should.match(/foundation .* wins over a component's own styles/)
+		librarySearchParagraph([shadcn])!.should.not.match(/References/)
+		librarySearchParagraph([lazyweb])!.should.not.match(/Components/)
+	})
+})
+
+describe("libraries · tool switches per prompt", () => {
 	it("lets a later layer's key win and also come later", () => {
-		const merged = toolsFor("/p", { "lazyweb_*": false, bash: false }, { bash: true, "lazyweb_*": true })
-		merged.should.eql({ "lazyweb_*": true, bash: true })
-		Object.keys(toolsFor("/p", { a: false, b: false }, { a: true })).should.eql(["b", "a"])
+		mergeTools({ "lazyweb_*": false, bash: false }, { bash: true, "lazyweb_*": true }).should.eql({
+			"lazyweb_*": true,
+			bash: true,
+		})
+		Object.keys(mergeTools({ a: false, b: false }, { a: true })).should.eql(["b", "a"])
 	})
 })

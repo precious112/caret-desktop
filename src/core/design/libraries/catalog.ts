@@ -1,12 +1,13 @@
 /**
  * The component and reference libraries the AI can search, as MCP servers.
  *
- * Users install and configure nothing: each library is ready, needs one browser
- * sign-in, or needs a pasted key, and Caret adds it to the project's OpenCode
- * instance itself. Only read and search tools are ever switched on — 21st.dev's
- * server alone offers 51 tools, including deleting components and editing your
- * profile — and that allowlist also keeps a library's odd tool schemas away
- * from providers that reject a whole turn over one of them.
+ * Caret connects to each library itself and passes its search and read tools
+ * on through Caret's own connection, so Caret's chat and every coding tool
+ * connected to Caret see the same libraries, and keys never leave Caret. Users
+ * install and configure nothing: each library is ready, needs one browser
+ * sign-in, or needs a pasted key. Only read and search tools are passed on —
+ * 21st.dev's server alone offers 51 tools, including deleting components and
+ * editing your profile.
  */
 
 import { REGISTRIES } from "../catalog/registries"
@@ -21,21 +22,22 @@ export type LibraryAccess =
 	| "none"
 	/** A free token Caret requests itself, no sign-up. */
 	| "free-token"
-	/** One browser sign-in (MCP OAuth, run by the OpenCode server). */
+	/** One browser sign-in (MCP OAuth, run by Caret). */
 	| "sign-in"
 	/** The user pastes a key from the library's site. */
 	| "key"
 
 export interface LibraryDefinition {
-	id: LibraryId
+	/** Also the prefix of its tools as Caret passes them on: `shadcn_search_items_in_registries`. */
+	id: string
 	name: string
-	/** What it gives the designer, in the backend tab's words. */
+	/** What it gives the AI, in the Libraries tab's words. */
 	gives: string
 	kind: "components" | "inspiration"
 	access: LibraryAccess
 	/** Where the user gets a key or account, for "paste a key" and "sign in" rows. */
 	site?: string
-	/** The tool names the server itself uses; OpenCode prefixes them `<id>_`. */
+	/** The tool names the server itself uses; only these are passed on. */
 	allowedTools: string[]
 }
 
@@ -110,25 +112,12 @@ export function libraryById(id: string): LibraryDefinition | undefined {
 export const SHADCN_PACKAGE = "shadcn@4.21.4"
 export const ACETERNITY_PACKAGE = "aceternityui-mcp@1.0.2"
 
-export interface McpLocalConfig {
-	type: "local"
-	command: string[]
-	environment?: Record<string, string>
-	enabled: boolean
-	timeout?: number
-}
+/** How Caret reaches one library: a local program it starts, or a hosted address. */
+export type LibraryConnection =
+	| { kind: "stdio"; command: string; args: string[]; env?: Record<string, string> }
+	| { kind: "http"; url: string; headers?: Record<string, string> }
 
-export interface McpRemoteConfig {
-	type: "remote"
-	url: string
-	headers?: Record<string, string>
-	enabled: boolean
-	timeout?: number
-}
-
-export type McpConfig = McpLocalConfig | McpRemoteConfig
-
-export interface ConfigContext {
+export interface ConnectionContext {
 	/** `npx` (or `npx.cmd` on Windows). */
 	npx: string
 	/** PATH that finds node and npx even when Caret was launched from Finder. */
@@ -139,50 +128,34 @@ export interface ConfigContext {
 	credential?: string
 }
 
-/** Searching a library is slow on a cold start (npx fetches the package); give it room. */
-const TIMEOUT_MS = 60_000
-
-/** The MCP server entry for one library, or null when it still needs a credential. */
-export function mcpConfigFor(id: LibraryId, context: ConfigContext): McpConfig | null {
-	const environment = context.path ? { PATH: context.path } : undefined
+/** How to reach one library, or null when it still needs a credential. */
+export function connectionFor(id: string, context: ConnectionContext): LibraryConnection | null {
+	const env = context.path ? { PATH: context.path } : undefined
 	switch (id) {
 		case "shadcn":
 			return {
-				type: "local",
-				command: [context.npx, "-y", SHADCN_PACKAGE, "mcp", "--cwd", context.shadcnDir],
-				...(environment ? { environment } : {}),
-				enabled: true,
-				timeout: TIMEOUT_MS,
+				kind: "stdio",
+				command: context.npx,
+				args: ["-y", SHADCN_PACKAGE, "mcp", "--cwd", context.shadcnDir],
+				...(env ? { env } : {}),
 			}
 		case "aceternity":
-			return {
-				type: "local",
-				command: [context.npx, "-y", ACETERNITY_PACKAGE],
-				...(environment ? { environment } : {}),
-				enabled: true,
-				timeout: TIMEOUT_MS,
-			}
+			return { kind: "stdio", command: context.npx, args: ["-y", ACETERNITY_PACKAGE], ...(env ? { env } : {}) }
 		case "lazyweb":
 			if (!context.credential) return null
 			return {
-				type: "remote",
+				kind: "http",
 				url: "https://www.lazyweb.com/mcp",
 				headers: { Authorization: `Bearer ${context.credential}` },
-				enabled: true,
-				timeout: TIMEOUT_MS,
 			}
 		case "gummble":
-			// OpenCode runs the OAuth flow and keeps the tokens; no header here.
-			return { type: "remote", url: "https://mcp.gummble.com/mcp", enabled: true, timeout: TIMEOUT_MS }
+			// The sign-in's tokens ride on the connection's own sign-in support, not a header.
+			return { kind: "http", url: "https://mcp.gummble.com/mcp" }
 		case "twentyfirst":
 			if (!context.credential) return null
-			return {
-				type: "remote",
-				url: "https://21st.dev/api/mcp",
-				headers: { "x-api-key": context.credential },
-				enabled: true,
-				timeout: TIMEOUT_MS,
-			}
+			return { kind: "http", url: "https://21st.dev/api/mcp", headers: { "x-api-key": context.credential } }
+		default:
+			return null
 	}
 }
 
@@ -203,31 +176,41 @@ export function shadcnComponentsJson(): string {
 	)}\n`
 }
 
-/**
- * The tool switches for a project: every library's tools off, then the allowed
- * read/search tools of the libraries that are usable right now back on. Globs
- * first, names after — the later key wins.
- */
-export function libraryToolPolicy(usable: ReadonlySet<LibraryId>): Record<string, boolean> {
-	const policy: Record<string, boolean> = {}
-	for (const library of LIBRARIES) policy[`${library.id}_*`] = false
-	for (const library of LIBRARIES) {
-		if (!usable.has(library.id)) continue
-		for (const tool of library.allowedTools) policy[`${library.id}_${tool}`] = true
+/** A library tool's name as Caret passes it on. */
+export function passedOnName(libraryId: string, tool: string): string {
+	return `${libraryId}_${tool}`
+}
+
+/** Which library a passed-on tool belongs to, and its own name there; null for Caret's own tools. */
+export function splitPassedOnName(
+	name: string,
+	libraries: readonly LibraryDefinition[],
+): { library: LibraryDefinition; tool: string } | null {
+	for (const library of libraries) {
+		if (!name.startsWith(`${library.id}_`)) continue
+		const tool = name.slice(library.id.length + 1)
+		if (library.allowedTools.includes(tool)) return { library, tool }
 	}
-	return policy
+	return null
 }
 
-/** Which library a prefixed tool name belongs to (`lazyweb_lazyweb_execute` → lazyweb). */
-export function libraryOfTool(tool: string): LibraryId | null {
-	const library = LIBRARIES.find((l) => tool.startsWith(`${l.id}_`))
-	return library?.id ?? null
-}
-
-/** Whether a prefixed tool belongs to a component library or an inspiration library. */
-export function kindOfLibraryTool(tool: string): "components" | "inspiration" | null {
-	const id = libraryOfTool(tool)
-	return id ? (libraryById(id)?.kind ?? null) : null
+/**
+ * A tool's input format, made safe to pass on. Anthropic refuses a WHOLE turn
+ * when any one tool's input format has `oneOf`, `anyOf` or `allOf` at the top
+ * level (measured on Lazyweb's server), so those are folded into one plain
+ * object: every variant's fields, none of them required. The library still
+ * checks its own input and says what was wrong.
+ */
+export function safeInputSchema(schema: unknown): Record<string, unknown> {
+	const input = schema && typeof schema === "object" ? (schema as Record<string, unknown>) : {}
+	const variants = ["oneOf", "anyOf", "allOf"].flatMap((key) =>
+		Array.isArray(input[key]) ? (input[key] as Array<Record<string, unknown>>) : [],
+	)
+	if (variants.length === 0) return { ...input, type: "object" }
+	const { oneOf: _o, anyOf: _a, allOf: _l, required: _r, ...rest } = input
+	const properties: Record<string, unknown> = { ...((input.properties as Record<string, unknown>) ?? {}) }
+	for (const variant of variants) Object.assign(properties, (variant?.properties as Record<string, unknown>) ?? {})
+	return { ...rest, type: "object", properties }
 }
 
 /**
@@ -247,4 +230,23 @@ export function isLibraryOutage(error: string): "rate-limit" | "auth" | "unavail
 		return "unavailable"
 	}
 	return null
+}
+
+/**
+ * The paragraph in the AI's rules that suggests searching the libraries, or
+ * null when no library is on: then the rules don't mention libraries at all.
+ * A suggestion only: nothing checks that a search happened.
+ */
+export function librarySearchParagraph(on: ReadonlyArray<Pick<LibraryDefinition, "id" | "name" | "kind">>): string | null {
+	if (on.length === 0) return null
+	const components = on.filter((library) => library.kind === "components")
+	const references = on.filter((library) => library.kind === "inspiration")
+	const named = (list: typeof on) => list.map((library) => `${library.name} (tools named \`${library.id}_…\`)`).join(", ")
+	const lines = ["When you create a page, first search these libraries for things you can use."]
+	if (components.length) lines.push(`Components: ${named(components)}.`)
+	if (references.length) lines.push(`References: ${named(references)}.`)
+	lines.push(
+		"Use what fits the page and build the rest yourself. The project's foundation (fonts, colours, spacing) wins over a component's own styles.",
+	)
+	return lines.join(" ")
 }

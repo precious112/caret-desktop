@@ -106,11 +106,13 @@ export async function launchApp(options: {
 	logFile: string
 	env?: Record<string, string>
 }): Promise<LaunchedApp> {
+	// Opened first, so nothing awaits between the process starting and the
+	// listeners attaching: the app's earliest lines were sometimes lost.
+	const log = await fs.open(options.logFile, "a")
 	const app = await electron.launch({
 		args: [path.resolve("out/main/index.js"), `--user-data-dir=${options.userData}`, options.project],
 		env: { ...process.env, NODE_ENV: "test", CARET_DISABLE_TELEMETRY: "1", ...options.env },
 	})
-	const log = await fs.open(options.logFile, "a")
 	app.process().stdout?.on("data", (chunk) => void log.write(chunk))
 	app.process().stderr?.on("data", (chunk) => void log.write(chunk))
 	app.on("close", () => void log.write(`\n[test] the app process exited at ${new Date().toISOString()}\n`))

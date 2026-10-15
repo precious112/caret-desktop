@@ -39,7 +39,6 @@ import {
 	withDerivedScales,
 	writeFoundationTokens,
 } from "../../src/core/design"
-import { type LibraryId, libraryById } from "../../src/core/design/libraries/catalog"
 import { Logger } from "../../src/shared/services/Logger"
 import type { AssetRequestWire, ComposerImage, IpcRequestChannel, IpcRequests } from "../shared/ipc"
 import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps } from "../shared/telemetry"
@@ -62,7 +61,7 @@ import {
 	requestTakes,
 } from "./generate-assets"
 import { answerInterviewPrompt, currentPrompt } from "./interview"
-import { designLibraries } from "./libraries/libraries"
+import { libraryHub } from "./libraries/libraries"
 import { refreshMenu } from "./menu"
 import { forgetRecentProject, getPrefs, setPref, setPrefs } from "./prefs"
 import { regenerateRulesFiles } from "./rules/generate"
@@ -722,11 +721,6 @@ export function registerIpcHandlers(windows: WindowManager): void {
 	handle("agent:send", (_event, projectPath: string, text: string, images?: string[]) => {
 		const agent = windows.get(projectPath)?.getAgent()
 		if (!agent) return
-		// Library search tools reach the plain chat too (used only when asked);
-		// re-adding what an instance reset dropped is one status read when nothing is missing.
-		void designLibraries()
-			.ensure(projectPath)
-			.catch(() => {})
 		void agent.conversation.sendMessage(text, images).catch((err) => {
 			agent.conversation.note(err instanceof Error ? err.message : String(err))
 		})
@@ -779,21 +773,21 @@ export function registerIpcHandlers(windows: WindowManager): void {
 
 	// ── component and reference libraries ─────────────────────────────────────
 
-	handle("libraries:list", (_event, projectPath: string | null) => designLibraries().list(projectPath))
+	handle("libraries:list", () => libraryHub().list())
 
 	handle("libraries:set", async (_event, id: string, on: boolean) => {
-		if (!libraryById(id)) return
-		await designLibraries().setEnabled(id as LibraryId, on)
+		if (!libraryHub().definition(id)) return
+		await libraryHub().setEnabled(id, on)
 	})
 
-	handle("libraries:setKey", (_event, projectPath: string | null, id: string, key: string) => {
-		if (!libraryById(id)) return { ok: false as const, error: "Unknown library." }
-		return designLibraries().setKey(projectPath, id as LibraryId, key)
+	handle("libraries:setKey", (_event, _projectPath: string | null, id: string, key: string) => {
+		if (!libraryHub().definition(id)) return { ok: false as const, error: "Unknown library." }
+		return libraryHub().setKey(id, key)
 	})
 
-	handle("libraries:signIn", (_event, projectPath: string, id: string) => {
-		if (!libraryById(id)) return { ok: false as const, error: "Unknown library." }
-		return designLibraries().signIn(projectPath, id as LibraryId)
+	handle("libraries:signIn", (_event, _projectPath: string, id: string) => {
+		if (!libraryHub().definition(id)) return { ok: false as const, error: "Unknown library." }
+		return libraryHub().signIn(id)
 	})
 
 	handle("agent:setMode", (_event, projectPath: string, mode: "read-only" | "write", steering?: string) => {

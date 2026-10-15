@@ -19,6 +19,8 @@ import type { InstallOutcome } from "../../../src/core/design/catalog/registry-i
 import { Logger } from "../../../src/shared/services/Logger"
 import { capture } from "../analytics"
 import { cancelInterviewPrompts, type InterviewPrompt } from "../interview"
+import { libraryHub } from "../libraries/libraries"
+import { passLibrariesOn } from "../libraries/pass-on"
 import type { ScreenshotResult } from "../types"
 import { authorize, generateToken } from "./auth"
 import { clearDiscovery, writeDiscovery } from "./discovery"
@@ -178,6 +180,10 @@ export class CaretMcpServer {
 				}) as never,
 			)
 		}
+
+		// The component and reference libraries, passed on: Caret's chat and any
+		// coding tool connected to Caret see the same ones, and keys stay here.
+		passLibrariesOn(mcp, libraryHub())
 	}
 
 	private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {

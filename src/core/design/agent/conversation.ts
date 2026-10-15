@@ -711,10 +711,12 @@ export class AgentConversation {
 
 	async abort(): Promise<void> {
 		this.stopRequested = true
+		Logger.info(`[agent] Stop pressed (streaming: ${this.streaming}, session: ${this.session ? "open" : "none"})`)
 		emitDesignEvent("agent_turn_aborted", { kind: this.activity?.kind ?? "chat" })
 		await this.session?.abort()
 		this.streaming = false
 		this.push(true)
+		Logger.info("[agent] Stop done: the chat is free")
 	}
 
 	/**

@@ -453,7 +453,7 @@ export interface GeneratedProvenanceWire {
 
 /** One component or reference library's row. */
 export interface LibraryWire {
-	id: "shadcn" | "aceternity" | "lazyweb" | "gummble" | "twentyfirst"
+	id: string
 	name: string
 	gives: string
 	kind: "components" | "inspiration"

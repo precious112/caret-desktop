@@ -1,6 +1,6 @@
 import { strict as assert } from "assert"
 
-import { ANSWER_AGENT, answerSetup, setOpencodeToolPolicy } from "../index"
+import { ANSWER_AGENT, answerSetup } from "../index"
 
 /**
  * One-off answers run as Caret's lean agent, whose own short prompt replaces
@@ -10,10 +10,8 @@ import { ANSWER_AGENT, answerSetup, setOpencodeToolPolicy } from "../index"
  */
 describe("what each one-off answer runs as", () => {
 	const base = { workingDirectory: "/p", prompt: "x", schema: {} }
-	before(() => setOpencodeToolPolicy(() => ({ "shadcn_*": false, shadcn_search_items_in_registries: true })))
-	after(() => setOpencodeToolPolicy(() => ({})))
 
-	it("a plain answer: the lean agent, no tools, and none of the libraries", () => {
+	it("a plain answer: the lean agent, no tools", () => {
 		const setup = answerSetup(base)
 		assert.equal(setup.agent, ANSWER_AGENT)
 		assert.deepEqual(setup.tools, {})
@@ -23,10 +21,9 @@ describe("what each one-off answer runs as", () => {
 		assert.deepEqual(answerSetup({ ...base, reads: true }).tools, { read: true, glob: true, grep: true, list: true })
 	})
 
-	it("an answer that needs tools: the lean agent with the project's library allowlist and the tools it asks for", () => {
+	it("an answer that needs tools: the lean agent with exactly the tools it asks for", () => {
 		const setup = answerSetup({ ...base, allowTools: true, tools: { caret_view_reference: true } })
 		assert.equal(setup.agent, ANSWER_AGENT)
-		assert.equal(setup.tools.shadcn_search_items_in_registries, true)
-		assert.equal(setup.tools.caret_view_reference, true)
+		assert.deepEqual(setup.tools, { caret_view_reference: true })
 	})
 })
