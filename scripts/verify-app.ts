@@ -4326,9 +4326,23 @@ export default function CatalogDemo() {
 		assert(tokens.border?.focusRing?.color === "#7c3aed", "the focus ring did not follow the brand")
 
 		// Back on the view, the new swatch is what renders.
-		await chrome.waitForSelector('[data-testid="ds-section-color"]', { timeout: 20_000 })
-		const colorText = await chrome.textContent('[data-testid="ds-section-color"]')
-		assert(colorText?.includes("#7c3aed"), "the DS view did not re-read the saved seed")
+		// Waited for, not read once: the file lands before the view re-reads it,
+		// and a single read raced that (failed twice, passed on the next run). A
+		// view that never re-reads still fails here, after 15 seconds.
+		let colorText: string | null = null
+		await waitFor(
+			"the DS view to show the saved seed",
+			async () => {
+				colorText = await chrome.textContent('[data-testid="ds-section-color"]').catch(() => null)
+				return colorText?.includes("#7c3aed") ? true : null
+			},
+			15_000,
+			async () => `the colour section reads: ${(colorText ?? "(missing)").slice(0, 300)}`,
+		).catch(() => {
+			throw new Error(
+				`the DS view did not re-read the saved seed; the colour section reads: ${(colorText ?? "(missing)").slice(0, 300)}`,
+			)
+		})
 
 		// Leave the surface where the suite expects it.
 		await chrome.getByTestId("top-bar").getByRole("button", { name: "Foundation" }).click()
@@ -5214,7 +5228,19 @@ export default function CatalogDemo() {
 
 		if (!bookmark) {
 			const transcript = (await chrome.textContent('[data-testid="chat-transcript"]').catch(() => null)) ?? ""
-			throw new Inconclusive(`the model was still working after 7 minutes; last of the chat: …${transcript.slice(-400)}`)
+			// Stop the turn, as a person giving up would. Left running, it holds the
+			// chat busy (Stop where Send should be), and the next scenario that types
+			// in the chat fails on a turn that isn't its own: dq timed out on this.
+			const stop = chrome.getByTestId("chat-stop")
+			if (await stop.count()) await stop.click().catch(() => {})
+			const stopped = await waitFor(
+				"the chat to be free after stopping the apply turn",
+				async () => (await chrome.getByTestId("chat-stop").count()) === 0,
+				60_000,
+			).catch(() => false)
+			throw new Inconclusive(
+				`the model was still working after 7 minutes${stopped ? " (stopped, so the chat is free for what follows)" : "; Stop did not free the chat"}; last of the chat: …${transcript.slice(-400)}`,
+			)
 		}
 
 		// This half *is* Caret's, and stays a hard failure: the bookmark may only

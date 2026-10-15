@@ -1,547 +1,548 @@
 {
-	"model": "opencode-go/gpt-5.6-luna",
-	"groups": [
-		{
-			"name": "Warm cream background",
-			"ids": [
-				"claude-cream-offwhite-background",
-				"any-cream-terracotta"
-			]
-		},
-		{
-			"name": "Terracotta accent",
-			"ids": [
-				"claude-terracotta-clay-accent"
-			]
-		},
-		{
-			"name": "Serif display hero",
-			"ids": [
-				"claude-serif-display-headline",
-				"gpt-massive-display-serif-hero"
-			]
-		},
-		{
-			"name": "Italic accent word",
-			"ids": [
-				"claude-italic-accent-word",
-				"any-italic-serif-accent-word"
-			]
-		},
-		{
-			"name": "Eyebrow labels",
-			"ids": [
-				"claude-allcaps-tracked-eyebrow",
-				"gpt-eyebrow-kicker-above-heading",
-				"any-eyebrow-every-section"
-			]
-		},
-		{
-			"name": "Monospace labels",
-			"ids": [
-				"claude-monospace-labels"
-			]
-		},
-		{
-			"name": "Numbered section labels",
-			"ids": [
-				"claude-numbered-section-labels",
-				"gpt-numbered-meta-labels",
-				"any-numbered-section-labels"
-			]
-		},
-		{
-			"name": "Pill buttons",
-			"ids": [
-				"claude-pill-buttons"
-			]
-		},
-		{
-			"name": "Pulsing status dots",
-			"ids": [
-				"claude-pulsing-status-dot",
-				"any-motion-tells"
-			]
-		},
-		{
-			"name": "Coloured glow effects",
-			"ids": [
-				"claude-glow-effects",
-				"any-colored-glow",
-				"minimax-neon-glow-gradient-text-black"
-			]
-		},
-		{
-			"name": "Near-black neon theme",
-			"ids": [
-				"claude-near-black-single-neon-accent",
-				"any-near-black-acid-accent"
-			]
-		},
-		{
-			"name": "Tinted near-black",
-			"ids": [
-				"claude-tinted-near-black"
-			]
-		},
-		{
-			"name": "Broadsheet layout",
-			"ids": [
-				"claude-broadsheet-layout"
-			]
-		},
-		{
-			"name": "Default card grids",
-			"ids": [
-				"claude-saas-card-kit",
-				"gpt-cards-everywhere"
-			]
-		},
-		{
-			"name": "Nested cards",
-			"ids": [
-				"gpt-nested-cards-floating-sections",
-				"any-nested-cards",
-				"claude-container-soup"
-			]
-		},
-		{
-			"name": "Card side stripes",
-			"ids": [
-				"claude-card-side-accent-border",
-				"any-side-stripe-card"
-			]
-		},
-		{
-			"name": "Middle-dot metadata",
-			"ids": [
-				"claude-middot-meta-strings"
-			]
-		},
-		{
-			"name": "Em-dash copy",
-			"ids": [
-				"claude-em-dash-ui-copy",
-				"any-em-dash-copy",
-				"gpt-emoji-and-em-dashes"
-			]
-		},
-		{
-			"name": "Arrow CTAs",
-			"ids": [
-				"claude-arrow-appended-cta",
-				"gpt-text-buttons-and-glyph-arrows"
-			]
-		},
-		{
-			"name": "Aphoristic contrast copy",
-			"ids": [
-				"claude-contrast-aphorism-copy",
-				"any-aphoristic-cadence"
-			]
-		},
-		{
-			"name": "Stat metrics",
-			"ids": [
-				"claude-big-number-stat-hero",
-				"gpt-stat-strip-fake-metrics",
-				"any-stat-banner"
-			]
-		},
-		{
-			"name": "Universal fade-up motion",
-			"ids": [
-				"claude-fade-up-every-section",
-				"gemini-fade-slide-everything"
-			]
-		},
-		{
-			"name": "Purple-indigo gradients",
-			"ids": [
-				"claude-purple-gradient-legacy",
-				"gpt-purple-indigo-gradient-default",
-				"any-vibecode-purple",
-				"gemini-indigo-gradient-on-slate-900",
-				"minimax-ai-purple-blue"
-			]
-		},
-		{
-			"name": "Default sans font",
-			"ids": [
-				"claude-inter-default-font",
-				"gpt-inter-default-sans",
-				"any-inter-everywhere",
-				"gemini-generic-sans-inter",
-				"minimax-inter-font"
-			]
-		},
-		{
-			"name": "Centered hero with three cards",
-			"ids": [
-				"claude-centered-hero-three-cards",
-				"gpt-three-equal-feature-cards",
-				"gemini-centered-hero-three-cards"
-			]
-		},
-		{
-			"name": "Teal accent",
-			"ids": [
-				"claude-teal-accent"
-			]
-		},
-		{
-			"name": "Ticker bars",
-			"ids": [
-				"claude-ticker-bars"
-			]
-		},
-		{
-			"name": "Lucide icons",
-			"ids": [
-				"claude-lucide-icons"
-			]
-		},
-		{
-			"name": "Noise grain texture",
-			"ids": [
-				"claude-noise-grain-texture"
-			]
-		},
-		{
-			"name": "Dark brown theme",
-			"ids": [
-				"claude-brown-anthracite-dark"
-			]
-		},
-		{
-			"name": "Font size sprawl",
-			"ids": [
-				"claude-font-size-sprawl"
-			]
-		},
-		{
-			"name": "Tight display leading",
-			"ids": [
-				"claude-tight-display-leading"
-			]
-		},
-		{
-			"name": "Humanist sans body",
-			"ids": [
-				"claude-humanist-sans-body"
-			]
-		},
-		{
-			"name": "Half-width hero text",
-			"ids": [
-				"claude-half-width-hero-text"
-			]
-		},
-		{
-			"name": "Generic SaaS copy",
-			"ids": [
-				"claude-generic-saas-copy",
-				"gpt-buzzword-saas-copy",
-				"any-buzzword-copy",
-				"gemini-corporate-filler-copy"
-			]
-		},
-		{
-			"name": "Overexplained microcopy",
-			"ids": [
-				"claude-overexplaining-microcopy"
-			]
-		},
-		{
-			"name": "Emoji icons",
-			"ids": [
-				"claude-emoji-icons",
-				"any-emoji-icons",
-				"minimax-emoji-icons"
-			]
-		},
-		{
-			"name": "One-hue palettes",
-			"ids": [
-				"gpt-one-note-palette-cream-slate-espresso"
-			]
-		},
-		{
-			"name": "Baby-blue accent",
-			"ids": [
-				"gpt-baby-blue-bright-blue-accent"
-			]
-		},
-		{
-			"name": "Dark SaaS accent theme",
-			"ids": [
-				"gpt-dark-saas-theme-one-accent"
-			]
-		},
-		{
-			"name": "Oversized hero headline",
-			"ids": [
-				"gpt-oversized-hero-headline"
-			]
-		},
-		{
-			"name": "Negative heading tracking",
-			"ids": [
-				"gpt-negative-letter-spacing"
-			]
-		},
-		{
-			"name": "Pill and badge clutter",
-			"ids": [
-				"gpt-pill-chip-badge-clutter"
-			]
-		},
-		{
-			"name": "Gradient orbs and halos",
-			"ids": [
-				"gpt-gradient-orbs-bokeh-glow",
-				"any-radial-halo-aurora"
-			]
-		},
-		{
-			"name": "Decorative UI gradients",
-			"ids": [
-				"gpt-decorative-gradients-product-ui",
-				"any-gradient-everything",
-				"gemini-sneaks-subtle-gradient"
-			]
-		},
-		{
-			"name": "Abstract hero artwork",
-			"ids": [
-				"gpt-abstract-svg-hero-not-imagery"
-			]
-		},
-		{
-			"name": "Atmospheric hero media",
-			"ids": [
-				"gpt-dark-blurred-atmospheric-media"
-			]
-		},
-		{
-			"name": "Glassmorphism",
-			"ids": [
-				"gpt-glassmorphism-glass-nav",
-				"any-glassmorphism"
-			]
-		},
-		{
-			"name": "Over-rounded surfaces",
-			"ids": [
-				"gpt-over-rounded-corners"
-			]
-		},
-		{
-			"name": "Soft card shadows",
-			"ids": [
-				"gpt-soft-dramatic-shadows"
-			]
-		},
-		{
-			"name": "Grid backgrounds",
-			"ids": [
-				"gpt-grid-pattern-background",
-				"any-grid-line-background"
-			]
-		},
-		{
-			"name": "Bento grids",
-			"ids": [
-				"gpt-bento-grid-and-gaps",
-				"any-bento-grid"
-			]
-		},
-		{
-			"name": "UI-explaining copy",
-			"ids": [
-				"gpt-explanatory-ui-copy-prompt-leak"
-			]
-		},
-		{
-			"name": "Marketing inside products",
-			"ids": [
-				"gpt-marketing-hero-in-product-ui"
-			]
-		},
-		{
-			"name": "Fragmented taglines",
-			"ids": [
-				"gpt-tagline-fragment-cadence"
-			]
-		},
-		{
-			"name": "Weak brand presence",
-			"ids": [
-				"gpt-weak-brand-presence"
-			]
-		},
-		{
-			"name": "Ornamental icon rows",
-			"ids": [
-				"gpt-icon-rows-ornamental-icons"
-			]
-		},
-		{
-			"name": "Repeated template",
-			"ids": [
-				"gpt-same-template-low-variance"
-			]
-		},
-		{
-			"name": "Underdesigned static output",
-			"ids": [
-				"gpt-safe-underdesigned-no-motion"
-			]
-		},
-		{
-			"name": "Three-tier pricing",
-			"ids": [
-				"gpt-pricing-three-tier-middle-highlight"
-			]
-		},
-		{
-			"name": "Dashboard card mosaic",
-			"ids": [
-				"gpt-dashboard-card-mosaic"
-			]
-		},
-		{
-			"name": "Confetti overuse",
-			"ids": [
-				"gpt-confetti-overuse"
-			]
-		},
-		{
-			"name": "Circular design elements",
-			"ids": [
-				"gpt-circular-design-elements"
-			]
-		},
-		{
-			"name": "Tasteful AI font set",
-			"ids": [
-				"any-tasteful-slop-fonts"
-			]
-		},
-		{
-			"name": "Gradient headline text",
-			"ids": [
-				"any-gradient-text-headline"
-			]
-		},
-		{
-			"name": "Centered hero",
-			"ids": [
-				"any-centered-hero",
-				"minimax-centered-hero"
-			]
-		},
-		{
-			"name": "Hero badge",
-			"ids": [
-				"any-badge-above-h1"
-			]
-		},
-		{
-			"name": "Feature card icon tiles",
-			"ids": [
-				"any-icon-tile-feature-cards"
-			]
-		},
-		{
-			"name": "Numbered steps",
-			"ids": [
-				"any-numbered-steps"
-			]
-		},
-		{
-			"name": "Untouched component defaults",
-			"ids": [
-				"any-shadcn-tailwind-defaults"
-			]
-		},
-		{
-			"name": "Fake window chrome",
-			"ids": [
-				"any-fake-window-chrome"
-			]
-		},
-		{
-			"name": "Generic SaaS navigation",
-			"ids": [
-				"any-ai-nav-footer"
-			]
-		},
-		{
-			"name": "Testimonial placeholder avatars",
-			"ids": [
-				"any-gradient-letter-avatars"
-			]
-		},
-		{
-			"name": "Hairline borders and shadows",
-			"ids": [
-				"any-hairline-border-wide-shadow"
-			]
-		},
-		{
-			"name": "Placeholder names",
-			"ids": [
-				"any-placeholder-names"
-			]
-		},
-		{
-			"name": "Minimalist homogenization",
-			"ids": [
-				"any-minimalist-western-homogenization"
-			]
-		},
-		{
-			"name": "White and blue default",
-			"ids": [
-				"any-white-bg-blue-cta"
-			]
-		},
-		{
-			"name": "Material 3 pastel residue",
-			"ids": [
-				"gemini-material3-google-sans-pastel"
-			]
-		},
-		{
-			"name": "Gold-yellow palette",
-			"ids": [
-				"gemini-gold-yellow-palette"
-			]
-		},
-		{
-			"name": "Same-colour text failures",
-			"ids": [
-				"gemini-same-colour-text-on-bg"
-			]
-		},
-		{
-			"name": "Terminal aesthetic",
-			"ids": [
-				"deepseek-terminal-aesthetic"
-			]
-		},
-		{
-			"name": "Hero with a floating product-preview card or dashboard mock",
-			"ids": [
-				"gpt-hero-floating-preview-card"
-			]
-		},
-		{
-			"name": "Permanent dark mode with medium-grey body text (barely passing contrast)",
-			"ids": [
-				"any-perma-dark-grey-text"
-			]
-		}
-	]
+  "model": "opencode-go/gpt-5.6-luna",
+  "groups": [
+    {
+      "name": "Warm cream background",
+      "ids": [
+        "claude-cream-offwhite-background",
+        "any-cream-terracotta"
+      ]
+    },
+    {
+      "name": "Terracotta accent",
+      "ids": [
+        "claude-terracotta-clay-accent"
+      ]
+    },
+    {
+      "name": "Serif display hero",
+      "ids": [
+        "claude-serif-display-headline",
+        "gpt-massive-display-serif-hero"
+      ]
+    },
+    {
+      "name": "Italic accent word",
+      "ids": [
+        "claude-italic-accent-word",
+        "any-italic-serif-accent-word"
+      ]
+    },
+    {
+      "name": "Eyebrow labels",
+      "ids": [
+        "claude-allcaps-tracked-eyebrow",
+        "gpt-eyebrow-kicker-above-heading",
+        "any-eyebrow-every-section"
+      ]
+    },
+    {
+      "name": "Monospace labels",
+      "ids": [
+        "claude-monospace-labels"
+      ]
+    },
+    {
+      "name": "Numbered section labels",
+      "ids": [
+        "claude-numbered-section-labels",
+        "gpt-numbered-meta-labels",
+        "any-numbered-section-labels"
+      ]
+    },
+    {
+      "name": "Pill buttons",
+      "ids": [
+        "claude-pill-buttons"
+      ]
+    },
+    {
+      "name": "Pulsing status dots",
+      "ids": [
+        "claude-pulsing-status-dot",
+        "any-motion-tells"
+      ]
+    },
+    {
+      "name": "Coloured glow effects",
+      "ids": [
+        "claude-glow-effects",
+        "any-colored-glow",
+        "minimax-neon-glow-gradient-text-black"
+      ]
+    },
+    {
+      "name": "Near-black neon theme",
+      "ids": [
+        "claude-near-black-single-neon-accent",
+        "any-near-black-acid-accent"
+      ]
+    },
+    {
+      "name": "Tinted near-black",
+      "ids": [
+        "claude-tinted-near-black"
+      ]
+    },
+    {
+      "name": "Broadsheet layout",
+      "ids": [
+        "claude-broadsheet-layout"
+      ]
+    },
+    {
+      "name": "Default card grids",
+      "ids": [
+        "claude-saas-card-kit",
+        "gpt-cards-everywhere"
+      ]
+    },
+    {
+      "name": "Nested cards",
+      "ids": [
+        "gpt-nested-cards-floating-sections",
+        "any-nested-cards",
+        "claude-container-soup"
+      ]
+    },
+    {
+      "name": "Card side stripes",
+      "ids": [
+        "claude-card-side-accent-border",
+        "any-side-stripe-card"
+      ]
+    },
+    {
+      "name": "Middle-dot metadata",
+      "ids": [
+        "claude-middot-meta-strings"
+      ]
+    },
+    {
+      "name": "Em-dash copy",
+      "ids": [
+        "claude-em-dash-ui-copy",
+        "any-em-dash-copy",
+        "gpt-emoji-and-em-dashes"
+      ]
+    },
+    {
+      "name": "Arrow CTAs",
+      "ids": [
+        "claude-arrow-appended-cta",
+        "gpt-text-buttons-and-glyph-arrows"
+      ]
+    },
+    {
+      "name": "Aphoristic contrast copy",
+      "ids": [
+        "claude-contrast-aphorism-copy",
+        "any-aphoristic-cadence"
+      ]
+    },
+    {
+      "name": "Stat metrics",
+      "ids": [
+        "claude-big-number-stat-hero",
+        "gpt-stat-strip-fake-metrics",
+        "any-stat-banner"
+      ]
+    },
+    {
+      "name": "Universal fade-up motion",
+      "ids": [
+        "claude-fade-up-every-section",
+        "gemini-fade-slide-everything"
+      ]
+    },
+    {
+      "name": "Purple-indigo gradients",
+      "ids": [
+        "claude-purple-gradient-legacy",
+        "gpt-purple-indigo-gradient-default",
+        "any-vibecode-purple",
+        "gemini-indigo-gradient-on-slate-900",
+        "minimax-ai-purple-blue"
+      ]
+    },
+    {
+      "name": "Default sans font",
+      "ids": [
+        "claude-inter-default-font",
+        "gpt-inter-default-sans",
+        "any-inter-everywhere",
+        "gemini-generic-sans-inter",
+        "minimax-inter-font"
+      ]
+    },
+    {
+      "name": "Centered hero with three cards",
+      "ids": [
+        "claude-centered-hero-three-cards",
+        "gpt-three-equal-feature-cards",
+        "gemini-centered-hero-three-cards"
+      ]
+    },
+    {
+      "name": "Teal accent",
+      "ids": [
+        "claude-teal-accent"
+      ]
+    },
+    {
+      "name": "Ticker bars",
+      "ids": [
+        "claude-ticker-bars"
+      ]
+    },
+    {
+      "name": "Lucide icons",
+      "ids": [
+        "claude-lucide-icons"
+      ]
+    },
+    {
+      "name": "Noise grain texture",
+      "ids": [
+        "claude-noise-grain-texture"
+      ]
+    },
+    {
+      "name": "Dark brown theme",
+      "ids": [
+        "claude-brown-anthracite-dark"
+      ]
+    },
+    {
+      "name": "Font size sprawl",
+      "ids": [
+        "claude-font-size-sprawl"
+      ]
+    },
+    {
+      "name": "Tight display leading",
+      "ids": [
+        "claude-tight-display-leading"
+      ]
+    },
+    {
+      "name": "Humanist sans body",
+      "ids": [
+        "claude-humanist-sans-body"
+      ]
+    },
+    {
+      "name": "Half-width hero text",
+      "ids": [
+        "claude-half-width-hero-text"
+      ]
+    },
+    {
+      "name": "Generic SaaS copy",
+      "ids": [
+        "claude-generic-saas-copy",
+        "gpt-buzzword-saas-copy",
+        "any-buzzword-copy",
+        "gemini-corporate-filler-copy"
+      ]
+    },
+    {
+      "name": "Overexplained microcopy",
+      "ids": [
+        "claude-overexplaining-microcopy"
+      ]
+    },
+    {
+      "name": "Emoji icons",
+      "ids": [
+        "claude-emoji-icons",
+        "any-emoji-icons",
+        "minimax-emoji-icons"
+      ]
+    },
+    {
+      "name": "One-hue palettes",
+      "ids": [
+        "gpt-one-note-palette-cream-slate-espresso"
+      ]
+    },
+    {
+      "name": "Baby-blue accent",
+      "ids": [
+        "gpt-baby-blue-bright-blue-accent"
+      ]
+    },
+    {
+      "name": "Dark SaaS accent theme",
+      "ids": [
+        "gpt-dark-saas-theme-one-accent"
+      ]
+    },
+    {
+      "name": "Oversized hero headline",
+      "ids": [
+        "gpt-oversized-hero-headline"
+      ]
+    },
+    {
+      "name": "Negative heading tracking",
+      "ids": [
+        "gpt-negative-letter-spacing"
+      ]
+    },
+    {
+      "name": "Pill and badge clutter",
+      "ids": [
+        "gpt-pill-chip-badge-clutter"
+      ]
+    },
+    {
+      "name": "Gradient orbs and halos",
+      "ids": [
+        "gpt-gradient-orbs-bokeh-glow",
+        "any-radial-halo-aurora"
+      ]
+    },
+    {
+      "name": "Decorative UI gradients",
+      "ids": [
+        "gpt-decorative-gradients-product-ui",
+        "any-gradient-everything",
+        "gemini-sneaks-subtle-gradient"
+      ]
+    },
+    {
+      "name": "Abstract hero artwork",
+      "ids": [
+        "gpt-abstract-svg-hero-not-imagery"
+      ]
+    },
+    {
+      "name": "Atmospheric hero media",
+      "ids": [
+        "gpt-dark-blurred-atmospheric-media"
+      ]
+    },
+    {
+      "name": "Glassmorphism",
+      "ids": [
+        "gpt-glassmorphism-glass-nav",
+        "any-glassmorphism"
+      ]
+    },
+    {
+      "name": "Over-rounded surfaces",
+      "ids": [
+        "gpt-over-rounded-corners"
+      ]
+    },
+    {
+      "name": "Soft card shadows",
+      "ids": [
+        "gpt-soft-dramatic-shadows"
+      ]
+    },
+    {
+      "name": "Grid backgrounds",
+      "ids": [
+        "gpt-grid-pattern-background",
+        "any-grid-line-background"
+      ]
+    },
+    {
+      "name": "Bento grids",
+      "ids": [
+        "gpt-bento-grid-and-gaps",
+        "any-bento-grid"
+      ]
+    },
+    {
+      "name": "UI-explaining copy",
+      "ids": [
+        "gpt-explanatory-ui-copy-prompt-leak"
+      ]
+    },
+    {
+      "name": "Marketing inside products",
+      "ids": [
+        "gpt-marketing-hero-in-product-ui"
+      ]
+    },
+    {
+      "name": "Fragmented taglines",
+      "ids": [
+        "gpt-tagline-fragment-cadence"
+      ]
+    },
+    {
+      "name": "Weak brand presence",
+      "ids": [
+        "gpt-weak-brand-presence"
+      ]
+    },
+    {
+      "name": "Ornamental icon rows",
+      "ids": [
+        "gpt-icon-rows-ornamental-icons"
+      ]
+    },
+    {
+      "name": "Repeated template",
+      "ids": [
+        "gpt-same-template-low-variance"
+      ]
+    },
+    {
+      "name": "Underdesigned static output",
+      "ids": [
+        "gpt-safe-underdesigned-no-motion"
+      ]
+    },
+    {
+      "name": "Three-tier pricing",
+      "ids": [
+        "gpt-pricing-three-tier-middle-highlight"
+      ]
+    },
+    {
+      "name": "Dashboard card mosaic",
+      "ids": [
+        "gpt-dashboard-card-mosaic"
+      ]
+    },
+    {
+      "name": "Confetti overuse",
+      "ids": [
+        "gpt-confetti-overuse"
+      ]
+    },
+    {
+      "name": "Circular design elements",
+      "ids": [
+        "gpt-circular-design-elements"
+      ]
+    },
+    {
+      "name": "Tasteful AI font set",
+      "ids": [
+        "any-tasteful-slop-fonts"
+      ]
+    },
+    {
+      "name": "Gradient headline text",
+      "ids": [
+        "any-gradient-text-headline"
+      ]
+    },
+    {
+      "name": "Centered hero",
+      "ids": [
+        "any-centered-hero",
+        "minimax-centered-hero"
+      ]
+    },
+    {
+      "name": "Hero badge",
+      "ids": [
+        "any-badge-above-h1"
+      ]
+    },
+    {
+      "name": "Feature card icon tiles",
+      "ids": [
+        "any-icon-tile-feature-cards"
+      ]
+    },
+    {
+      "name": "Numbered steps",
+      "ids": [
+        "any-numbered-steps"
+      ]
+    },
+    {
+      "name": "Untouched component defaults",
+      "ids": [
+        "any-shadcn-tailwind-defaults"
+      ]
+    },
+    {
+      "name": "Fake window chrome",
+      "ids": [
+        "any-fake-window-chrome"
+      ]
+    },
+    {
+      "name": "Generic SaaS navigation",
+      "ids": [
+        "any-ai-nav-footer"
+      ]
+    },
+    {
+      "name": "Testimonial placeholder avatars",
+      "ids": [
+        "any-gradient-letter-avatars"
+      ]
+    },
+    {
+      "name": "Hairline borders and shadows",
+      "ids": [
+        "any-hairline-border-wide-shadow"
+      ]
+    },
+    {
+      "name": "Placeholder names",
+      "ids": [
+        "any-placeholder-names"
+      ]
+    },
+    {
+      "name": "Minimalist homogenization",
+      "ids": [
+        "any-minimalist-western-homogenization"
+      ]
+    },
+    {
+      "name": "White and blue default",
+      "ids": [
+        "any-white-bg-blue-cta",
+        "any-tailwind-stock-blue"
+      ]
+    },
+    {
+      "name": "Material 3 pastel residue",
+      "ids": [
+        "gemini-material3-google-sans-pastel"
+      ]
+    },
+    {
+      "name": "Gold-yellow palette",
+      "ids": [
+        "gemini-gold-yellow-palette"
+      ]
+    },
+    {
+      "name": "Same-colour text failures",
+      "ids": [
+        "gemini-same-colour-text-on-bg"
+      ]
+    },
+    {
+      "name": "Terminal aesthetic",
+      "ids": [
+        "deepseek-terminal-aesthetic"
+      ]
+    },
+    {
+      "name": "Hero with a floating product-preview card or dashboard mock",
+      "ids": [
+        "gpt-hero-floating-preview-card"
+      ]
+    },
+    {
+      "name": "Permanent dark mode with medium-grey body text (barely passing contrast)",
+      "ids": [
+        "any-perma-dark-grey-text"
+      ]
+    }
+  ]
 }

@@ -51,6 +51,23 @@ describe("overused defaults", () => {
 		}
 	})
 
+	it("Tailwind's stock blue and purple are flagged (field run: both reached the screen as recommendations)", () => {
+		for (const hex of ["#2563eb", "#a855f7"]) {
+			for (const area of ["brand-color", "secondary-color", "accent-color"] as const) {
+				assert.deepEqual(
+					flaggedOptions(area, [option(area, { hex })], nobody).length,
+					1,
+					`${hex} was not flagged as an overused default for ${area}`,
+				)
+			}
+		}
+		// The user's own choice is still theirs.
+		assert.deepEqual(
+			flaggedOptions("brand-color", [option("brand-color", { hex: "#2563eb" })], { ...nobody, colours: ["#2563eb"] }),
+			[],
+		)
+	})
+
 	it("ordinary choices are not flagged", () => {
 		const options = [option("display-type", { family: "Red Hat Display" }), option("display-type", { family: "Archivo" })]
 		assert.deepEqual(flaggedOptions("display-type", options, nobody), [])

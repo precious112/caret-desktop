@@ -1,5 +1,5 @@
 {
-	"entries": 127,
+	"entries": 128,
 	"habits": [
 		{
 			"id": "warm-cream-background",
@@ -409,6 +409,10 @@
 			],
 			"description": "Purple-to-blue or indigo-to-violet gradients on white hero sections.",
 			"colours": [
+				"#6366f1",
+				"#a855f7",
+				"#ec4899",
+				"#4f46e5",
 				"#0F172A"
 			],
 			"fonts": [],
@@ -1189,7 +1193,10 @@
 				"Untouched shadcn/ui + Tailwind defaults (rounded-2xl, shadow-lg, slate)"
 			],
 			"description": "Stock shadcn/ui components and Tailwind default tokens left as shipped.",
-			"colours": [],
+			"colours": [
+				"#0f172a",
+				"#f8fafc"
+			],
 			"fonts": [],
 			"radius": true,
 			"fewOptions": false
@@ -1293,15 +1300,20 @@
 		{
 			"id": "white-and-blue-default",
 			"name": "White and blue default",
-			"sources": 3,
+			"sources": 4,
 			"kinds": [
 				"foundation"
 			],
 			"terms": [
-				"White background with a blue CTA / blue accent"
+				"White background with a blue CTA / blue accent",
+				"Untouched Tailwind blue as the accent"
 			],
 			"description": "Plain white or slate-50 page with a single blue primary button.",
-			"colours": [],
+			"colours": [
+				"#f8fafc",
+				"#2563eb",
+				"#3b82f6"
+			],
 			"fonts": [],
 			"radius": false,
 			"fewOptions": false

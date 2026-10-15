@@ -389,7 +389,7 @@ function avoidLine(area: AreaId, user: UserChoices): string | null {
 export function areaUserPrompt(record: InterviewRecord, area: AreaId): string {
 	const state = deriveState(record)
 	const decided = decidedLines(record)
-	const correction = state.areas[area].correction
+	const { correction, clash } = state.areas[area]
 	const avoid = avoidLine(area, userChoicesFrom(record))
 	return [
 		productBlock(record),
@@ -402,6 +402,7 @@ export function areaUserPrompt(record: InterviewRecord, area: AreaId): string {
 					`On the opening screen they said this about ${AREAS[area].label} was not quite right: "${correction}". Take it into account.`,
 				]
 			: []),
+		...(clash ? ["", clash] : []),
 		...(avoid ? ["", avoid] : []),
 		"",
 		`Write the question about ${AREAS[area].label}.`,

@@ -9,7 +9,7 @@
 import { strict as assert } from "assert"
 
 import { AREA_ORDER, type AreaId } from "../areas"
-import { applyAnswer, deriveState, type InterviewRecord, InterviewRuleError, newRecord, stepBack } from "../state"
+import { applyAnswer, applyOpening, deriveState, type InterviewRecord, InterviewRuleError, newRecord, stepBack } from "../state"
 import {
 	answerNext,
 	type Choice,
@@ -99,6 +99,47 @@ describe("the interview record: every path", () => {
 			assert.equal(state.position.total, corrected.length)
 			checkRules(finishWithRecommendations(record))
 		}
+	})
+
+	it("reading an app: a supporting or accent colour too close to the brand reopens and gets its own question", () => {
+		// Field run: the app's supporting colour was #3730a3, the user then typed #3730a3 as the brand.
+		let record: InterviewRecord = {
+			...newRecord("from-app", "Next.js with Tailwind."),
+			opening: {
+				questionId: "opening",
+				statements: [
+					{ id: "s-brand", area: "brand-color", value: { hex: "#4f46e5" }, text: "Brand is indigo.", source: "a.css" },
+					{
+						id: "s-secondary",
+						area: "secondary-color",
+						value: { hex: "#3730a3" },
+						text: "Supporting is deep indigo.",
+						source: "a.css",
+					},
+					{
+						id: "s-accent",
+						area: "accent-color",
+						value: { hex: "#3a33a6" },
+						text: "Accent is indigo too.",
+						source: "a.css",
+					},
+				],
+			},
+		}
+		record = applyOpening(record, [{ statementId: "s-brand", verdict: "corrected", note: "Our brand is #3730a3." }])
+		checkRules(record)
+		// Before the brand is answered, the agreed supporting colour stands.
+		assert.equal(deriveState(record).areas["secondary-color"].status, "confirmed")
+		while (deriveState(record).next !== "brand-color") record = answerNext(record, { via: "skip" }).record
+		const before = record
+		const brand = answerNext(record, { via: "own", raw: { kind: "hex", hex: "#3730a3" } })
+		record = brand.record
+		checkRules(record, before, "brand-color")
+		const state = deriveState(record)
+		assert.equal(state.areas["secondary-color"].status, "open", "a supporting colour identical to the brand stayed settled")
+		assert.match(state.areas["secondary-color"].clash ?? "", /#3730a3/)
+		assert.equal(state.areas["accent-color"].status, "open", "an accent nearly identical to the brand stayed settled")
+		assert.equal(state.next, "secondary-color")
 	})
 
 	it("Back from every position, then the same answer again, gives the same result", () => {

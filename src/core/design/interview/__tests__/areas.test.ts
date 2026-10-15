@@ -127,10 +127,15 @@ describe("interview topics", () => {
 		}
 	})
 
+	it("the colour maths the screen shares imports nothing at all", () => {
+		const source = fs.readFileSync(path.join(__dirname, "../../design-pass/colour.ts"), "utf8")
+		assert.doesNotMatch(source, /^import /m, "design-pass/colour.ts now imports something; the screen loads it")
+	})
+
 	it("the files the screen shares import nothing the screen can't load", () => {
 		// The screen can't load Node modules, the engine's "@/" paths, or zod.
 		// A forbidden import here breaks the app's build, so it is caught early.
-		const allowed = new Set(["./areas", "./state", "./widgets", "../foundation-library/presets"])
+		const allowed = new Set(["./areas", "./state", "./widgets", "../foundation-library/presets", "../design-pass/colour"])
 		for (const file of ["areas.ts", "state.ts", "answers.ts"]) {
 			const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8")
 			for (const match of source.matchAll(/from\s+"([^"]+)"/g)) {

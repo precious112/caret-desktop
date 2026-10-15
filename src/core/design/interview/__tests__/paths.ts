@@ -8,7 +8,7 @@
  * test), so a mistake in the shared code can't hide by agreeing with itself.
  */
 import { strict as assert } from "assert"
-
+import { closeMatch, parseHex } from "../../design-pass/colour"
 import { type AreaQuestion, acceptAnswer, type OwnRaw, optionAnswer, ownAnswer, skipAnswer } from "../answers"
 import { AREA_ORDER, AREAS, type AreaId, type AreaValue, describeValue } from "../areas"
 import { finalizeProposal } from "../finalize"
@@ -127,6 +127,22 @@ export function expectedSettled(record: InterviewRecord): Map<AreaId, AreaValue>
 		}
 	}
 	for (const answer of record.answers) settled.set(answer.area, answer.value)
+	// An agreed supporting or accent colour that is the brand's (or the supporting colour's) twin is not settled.
+	const hexOf = (area: AreaId) => (settled.get(area) as { hex?: string } | undefined)?.hex
+	const near = (a?: string, b?: string) => {
+		const x = a ? parseHex(a) : null
+		const y = b ? parseHex(b) : null
+		return !!x && !!y && closeMatch(x, y) !== null
+	}
+	const answered = new Set(record.answers.map((a) => a.area))
+	if (!answered.has("secondary-color") && near(hexOf("secondary-color"), hexOf("brand-color")))
+		settled.delete("secondary-color")
+	if (
+		!answered.has("accent-color") &&
+		(near(hexOf("accent-color"), hexOf("brand-color")) || near(hexOf("accent-color"), hexOf("secondary-color")))
+	) {
+		settled.delete("accent-color")
+	}
 	return settled
 }
 

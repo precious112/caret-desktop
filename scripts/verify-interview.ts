@@ -37,6 +37,7 @@ import * as path from "path"
 import type { Page } from "playwright"
 
 import type { RecordedCall, Recording } from "../src/core/design/agent/replay"
+import { closeMatch, parseHex } from "../src/core/design/design-pass/colour"
 import { AREAS, type AreaId } from "../src/core/design/interview/areas"
 import { flaggedOptions, userChoicesFrom } from "../src/core/design/interview/defaults"
 import { describeApp } from "../src/core/design/interview/describe-app"
@@ -306,6 +307,15 @@ async function checkScreen(run: Run, screen: Screen): Promise<void> {
 	if (JSON.stringify(rows) !== JSON.stringify(wanted)) {
 		run.problems.push(`So far shows ${JSON.stringify(rows)}; the answers say ${JSON.stringify(wanted)}`)
 	}
+	// Every word of every line must be visible, not cut off with "…".
+	const cut = await chrome
+		.locator('[data-testid="wizard-so-far"] [data-area] *')
+		.evaluateAll((els) =>
+			els
+				.filter((el) => el.scrollWidth > el.clientWidth + 1)
+				.map((el) => `${el.closest("[data-area]")?.getAttribute("data-area")}: "${el.textContent}"`),
+		)
+	for (const line of new Set(cut)) run.problems.push(`So far cuts off ${line}`)
 }
 
 // ── acting like a person ────────────────────────────────────────────────────
@@ -815,6 +825,18 @@ const CASES: Case[] = [
 						run.problems.push(
 							`the brand typed after the correction (#3730a3) was saved as ${tokens.color?.brand?.seed}`,
 						)
+					}
+					// The app's darker indigo is #3730a3 too: typing it as the brand must
+					// not leave the foundation with the same colour twice.
+					const brand = parseHex(tokens.color?.brand?.seed ?? "")
+					for (const [name, seed] of [
+						["supporting colour", tokens.color?.secondary?.seed],
+						["accent colour", tokens.color?.accent?.seed],
+					] as const) {
+						const other = seed ? parseHex(seed) : null
+						if (brand && other && closeMatch(brand, other) !== null) {
+							run.problems.push(`the saved ${name} ${seed} is the same as the brand ${tokens.color.brand.seed}`)
+						}
 					}
 				},
 				{ sampleApp: true },

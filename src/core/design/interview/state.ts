@@ -10,6 +10,7 @@
  *
  * Shared with the screen: no Node, no `@/` aliases.
  */
+import { closeMatch, parseHex } from "../design-pass/colour"
 import {
 	AREA_ORDER,
 	AREAS,
@@ -73,6 +74,8 @@ export interface AreaStatus {
 	source?: string
 	/** What the user typed when they pressed "Not quite" on this topic's opening line. */
 	correction?: string
+	/** Why Caret reopened a colour agreed on the opening screen: it matched another colour. */
+	clash?: string
 }
 
 export interface SoFarRow {
@@ -158,6 +161,8 @@ export function deriveState(record: InterviewRecord): InterviewState {
 		}
 	}
 
+	reopenTwins(areas)
+
 	const openingDone = record.opening?.verdicts !== undefined
 	const next = openingDone ? (AREA_ORDER.find((area) => areas[area].status === "open") ?? null) : null
 	const stage = !openingDone ? "opening" : next ? "asking" : "ready"
@@ -190,6 +195,39 @@ export function deriveState(record: InterviewRecord): InterviewState {
 		})),
 		spec,
 		values: next === null && openingDone ? assembleValues(areas) : null,
+	}
+}
+
+/**
+ * A supporting or accent colour agreed on the opening screen that turns out
+ * to be the brand colour's twin (or, for the accent, the supporting colour's)
+ * is reopened, so it gets its own question. Field run: the app's supporting
+ * colour was #3730a3, the user then typed #3730a3 as the brand, and the
+ * foundation would have had the same colour twice.
+ */
+function reopenTwins(areas: Record<AreaId, AreaStatus>): void {
+	const hexOf = (area: AreaId) => (areas[area].value as { hex?: string } | undefined)?.hex
+	const near = (a?: string, b?: string) => {
+		const x = a ? parseHex(a) : null
+		const y = b ? parseHex(b) : null
+		return !!x && !!y && closeMatch(x, y) !== null
+	}
+	const bare = (area: AreaId) => AREAS[area].label.replace(/^(a|an|the) /, "")
+	const reopen = (area: AreaId, twin: AreaId) => {
+		const hex = hexOf(twin) as string
+		areas[area] = {
+			area,
+			label: AREAS[area].label,
+			status: "open",
+			clash: `The app's ${bare(area)} is the same as the ${bare(twin)}, ${hex}. Offer colours that look clearly different from it.`,
+		}
+	}
+	if (areas["secondary-color"].status === "confirmed" && near(hexOf("secondary-color"), hexOf("brand-color"))) {
+		reopen("secondary-color", "brand-color")
+	}
+	if (areas["accent-color"].status === "confirmed") {
+		if (near(hexOf("accent-color"), hexOf("brand-color"))) reopen("accent-color", "brand-color")
+		else if (near(hexOf("accent-color"), hexOf("secondary-color"))) reopen("accent-color", "secondary-color")
 	}
 }
 

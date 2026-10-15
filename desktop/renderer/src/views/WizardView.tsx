@@ -984,16 +984,17 @@ function SoFar({ state }: { state: InterviewState }) {
 			<dl className="mt-3 flex flex-col gap-1.5">
 				{state.soFar.map((row) => (
 					<div
-						className="flex items-center justify-between gap-2 text-[11.5px]"
+						className="flex items-start justify-between gap-2 text-[11.5px]"
 						data-area={row.area}
 						data-term={row.term}
 						key={row.area}>
-						<dt className="text-shell-muted">{row.term}</dt>
-						<dd className="flex min-w-0 items-center gap-1.5 truncate">
+						<dt className="shrink-0 text-shell-muted">{row.term}</dt>
+						{/* Long values (three status colours) wrap; a cut-off value hides the answer. */}
+						<dd className="flex min-w-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-0.5 text-right">
 							{row.swatches.map((hex) => (
 								<span className="inline-block size-3 shrink-0 rounded" key={hex} style={{ background: hex }} />
 							))}
-							<span className="truncate">{row.text}</span>
+							<span className="min-w-0 break-words">{row.text}</span>
 						</dd>
 					</div>
 				))}

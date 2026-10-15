@@ -48,6 +48,36 @@ const slug = (s: string) =>
 const isHex = (v: string) => /^#[0-9a-f]{3,8}$/i.test(v.trim())
 const isFontName = (v: string) => !isHex(v) && /^[A-Z][A-Za-z ]+$/.test(v)
 
+/**
+ * Tailwind's stock colours, for reports that name the class instead of the
+ * hex ("indigo-500", "from-indigo-500 via-purple-500 to-pink-500"). Without
+ * this the build kept only hexes and silently dropped them: Tailwind's purple
+ * and blue reached the interview as recommendations.
+ */
+const TAILWIND: Record<string, string> = {
+	"blue-500": "#3b82f6",
+	"blue-600": "#2563eb",
+	"indigo-500": "#6366f1",
+	"indigo-600": "#4f46e5",
+	"violet-500": "#8b5cf6",
+	"violet-600": "#7c3aed",
+	"purple-500": "#a855f7",
+	"purple-600": "#9333ea",
+	"pink-500": "#ec4899",
+	"slate-50": "#f8fafc",
+	"slate-900": "#0f172a",
+}
+
+/** The hexes a report names: hexes as written, plus any Tailwind colour classes it mentions. */
+function hexesOf(values: string[]): string[] {
+	const out: string[] = []
+	for (const value of values) {
+		if (isHex(value)) out.push(value)
+		for (const match of value.matchAll(/\b([a-z]+-\d{2,3})\b/g)) if (TAILWIND[match[1]]) out.push(TAILWIND[match[1]])
+	}
+	return out
+}
+
 export function compile(entries: ResearchEntry[], groups: Array<{ name: string; ids: string[] }>) {
 	const current = entries.filter((e) => !e.older_than_7_months)
 	const byId = new Map(current.map((e) => [e.id, e]))
@@ -82,7 +112,7 @@ export function compile(entries: ResearchEntry[], groups: Array<{ name: string; 
 			description: String(words[0]?.description ?? "")
 				.split(/(?<=\.)\s/)[0]
 				.slice(0, 110),
-			colours: [...new Set(members.filter(colourEntry).flatMap((e) => (e.detect?.values ?? []).filter(isHex)))],
+			colours: [...new Set(members.flatMap((e) => hexesOf(e.detect?.values ?? [])))],
 			fonts: [...new Set(members.filter(fontEntry).flatMap((e) => (e.detect?.values ?? []).filter(isFontName)))],
 			radius: RADIUS_HABITS.has(id),
 			fewOptions: FEW_OPTIONS.has(id),
