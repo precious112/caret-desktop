@@ -18,7 +18,6 @@
  *
  *   npm run build && npx tsx scripts/probe-onboarding.ts [--skip-model]
  */
-import * as child_process from "child_process"
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
