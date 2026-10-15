@@ -111,6 +111,7 @@ const REQUEST_CHANNELS: Record<IpcRequestChannel, boolean> = {
 	"interview:pending": true,
 	"wizard:resume": true,
 	"wizard:start": true,
+	"wizard:openingAnswer": true,
 	"wizard:answer": true,
 	"wizard:finishNow": true,
 	"wizard:retry": true,

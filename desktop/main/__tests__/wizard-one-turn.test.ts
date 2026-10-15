@@ -1,45 +1,67 @@
+/**
+ * The interview does one thing at a time per project.
+ *
+ * React's StrictMode mounts the interview twice in development: unguarded,
+ * the start ran two model turns and the later one replaced the question on
+ * screen (five options became three). So the same action asked twice while it
+ * runs gets the same result. Different actions wait their turn, in order: the
+ * old guard gave an answer sent during a retry the retry's result, and the
+ * answer was silently lost.
+ */
 import { strict as assert } from "assert"
 
-import type { WizardStateWire } from "../../shared/ipc"
-import { oneTurnAtATime } from "../token-wizard"
+import { oneAtATime } from "../token-wizard"
 
-/**
- * React's StrictMode mounts the interview twice in development; unguarded, the
- * start ran two model turns and the later answer replaced the question on
- * screen (five options became three). One turn per project at a time.
- */
-describe("the interview runs one model turn per project at a time", () => {
-	it("gives a second request the first one's result instead of starting another turn", async () => {
-		let turns = 0
-		let release: (state: WizardStateWire) => void = () => {}
+function gate<T>() {
+	let open: (value: T) => void = () => {}
+	const opened = new Promise<T>((resolve) => {
+		open = resolve
+	})
+	return { opened, open }
+}
+
+describe("the interview does one thing at a time per project", () => {
+	it("the same action asked twice while it runs runs once, and both get its result", async () => {
+		let runs = 0
+		const release = gate<string>()
 		const run = () => {
-			turns += 1
-			return new Promise<WizardStateWire>((resolve) => {
-				release = resolve
-			})
+			runs += 1
+			return release.opened
 		}
-		const first = oneTurnAtATime("/p", run)
-		const second = oneTurnAtATime("/p", run)
-		release({ phase: "describe", description: "" })
-		assert.equal(await first, await second)
-		assert.equal(turns, 1)
+		const first = oneAtATime("/p", "start", run)
+		const second = oneAtATime("/p", "start", run)
+		release.open("question 1")
+		assert.equal(await first, "question 1")
+		assert.equal(await second, "question 1")
+		assert.equal(runs, 1)
 	})
 
-	it("starts a new turn once the last one has settled, and keeps projects apart", async () => {
-		let turns = 0
-		const run = async () => {
-			turns += 1
-			return { phase: "describe", description: "" } as WizardStateWire
-		}
-		await oneTurnAtATime("/a", run)
-		await oneTurnAtATime("/a", run)
-		await Promise.all([oneTurnAtATime("/b", run), oneTurnAtATime("/c", run)])
-		assert.equal(turns, 4)
+	it("a different action waits for the one running, then runs: it is never dropped", async () => {
+		const order: string[] = []
+		const retry = gate<string>()
+		const retrying = oneAtATime("/p", "retry", async () => {
+			order.push("retry started")
+			const result = await retry.opened
+			order.push("retry done")
+			return result
+		})
+		const answering = oneAtATime("/p", "answer:q2", async () => {
+			order.push("answer ran")
+			return "question 3"
+		})
+		retry.open("question 2")
+		assert.equal(await retrying, "question 2")
+		assert.equal(await answering, "question 3", "the answer got another action's result")
+		assert.deepEqual(order, ["retry started", "retry done", "answer ran"])
 	})
 
-	it("lets a failed turn be retried", async () => {
-		await assert.rejects(oneTurnAtATime("/f", () => Promise.reject(new Error("provider down"))))
-		const state = await oneTurnAtATime("/f", async () => ({ phase: "describe", description: "again" }) as WizardStateWire)
-		assert.equal((state as { description: string }).description, "again")
+	it("a failed action doesn't block the next one, and projects never wait for each other", async () => {
+		await assert.rejects(oneAtATime("/p", "retry", async () => Promise.reject(new Error("model down"))))
+		assert.equal(await oneAtATime("/p", "retry", async () => "ok"), "ok")
+		const slow = gate<string>()
+		const other = oneAtATime("/a", "start", () => slow.opened)
+		assert.equal(await oneAtATime("/b", "start", async () => "b first"), "b first")
+		slow.open("a")
+		assert.equal(await other, "a")
 	})
 })

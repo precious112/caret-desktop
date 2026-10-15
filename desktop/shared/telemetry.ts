@@ -29,8 +29,9 @@ export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 	// Foundation interview — the onboarding funnel.
 	"wizard:start": {
 		event: "wizard_started",
-		props: (args) => ({ mode: enumArg(args[2], ["ai-led", "collaborative", "from-app"]) }),
+		props: (args) => ({ mode: enumArg(args[2], ["collaborative", "from-app"]) }),
 	},
+	"wizard:openingAnswer": { event: "wizard_step", props: () => ({ action: "opening" }) },
 	"wizard:answer": { event: "wizard_step", props: () => ({ action: "answer" }) },
 	"wizard:back": { event: "wizard_step", props: () => ({ action: "back" }) },
 	"wizard:retry": { event: "wizard_step", props: () => ({ action: "retry" }) },

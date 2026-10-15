@@ -24,7 +24,7 @@
 import { ArrowLeft, ArrowRight, FileSearch, PenTool, Sparkles } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-import type { AppProfileWire, WizardModeWire } from "../../../shared/ipc"
+import type { AppProfileWire, InterviewModeWire } from "../../../shared/ipc"
 import { invoke } from "../ipc"
 import { cn } from "../lib/utils"
 import { SetupStepper } from "./Setup"
@@ -37,7 +37,7 @@ interface Props {
 	/** Setup is still on step 1 (no committed design system) — shows the stepper. */
 	settingUp: boolean
 	/** An interview should begin; the wizard surface runs the first turn. */
-	onStart(mode: WizardModeWire, description: string): void
+	onStart(mode: InterviewModeWire, description: string): void
 	onManual(description: string): void
 	/** Preview harness only: open on the describe screen with a canned description. */
 	__previewDescription?: string

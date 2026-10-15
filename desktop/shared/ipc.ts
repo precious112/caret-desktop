@@ -11,7 +11,17 @@
  * filesystem and spawns processes, and a renderer that can `import` it is a
  * renderer that can be made to run it. Keeping the wire types structural means
  * the boundary is enforced by what is importable, not by remembering not to.
+ *
+ * One exception: the AI interview's types are imported, type-only, from the
+ * core interview files built to be shared with the screen (`areas.ts`,
+ * `state.ts`, `answers.ts`, plus `widgets.ts` for the proposal type). Those
+ * touch no files and start no processes, and a test holds them to that. A
+ * hand-kept copy of these types is how the screen and the engine came to
+ * disagree about what had been answered.
  */
+import type { AreaQuestion } from "../../src/core/design/interview/answers"
+import type { AreaAnswer, InterviewMode, InterviewState, OpeningStatement, Verdict } from "../../src/core/design/interview/state"
+import type { FoundationProposal } from "../../src/core/design/interview/widgets"
 
 /** Mirrors `FoundationTokens` in the design core. */
 export interface FoundationTokensWire {
@@ -242,129 +252,38 @@ export interface AssetOptionWire {
 }
 
 /**
- * The AI-run token wizard — the Foundation surface's default door.
+ * The AI interview, as the screen receives it.
  *
- * The model composes every question from a fixed widget vocabulary; these are
- * the wire mirrors of those shapes. The renderer's job is to have a real,
- * well-made component for each `kind`, including the escape hatches ("other"):
- * a colour picker + hex field + eyedropper on colour questions, Google Fonts
- * search on font questions, free text where the model allows it.
+ * The types come straight from the design core's interview files (the ones
+ * the screen is allowed to load), so the engine and the screen can never
+ * disagree about their shape. Every phase carries `state`: the one reading of
+ * the answers that the Covering list, So far and the preview all show.
  */
-export interface WizardSpecWire {
-	displayFamily?: string
-	bodyFamily?: string
-	surface?: "light" | "dark"
-	accent?: string
-	neutral?: string
-	radius?: number
-	spacingUnit?: number
-	baseSize?: number
-	shadow?: string
-}
+export type InterviewModeWire = InterviewMode
 
-export type WizardKindWire = "options" | "color" | "font" | "scale" | "chips" | "text" | "boolean" | "assumptions"
-
-export interface WizardOptionWire {
-	id: string
-	label: string
-	reason?: string
-	hex?: string
-	spec?: WizardSpecWire
-}
-
-export type WizardModeWire = "ai-led" | "collaborative" | "from-app"
-
-export interface WizardQuestionWire {
-	id: string
-	kind: WizardKindWire
-	question: string
-	why?: string
-	options?: WizardOptionWire[]
-	recommendedId?: string
-	/** Collaborative mode: the coverage areas this question settles. */
-	covers?: string[]
-	other?: "color" | "font" | "text"
-	leftLabel?: string
-	rightLabel?: string
-	steps?: Array<{ label: string; spec?: WizardSpecWire }>
-	defaultStep?: number
-	placeholder?: string
-	multiline?: boolean
-}
-
-export interface WizardAnswerWire {
-	questionId: string
-	question: string
-	kind: WizardKindWire
-	value: string
-	label?: string
-	wasOther?: boolean
-	/** Typed payload written by the widget at capture — see core `AnswerData`. */
-	data?: { hex?: string; family?: string; px?: number; ratio?: number; none?: boolean }
-	skipped?: boolean
-}
-
-export interface WizardQAWire {
-	question: WizardQuestionWire
-	answer: WizardAnswerWire
-}
-
-export interface FoundationProposalWire {
-	displayFamily: string
-	displayFallback?: string
-	bodyFamily: string
-	bodyFallback?: string
-	scaleRatio: number
-	baseSize: number
-	brand: string
-	secondary?: string
-	accent?: string
-	neutral: "warm" | "cool" | "true" | "slight-tint"
-	surface: "light" | "dark"
-	semantic?: { success?: string; warning?: string; error?: string; info?: string }
-	spacingUnit: number
-	radiusCharacter: "sharp" | "soft" | "round" | "pill"
-	elevationCharacter?: "flat" | "subtle" | "pronounced"
-	displayWeight?: number
-	bodyWeight?: number
-	rule: string
-	vibeTags?: string[]
-	summary: string
-	decisions?: Array<{ area: string; choice: string; reason: string }>
-}
-
-/** Collaborative mode's checklist, for the coverage rail. */
-export interface WizardCoverageWire {
-	done: Array<{ id: string; label: string }>
-	missing: Array<{ id: string; label: string }>
-}
-
-export type WizardStateWire =
+export type InterviewWire =
 	| { phase: "needs-backend"; detail: string }
-	| { phase: "describe"; description: string }
+	| { phase: "opening"; mode: InterviewMode; question: string; statements: OpeningStatement[]; state: InterviewState }
 	| {
 			phase: "question"
-			mode: WizardModeWire
-			description: string
-			current: WizardQuestionWire
-			/** Questions answered so far, and the hard cap — for "question 3". */
-			asked: number
-			cap: number
-			history: WizardQAWire[]
-			/** Present only in collaborative mode. */
-			coverage?: WizardCoverageWire
+			mode: InterviewMode
+			question: AreaQuestion
+			/** The answer given before, when the user came back with Back. */
+			previous?: AreaAnswer
+			state: InterviewState
+			canBack: boolean
 	  }
 	| {
 			phase: "finish"
-			mode: WizardModeWire
-			description: string
-			proposal: FoundationProposalWire
+			mode: InterviewMode
+			proposal: FoundationProposal
 			name: string
 			rule: string
 			summary: string
-			history: WizardQAWire[]
+			state: InterviewState
+			finishedEarly: boolean
 	  }
-	| { phase: "error"; description: string; message: string; canFinish: boolean }
+	| { phase: "error"; mode: InterviewMode; stage: string; message: string; canFinish: boolean; state: InterviewState }
 
 /**
  * The coding backend Caret drives, as the renderer sees it.
@@ -1078,14 +997,16 @@ export interface IpcRequests {
 	 * call, so the renderer asking for one is what keeps a re-render from
 	 * spending the user's quota.
 	 */
-	"wizard:resume": (projectPath: string) => WizardStateWire | null
-	"wizard:start": (projectPath: string, description: string, mode: WizardModeWire) => WizardStateWire
-	"wizard:answer": (projectPath: string, answer: WizardAnswerWire) => WizardStateWire
+	"wizard:resume": (projectPath: string) => InterviewWire | null
+	"wizard:start": (projectPath: string, description: string, mode: InterviewModeWire) => InterviewWire
+	/** The opening screen's verdicts: each line agreed, or "Not quite" with what is true instead. */
+	"wizard:openingAnswer": (projectPath: string, verdicts: Verdict[]) => InterviewWire
+	"wizard:answer": (projectPath: string, answer: AreaAnswer) => InterviewWire
 	/** "Just finish" — the model constructs from whatever has been answered. */
-	"wizard:finishNow": (projectPath: string) => WizardStateWire
+	"wizard:finishNow": (projectPath: string) => InterviewWire
 	/** Re-runs a failed turn without recording a new answer. */
-	"wizard:retry": (projectPath: string) => WizardStateWire
-	"wizard:back": (projectPath: string) => WizardStateWire
+	"wizard:retry": (projectPath: string) => InterviewWire
+	"wizard:back": (projectPath: string) => InterviewWire
 	"wizard:commit": (projectPath: string) => { name: string; rule: string }
 	"wizard:abandon": (projectPath: string) => void
 	/** The app's screens not yet in the design layer (code → design). */

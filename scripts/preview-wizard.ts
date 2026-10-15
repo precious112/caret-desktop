@@ -1,10 +1,10 @@
 /**
- * Every wizard widget, on screen, with scripted questions.
+ * Every kind of interview question, on screen, with sample questions.
  *
- * The widget suite is the feature — the model composes questions, but these
- * components are what the user actually touches, and no assertion catches a
+ * These are what the user actually touches, and no assertion catches a
  * cramped card or an illegible swatch. This mounts the real components with
- * one hand-written question per kind and takes a picture.
+ * one sample question per kind of input and takes a picture. It fails if the
+ * screen doesn't mount or throws an error.
  *
  * Costs nothing: no model, no backend. `window.caret` is shimmed before the
  * view module loads, because the renderer's ipc module reads it at import time.
@@ -24,16 +24,18 @@ const OUT = path.resolve("release/verify-shots")
 
 const ENTRY = `
 // The ipc module dereferences window.caret at import time, so the shim has to
-// exist before the view module is even parsed — hence the dynamic import.
+// exist before the view module is even parsed: hence the dynamic import.
 ;(window as any).caret = {
 	platform: "darwin",
-	invoke: async (channel: string, ...args: any[]) => {
+	invoke: async (channel: string) => {
 		if (channel === "fonts:search") {
-			return [
-				{ family: "Fraunces", category: "serif", variants: [] },
-				{ family: "Sora", category: "sans-serif", variants: [] },
-				{ family: "IBM Plex Mono", category: "monospace", variants: [] },
-			]
+			return {
+				source: "bundled",
+				fonts: [
+					{ family: "Libre Baskerville", category: "serif", variants: [] },
+					{ family: "Literata", category: "serif", variants: [] },
+				],
+			}
 		}
 		return null
 	},
@@ -44,91 +46,71 @@ async function main() {
 	const { createRoot } = await import("react-dom/client")
 	await import("@/styles.css")
 	const { __PreviewQuestion } = await import("@/views/WizardView")
-	const { FoundationEntry } = await import("@/views/FoundationEntry")
+	const { applyOpening, deriveState, newRecord } = await import("../../../src/core/design/interview/state")
+	const { AREAS } = await import("../../../src/core/design/interview/areas")
 
-	const base = { surface: "dark", neutral: "cool", accent: "#22d3ee", radius: 4, spacingUnit: 4, baseSize: 14, displayFamily: "Space Grotesk", bodyFamily: "Inter" }
+	// A record part-way through, so the preview has a real surface and fonts.
+	const record = applyOpening(
+		{
+			...newRecord("collaborative", "Argus, a monitoring tool."),
+			opening: {
+				questionId: "opening",
+				statements: [{ id: "s-surface", area: "surface", value: { surface: "dark" }, text: "The page is dark." }],
+			},
+		},
+		[],
+	)
+	const state = deriveState(record)
 
-	const QUESTIONS: any[] = [
-		{
-			id: "assume", kind: "assumptions",
-			question: "Here's what I took from your description — right?",
-			why: "Confirming these means I don't have to ask about them.",
-			options: [
-				{ id: "a1", label: "This is a tool people keep open all day, so it should be quiet and dense", reason: "you said agents live in it" },
-				{ id: "a2", label: "Dark interface first — light mode can come later", reason: "you said dark, calm" },
-				{ id: "a3", label: "Nothing playful: no rounded bubbles, no bright gradients" },
-			],
-		},
-		{
-			id: "font", kind: "font", other: "font",
-			question: "How should the words look?",
-			why: "This is read for hours, so the body face matters more than the headline.",
-			options: [
-				{ id: "f1", label: "Space Grotesk", reason: "technical without being cold — fits a tool devs respect", spec: { bodyFamily: "Inter" } },
-				{ id: "f2", label: "Instrument Serif", reason: "editorial, calmer, but unusual for a dashboard", spec: { bodyFamily: "Inter" } },
-				{ id: "f3", label: "IBM Plex Sans", reason: "engineered feel, pairs with your data tables", spec: { bodyFamily: "IBM Plex Sans" } },
-			],
-			recommendedId: "f1",
-		},
-		{
-			id: "brand", kind: "color", other: "color",
-			question: "Which colour is yours?",
-			why: "It gets used sparingly — mostly the primary action and focus states.",
-			options: [
-				{ id: "c1", label: "Signal cyan", hex: "#22d3ee", reason: "reads as live data against a dark surface" },
-				{ id: "c2", label: "Deep blue", hex: "#2563eb", reason: "quieter, more institutional" },
-				{ id: "c3", label: "Amber", hex: "#f59e0b", reason: "warmer, but competes with your warning states" },
-			],
-			recommendedId: "c1",
-		},
-		{
-			id: "density", kind: "scale",
-			question: "How tight should the information sit?",
-			why: "Support agents scan this for eight hours; density is comfort, not style.",
-			leftLabel: "Compact", rightLabel: "Airy",
-			steps: [
-				{ label: "Dense", spec: { spacingUnit: 4, baseSize: 13, radius: 2 } },
-				{ label: "Comfortable", spec: { spacingUnit: 4, baseSize: 14, radius: 4 } },
-				{ label: "Relaxed", spec: { spacingUnit: 8, baseSize: 15, radius: 8 } },
-				{ label: "Open", spec: { spacingUnit: 8, baseSize: 16, radius: 12 } },
-			],
-			defaultStep: 1,
-		},
-		{
-			id: "surfaces", kind: "chips", other: "text",
-			question: "What does the product actually include?",
-			why: "A marketing page and a data table want different defaults.",
-			options: [
-				{ id: "s1", label: "Dashboard" }, { id: "s2", label: "Data tables" }, { id: "s3", label: "Settings & forms" },
-				{ id: "s4", label: "Marketing site" }, { id: "s5", label: "Docs" },
-			],
-			recommendedId: "s1",
-		},
-		{
-			id: "name", kind: "text",
-			question: "What's it called?",
-			why: "So the previews say your name instead of placeholder words.",
-			placeholder: "e.g. Dispatch",
-		},
+	const question = (area: string, options: any[], text: string) => ({
+		id: area,
+		area,
+		input: (AREAS as any)[area].input,
+		question: text,
+		why: "Written by the model; shown here with sample words.",
+		options: options.map((o: any, i: number) => ({ id: area + "-" + i, ...o })),
+		recommendedId: area + "-0",
+		contextKey: "preview",
+	})
+
+	const QUESTIONS = [
+		question("display-type", [
+			{ label: "Red Hat Display", value: { family: "Red Hat Display" }, reason: "Technical and sharp at large sizes." },
+			{ label: "Archivo", value: { family: "Archivo" }, reason: "Plain and sturdy." },
+			{ label: "Chakra Petch", value: { family: "Chakra Petch" }, reason: "Squared, like an instrument." },
+		], "What should the big titles look like?"),
+		question("type-scale", [
+			{ label: "Quiet: 16px, ×1.125", value: { baseSize: 16, scaleRatio: 1.125 } },
+			{ label: "Balanced: 16px, ×1.2", value: { baseSize: 16, scaleRatio: 1.2 } },
+			{ label: "Confident: 16px, ×1.25", value: { baseSize: 16, scaleRatio: 1.25 } },
+			{ label: "Bold: 17px, ×1.333", value: { baseSize: 17, scaleRatio: 1.333 } },
+		], "How much bigger should each heading step be?"),
+		question("brand-color", [
+			{ label: "Signal blue #1d7ec4", value: { hex: "#1d7ec4" }, reason: "Calm, apart from status colours." },
+			{ label: "Deep teal #0f6e5a", value: { hex: "#0f6e5a" } },
+			{ label: "Ink violet #5b47c4", value: { hex: "#5b47c4" } },
+		], "What one colour is Argus known by?"),
+		question("accent-color", [
+			{ label: "Brick #b0413e", value: { hex: "#b0413e" } },
+			{ label: "Brass #c9a227", value: { hex: "#c9a227" } },
+			{ label: "None", value: { none: true }, reason: "Keep it to the brand and supporting colours." },
+		], "One small accent for the sharpest details?"),
+		question("semantics", [
+			{ label: "Everyday", value: { success: "#2e9e5b", warning: "#d99a1e", error: "#d9453b", info: "#3b82c4" } },
+			{ label: "Muted", value: { success: "#4f8f6a", warning: "#b8913f", error: "#b85a52", info: "#5b7fa6" } },
+		], "Which status colours?"),
+		question("radius", [
+			{ label: "Sharp", value: { radiusCharacter: "sharp" } },
+			{ label: "Soft", value: { radiusCharacter: "soft" } },
+			{ label: "Round", value: { radiusCharacter: "round" } },
+		], "How round are the corners?"),
 	]
 
 	createRoot(document.getElementById("root")!).render(
 		<div className="flex flex-col gap-10 bg-shell-bg px-10 py-10" style={{ minHeight: "100vh" }}>
-			{/* The entry flow: describe, then the three-door chooser. */}
-			<div className="border-b border-shell-border pb-10">
-				<FoundationEntry onManual={() => {}} onStarted={() => {}} projectPath="/tmp/preview" />
-			</div>
-			<div className="border-b border-shell-border pb-10">
-				<FoundationEntry
-					__previewDescription="A dashboard where support teams triage tickets all day. Dark, calm, serious."
-					onManual={() => {}}
-					onStarted={() => {}}
-					projectPath="/tmp/preview"
-				/>
-			</div>
-			{QUESTIONS.map((question, index) => (
-				<div className="border-b border-shell-border pb-10" key={question.id}>
-					<__PreviewQuestion base={base} index={index} question={question} />
+			{QUESTIONS.map((q: any) => (
+				<div className="border-b border-shell-border pb-10" key={q.id}>
+					<__PreviewQuestion question={q} state={state} />
 				</div>
 			))}
 		</div>,
@@ -191,7 +173,7 @@ app.whenReady().then(() => {
 		// which is the entire reason this screenshot exists.
 		const loaded = await page
 			.evaluate(async () => {
-				const families = ["Space Grotesk", "Instrument Serif", "IBM Plex Sans", "Inter"]
+				const families = ["Red Hat Display", "Archivo", "Chakra Petch"]
 				const results = await Promise.all(
 					families.map((family) =>
 						document.fonts.load(`500 21px "${family}"`).then(

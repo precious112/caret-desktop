@@ -36,14 +36,13 @@ import {
 	searchGoogleFonts,
 	setPoster,
 	validateFoundationTokens,
-	type WizardAnswer,
 	withDerivedScales,
 	writeFoundationTokens,
 } from "../../src/core/design"
 import { pickHelperModel } from "../../src/core/design/design-pass/helper-model"
 import { type LibraryId, libraryById } from "../../src/core/design/design-pass/libraries"
 import { Logger } from "../../src/shared/services/Logger"
-import type { AssetRequestWire, ComposerImage } from "../shared/ipc"
+import type { AssetRequestWire, ComposerImage, IpcRequestChannel, IpcRequests } from "../shared/ipc"
 import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps } from "../shared/telemetry"
 import { buildAgentClientConfigs } from "./agent-configs"
 import { capture, captureError, scrubForTelemetry, setTelemetryEnabled } from "./analytics"
@@ -72,6 +71,7 @@ import { clearSecret, type SecretName, secretStatus, setSecret } from "./secrets
 import { type LaneTask, listTaskModels, setTaskModel, taskModel } from "./task-models"
 import {
 	abandonWizard,
+	answerOpening,
 	answerWizard,
 	commitWizard,
 	finishWizard,
@@ -1041,17 +1041,26 @@ export function registerIpcHandlers(windows: WindowManager): void {
 
 	handle("interview:pending", () => currentPrompt())
 
-	// The AI-run token wizard — the Foundation surface's default door.
-	handle("wizard:resume", (_event, projectPath: string) => resumeWizard(projectPath))
-	handle("wizard:start", (_event, projectPath: string, description: string, mode?: "ai-led" | "collaborative") =>
-		startWizard(projectPath, description, mode ?? "collaborative"),
-	)
-	handle("wizard:answer", (_event, projectPath: string, answer: WizardAnswer) => answerWizard(projectPath, answer))
-	handle("wizard:finishNow", (_event, projectPath: string) => finishWizard(projectPath))
-	handle("wizard:retry", (_event, projectPath: string) => retryWizard(projectPath))
-	handle("wizard:back", (_event, projectPath: string) => wizardBack(projectPath))
-	handle("wizard:commit", (_event, projectPath: string) => commitWizard(projectPath))
-	handle("wizard:abandon", (_event, projectPath: string) => abandonWizard(projectPath))
+	// The AI interview. One typed table: a missing interview channel, or one
+	// whose arguments or result don't match the shared contract, fails to build.
+	const interview: {
+		[C in Extract<IpcRequestChannel, `wizard:${string}`>]: (
+			...args: Parameters<IpcRequests[C]>
+		) => Promise<ReturnType<IpcRequests[C]>>
+	} = {
+		"wizard:resume": (projectPath) => resumeWizard(projectPath),
+		"wizard:start": (projectPath, description, mode) => startWizard(projectPath, description, mode),
+		"wizard:openingAnswer": (projectPath, verdicts) => answerOpening(projectPath, verdicts),
+		"wizard:answer": (projectPath, answer) => answerWizard(projectPath, answer),
+		"wizard:finishNow": (projectPath) => finishWizard(projectPath),
+		"wizard:retry": (projectPath) => retryWizard(projectPath),
+		"wizard:back": (projectPath) => wizardBack(projectPath),
+		"wizard:commit": (projectPath) => commitWizard(projectPath),
+		"wizard:abandon": (projectPath) => abandonWizard(projectPath),
+	}
+	for (const [channel, run] of Object.entries(interview)) {
+		handle(channel, (_event, ...args) => (run as (...a: unknown[]) => unknown)(...args))
+	}
 }
 
 /**

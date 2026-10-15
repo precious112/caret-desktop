@@ -1,70 +1,62 @@
 /**
- * The AI-run token wizard — host half.
+ * The AI interview, where it meets a project: which model it uses, where its
+ * progress is saved, and what the screen is shown.
  *
- * The model runs the interview (`conductor.ts` in the design core); this is
- * where it meets a project: which backend, whose preferences, where scratch
- * lives, and what the renderer is shown. The host never invents interview
- * content — it forwards validated turns and records answers.
- *
- * State is in memory *and* on disk after every change, disk winning on load:
- * memory is what makes Back free, disk is what survives the window. Both are
- * cheap; losing a five-question interview to a crash is not.
+ * The interview itself runs in the design core (`interview/session.ts`); this
+ * file only connects it. Everything the screen shows comes from the saved
+ * progress, so reopening Caret puts the user back on the same screen, an
+ * error included, without asking the model anything.
  */
+
 import { app, BrowserWindow } from "electron"
+import * as fs from "fs/promises"
+import * as path from "path"
 
 import {
-	COVERAGE_AREAS,
 	type CodingBackend,
-	clearWizardScratch,
-	coveredAreas,
 	detectAppProfile,
-	type FoundationProposal,
 	finalizeProposal,
 	getBackend,
-	nextWizardTurn,
-	questionCapFor,
-	readWizardScratch,
-	type StoredQA,
-	tracksCoverage,
-	type WizardAnswer,
-	type WizardMode,
-	type WizardQuestion,
+	readFoundationTokens,
 	writeFoundationTokens,
-	writeWizardScratch,
 } from "../../src/core/design"
+import { clearInterviewScratch, readInterviewScratch, writeInterviewScratch } from "../../src/core/design/interview/scratch"
+import { InterviewSession, type SessionScratch, viewOf } from "../../src/core/design/interview/session"
+import type { AreaAnswer, Verdict } from "../../src/core/design/interview/state"
 import { recordEdit } from "../../src/core/design/provenance"
 import { Logger } from "../../src/shared/services/Logger"
-import type { WizardStateWire } from "../shared/ipc"
+import type { InterviewWire } from "../shared/ipc"
 import { interviewBackendOverride, recordingBackend, replayBackend } from "./interview-backend"
 import { getPrefs } from "./prefs"
 import { regenerateRulesFiles } from "./rules/generate"
 
-interface WizardSession {
-	description: string
-	mode: WizardMode
-	history: StoredQA[]
-	pending?: WizardQuestion
-	proposal?: FoundationProposal
-}
-
-const sessions = new Map<string, WizardSession>()
-
 /**
- * The model turn running for each project. One at a time: a second request
- * while one runs gets the same result instead of a second turn. React's
- * StrictMode mounts the interview twice in development, so an unguarded start
- * ran two turns in parallel, and the later answer replaced the question the
- * user was already reading (field report: five options became three).
+ * One action at a time per project, in the order they were asked for. An
+ * identical action asked again while it runs (a double click, React's
+ * StrictMode mounting the screen twice in development) gets the same result
+ * instead of running twice: two parallel starts once replaced the question the
+ * user was reading.
  */
-const turnInFlight = new Map<string, Promise<WizardStateWire>>()
+const queues = new Map<string, Promise<unknown>>()
+const running = new Map<string, Promise<unknown>>()
 
-export function oneTurnAtATime(projectPath: string, run: () => Promise<WizardStateWire>): Promise<WizardStateWire> {
-	const running = turnInFlight.get(projectPath)
-	if (running) return running
-	const turn = run().finally(() => turnInFlight.delete(projectPath))
-	turnInFlight.set(projectPath, turn)
-	return turn
+export function oneAtATime<T>(projectPath: string, key: string, run: () => Promise<T>): Promise<T> {
+	const id = `${projectPath}\n${key}`
+	const same = running.get(id)
+	if (same) return same as Promise<T>
+	const before = queues.get(projectPath) ?? Promise.resolve()
+	const task = before.catch(() => {}).then(run)
+	const tracked = task.finally(() => {
+		if (running.get(id) === tracked) running.delete(id)
+		if (queues.get(projectPath) === tracked) queues.delete(projectPath)
+	})
+	running.set(id, tracked)
+	queues.set(projectPath, tracked)
+	return tracked
 }
+
+/** Cancels a model call in progress when the user abandons the interview. */
+const inFlight = new Map<string, AbortController>()
 
 /** The configured backend, only if it is actually ready. */
 async function resolveBackend(): Promise<{ backend: CodingBackend; detail: null } | { backend: null; detail: string }> {
@@ -81,72 +73,15 @@ async function resolveBackend(): Promise<{ backend: CodingBackend; detail: null 
 		}
 		return { backend: null, detail: report.remedy?.label ?? report.detail ?? `${backend.displayName} is not ready.` }
 	} catch (err) {
-		Logger.warn(`[wizard] backend check failed: ${err}`)
+		Logger.warn(`[interview] backend check failed: ${err}`)
 		return { backend: null, detail: "The coding backend could not be reached." }
 	}
 }
 
-async function persist(projectPath: string, session: WizardSession): Promise<void> {
-	sessions.set(projectPath, session)
-	await writeWizardScratch(projectPath, {
-		description: session.description,
-		mode: session.mode,
-		history: session.history,
-		pending: session.pending,
-		proposal: session.proposal,
-	})
-}
-
 /**
- * The description a finished foundation is filed under. A from-app session's
- * `description` is Caret's detection note for the model, not the user's words —
- * the model's own summary ("read from your app…") describes it better.
- */
-function vibeDescription(session: WizardSession): string {
-	return session.mode === "from-app" ? "" : session.description
-}
-
-function stateFor(session: WizardSession): WizardStateWire {
-	if (session.proposal) {
-		const finalized = finalizeProposal(session.proposal, vibeDescription(session))
-		return {
-			phase: "finish",
-			mode: session.mode,
-			description: session.description,
-			proposal: session.proposal,
-			name: finalized.name,
-			rule: finalized.rule,
-			summary: finalized.summary,
-			history: session.history,
-		}
-	}
-	if (session.pending) {
-		const covered = new Set(coveredAreas(session.history))
-		return {
-			phase: "question",
-			mode: session.mode,
-			description: session.description,
-			current: session.pending,
-			asked: session.history.length,
-			cap: questionCapFor(session.mode),
-			history: session.history,
-			coverage: tracksCoverage(session.mode)
-				? {
-						done: COVERAGE_AREAS.filter((area) => covered.has(area.id)),
-						missing: COVERAGE_AREAS.filter((area) => !covered.has(area.id)),
-					}
-				: undefined,
-		}
-	}
-	return { phase: "describe", description: session.description }
-}
-
-/**
- * Retries are invisible until spent: every window showing this project keeps
- * its loading state, and past the early attempts the renderer swaps in an
- * honest "taking longer than usual". Broadcast to every window (each filters
- * by projectPath) rather than a [0]-style pick — see the BrowserWindow race
- * note in the certification lessons.
+ * Every window showing this project keeps its "thinking" screen while the
+ * model works; past the first attempts it adds an honest "taking longer than
+ * usual". Sent to every window (each checks the project).
  */
 function notifyProgress(projectPath: string, attempt: number, max: number): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -154,198 +89,181 @@ function notifyProgress(projectPath: string, attempt: number, max: number): void
 	}
 }
 
-/** Runs one model turn and stores whatever it decided. */
-async function advance(projectPath: string, session: WizardSession, force?: "finish"): Promise<WizardStateWire> {
+/** A session on the saved progress, with a live backend; null with the reason when no model is ready. */
+async function sessionFor(
+	projectPath: string,
+	scratch: SessionScratch | null,
+): Promise<
+	| { session: InterviewSession; start: (mode: "collaborative" | "from-app", description: string) => Promise<InterviewSession> }
+	| { detail: string }
+> {
 	const { backend, detail } = await resolveBackend()
-	if (!backend) return { phase: "needs-backend", detail: detail ?? "No coding backend is available." }
-
-	try {
-		const turn = await nextWizardTurn({
-			backend,
-			workingDirectory: projectPath,
-			model: getPrefs().backendModel || undefined,
-			effort: getPrefs().backendEffort || undefined,
-			description: session.description,
-			history: session.history,
-			force,
-			mode: session.mode,
-			onAttempt: (attempt, max) => notifyProgress(projectPath, attempt, max),
-		})
-
-		if (turn.action === "ask") session.pending = turn.question
-		else {
-			session.pending = undefined
-			session.proposal = turn.foundation
-		}
-		await persist(projectPath, session)
-		return stateFor(session)
-	} catch (err) {
-		Logger.error("[wizard] turn failed:", err)
-		return {
-			phase: "error",
-			description: session.description,
-			message: err instanceof Error ? err.message : String(err),
-			canFinish: session.history.length > 0,
-		}
+	if (!backend) return { detail: detail ?? "No coding backend is available." }
+	const controller = new AbortController()
+	inFlight.get(projectPath)?.abort()
+	inFlight.set(projectPath, controller)
+	const deps = {
+		backend,
+		workingDirectory: projectPath,
+		model: getPrefs().backendModel || undefined,
+		effort: getPrefs().backendEffort || undefined,
+		signal: controller.signal,
+		onAttempt: (attempt: number, max: number) => notifyProgress(projectPath, attempt, max),
+		log: (line: string) => Logger.warn(line),
+		persist: (next: SessionScratch) => writeInterviewScratch(projectPath, next),
+		sourceExists: async (relative: string) => {
+			const full = path.resolve(projectPath, relative)
+			if (!full.startsWith(path.resolve(projectPath) + path.sep)) return false
+			return fs
+				.stat(full)
+				.then((stat) => stat.isFile())
+				.catch(() => false)
+		},
+	}
+	return {
+		session: new InterviewSession(scratch ?? ({} as SessionScratch), deps),
+		start: (mode, description) => InterviewSession.start(mode, description, deps),
 	}
 }
 
-/** Whatever was in flight, or null. Never calls the model. */
-export async function resumeWizard(projectPath: string): Promise<WizardStateWire | null> {
-	const held = sessions.get(projectPath)
-	if (held) return stateFor(held)
-
-	const scratch = await readWizardScratch(projectPath)
-	if (!scratch) return null
-
-	const session: WizardSession = {
-		description: scratch.description,
-		mode: scratch.mode ?? "ai-led",
-		history: scratch.history,
-		pending: scratch.pending,
-		proposal: scratch.proposal,
+function wireOf(scratch: SessionScratch): InterviewWire | null {
+	const view = viewOf(scratch)
+	if (!view) return null
+	const mode = scratch.record.mode
+	if (view.phase === "finish") {
+		const finalized = finalizeProposal(view.proposal, vibeDescription(scratch))
+		return { ...view, mode, name: finalized.name, rule: finalized.rule, summary: finalized.summary }
 	}
-	sessions.set(projectPath, session)
-	return stateFor(session)
+	return { ...view, mode }
+}
+
+/** The words a saved foundation is filed under: the user's description, or for an app, the model's summary. */
+function vibeDescription(scratch: SessionScratch): string {
+	return scratch.record.mode === "from-app" ? "" : scratch.record.description
+}
+
+/**
+ * A saved interview, unless a foundation was saved after it (by hand, or by an
+ * agent): then it is out of date and thrown away, so it never reappears over
+ * the newer foundation.
+ */
+async function savedInterview(projectPath: string): Promise<SessionScratch | null> {
+	const saved = await readInterviewScratch(projectPath)
+	if (!saved) return null
+	const tokens = await readFoundationTokens(projectPath).catch(() => null)
+	const committedAt = tokens?.meta?.committedAt ? Date.parse(tokens.meta.committedAt) : Number.NaN
+	if (Number.isFinite(committedAt) && committedAt > saved.updatedAt) {
+		Logger.info("[interview] a foundation was saved after this interview; the interview was discarded")
+		await clearInterviewScratch(projectPath)
+		return null
+	}
+	return saved
+}
+
+/** Runs one action on the saved interview and returns the screen it leads to. */
+function act(projectPath: string, key: string, run: (session: InterviewSession) => Promise<unknown>): Promise<InterviewWire> {
+	return oneAtATime(projectPath, key, async () => {
+		const saved = await savedInterview(projectPath)
+		if (!saved) throw new Error("There is no interview in progress.")
+		const ready = await sessionFor(projectPath, saved)
+		if ("detail" in ready) return { phase: "needs-backend", detail: ready.detail }
+		await run(ready.session)
+		return wireOf(ready.session.saved) ?? { phase: "needs-backend", detail: "The interview has nothing to show." }
+	})
+}
+
+/** What was in progress, or null. Never asks the model. */
+export function resumeWizard(projectPath: string): Promise<InterviewWire | null> {
+	return oneAtATime(projectPath, "resume", async () => {
+		const saved = await savedInterview(projectPath)
+		return saved ? wireOf(saved) : null
+	})
 }
 
 export function startWizard(
 	projectPath: string,
 	description: string,
-	mode: WizardMode = "collaborative",
-): Promise<WizardStateWire> {
-	return oneTurnAtATime(projectPath, () => beginWizard(projectPath, description, mode))
-}
-
-async function beginWizard(projectPath: string, description: string, mode: WizardMode): Promise<WizardStateWire> {
-	const context = mode === "from-app" ? await describeApp(projectPath) : description.trim()
-	const session: WizardSession = { description: context, mode, history: [] }
-	await persist(projectPath, session)
-	return advance(projectPath, session)
+	mode: "collaborative" | "from-app" = "collaborative",
+): Promise<InterviewWire> {
+	return oneAtATime(projectPath, `start:${mode}:${description}`, async () => {
+		const ready = await sessionFor(projectPath, null)
+		if ("detail" in ready) return { phase: "needs-backend", detail: ready.detail }
+		const context = mode === "from-app" ? await describeApp(projectPath) : description.trim()
+		const session = await ready.start(mode, context)
+		return wireOf(session.saved) ?? { phase: "needs-backend", detail: "The interview has nothing to show." }
+	})
 }
 
 /**
- * What Caret detected, as the from-app interview's opening context. A head
- * start for the model's reading, never a substitute for it — the detector does
- * not extract a single token.
+ * What Caret detected, as the "Use what my app already has" interview's
+ * starting context. A head start for the model's reading, never a substitute
+ * for it: the detector reads no values.
  */
 async function describeApp(projectPath: string): Promise<string> {
 	const profile = await detectAppProfile(projectPath)
 	if (!profile) return "No app code was detected in this folder. Read whatever is there."
-	const lines = [
+	return [
 		`Framework: ${profile.framework ?? "not named in package.json"}.`,
-		`Styling: ${profile.styling.length ? profile.styling.join(", ") : "nothing recognised by name — likely plain CSS or inline styles"}.`,
+		`Styling: ${profile.styling.length ? profile.styling.join(", ") : "nothing recognised by name; likely plain CSS or inline styles"}.`,
 		profile.styleSources.length
 			? `Files that probably declare the look (start here, but they are not the whole story): ${profile.styleSources.join(", ")}.`
-			: "No config or variables file was found — read the stylesheets and components themselves.",
-	]
-	return lines.join("\n")
+			: "No config or variables file was found. Read the stylesheets and components themselves.",
+	].join("\n")
 }
 
-export function answerWizard(projectPath: string, answer: WizardAnswer): Promise<WizardStateWire> {
-	return oneTurnAtATime(projectPath, () => recordAnswer(projectPath, answer))
+export function answerOpening(projectPath: string, verdicts: Verdict[]): Promise<InterviewWire> {
+	return act(projectPath, "opening", (session) => session.answerOpening(verdicts))
 }
 
-async function recordAnswer(projectPath: string, answer: WizardAnswer): Promise<WizardStateWire> {
-	const session = sessions.get(projectPath)
-	if (!session?.pending) throw new Error("There is no question waiting for an answer.")
-	if (session.pending.id !== answer.questionId) {
-		// A stale answer — the user double-clicked, or answered across a Back.
-		return stateFor(session)
-	}
-
-	session.history = [...session.history, { question: session.pending, answer }]
-	session.pending = undefined
-	await persist(projectPath, session)
-	return advance(projectPath, session)
+export function answerWizard(projectPath: string, answer: AreaAnswer): Promise<InterviewWire> {
+	return act(projectPath, `answer:${answer.questionId}`, (session) => session.answer(answer))
 }
 
-/** Re-runs the turn that just failed, without recording anything new. */
-export function retryWizard(projectPath: string): Promise<WizardStateWire> {
-	return oneTurnAtATime(projectPath, async () => {
-		const session = sessions.get(projectPath)
-		if (!session) throw new Error("There is no interview in progress.")
-		return advance(projectPath, session)
-	})
+export function retryWizard(projectPath: string): Promise<InterviewWire> {
+	return act(projectPath, "retry", (session) => session.retry())
 }
 
-/** "Just finish" — construct from whatever is known. */
-export function finishWizard(projectPath: string): Promise<WizardStateWire> {
-	return oneTurnAtATime(projectPath, async () => {
-		const session = sessions.get(projectPath)
-		if (!session) throw new Error("There is no interview in progress.")
-		session.pending = undefined
-		return advance(projectPath, session, "finish")
-	})
+export function finishWizard(projectPath: string): Promise<InterviewWire> {
+	return act(projectPath, "finish-now", (session) => session.finishNow())
 }
 
-/**
- * Back re-opens the previous question — for free.
- *
- * The stored question is re-rendered as-is rather than re-asked: the model's
- * question was already paid for, and it does not change because the user wants
- * to reconsider their answer. History after the revisited question is
- * discarded, since later questions may have been premised on the old answer.
- */
-export async function wizardBack(projectPath: string): Promise<WizardStateWire> {
-	const session = sessions.get(projectPath)
-	if (!session) throw new Error("There is no interview in progress.")
+export function wizardBack(projectPath: string): Promise<InterviewWire> {
+	return act(projectPath, "back", (session) => session.back())
+}
 
-	if (session.proposal) {
-		session.proposal = undefined
-		const last = session.history[session.history.length - 1]
-		if (last) {
-			session.pending = last.question
-			session.history = session.history.slice(0, -1)
+/** Saves the foundation: every value from the answers, the words from the model. */
+export function commitWizard(projectPath: string): Promise<{ name: string; rule: string }> {
+	return oneAtATime(projectPath, "commit", async () => {
+		const saved = await readInterviewScratch(projectPath)
+		const view = saved ? viewOf(saved) : null
+		if (!saved || view?.phase !== "finish") throw new Error("There is no finished foundation to save.")
+		const finalized = finalizeProposal(view.proposal, vibeDescription(saved))
+		// The rationale outlives the interview here, and `committed` marks a
+		// foundation a person actually chose.
+		finalized.tokens.meta = {
+			committed: true,
+			committedAt: new Date().toISOString(),
+			source: saved.record.mode === "from-app" ? "wizard-from-app" : "wizard-collaborative",
+			rule: finalized.rule,
+			summary: finalized.summary,
+			decisions: finalized.decisions,
 		}
-	} else {
-		const last = session.history[session.history.length - 1]
-		if (!last) return stateFor(session)
-		session.pending = last.question
-		session.history = session.history.slice(0, -1)
-	}
-
-	await persist(projectPath, session)
-	return stateFor(session)
-}
-
-/** Caret writes the file; the model's involvement ended at parameters. */
-export async function commitWizard(projectPath: string): Promise<{ name: string; rule: string }> {
-	const session = sessions.get(projectPath)
-	if (!session?.proposal) throw new Error("There is no finished foundation to commit.")
-
-	const finalized = finalizeProposal(session.proposal, vibeDescription(session))
-	// The rationale used to be shown once on the finish screen and destroyed
-	// with the scratch; `meta` is where it survives — and it doubles as the
-	// "a person actually committed this" marker the entry flow keys on.
-	finalized.tokens.meta = {
-		committed: true,
-		committedAt: new Date().toISOString(),
-		source:
-			session.mode === "collaborative"
-				? "wizard-collaborative"
-				: session.mode === "from-app"
-					? "wizard-from-app"
-					: "wizard",
-		rule: finalized.rule,
-		summary: finalized.summary,
-		decisions: finalized.decisions,
-	}
-	await writeFoundationTokens(projectPath, finalized.tokens)
-	await regenerateRulesFiles(projectPath)
-	await recordEdit(projectPath, {
-		actor: "caret",
-		action: "write",
-		file: "tokens/foundation.json",
-		note: `token wizard → ${finalized.name}`,
+		await writeFoundationTokens(projectPath, finalized.tokens)
+		await regenerateRulesFiles(projectPath)
+		await recordEdit(projectPath, {
+			actor: "caret",
+			action: "write",
+			file: "tokens/foundation.json",
+			note: `interview → ${finalized.name}`,
+		})
+		await clearInterviewScratch(projectPath)
+		return { name: finalized.name, rule: finalized.rule }
 	})
-
-	await clearWizardScratch(projectPath)
-	sessions.delete(projectPath)
-	return { name: finalized.name, rule: finalized.rule }
 }
 
+/** Throws the interview away (the user chose "Set it by hand", or started over), cancelling any model call. */
 export async function abandonWizard(projectPath: string): Promise<void> {
-	sessions.delete(projectPath)
-	await clearWizardScratch(projectPath)
+	inFlight.get(projectPath)?.abort()
+	inFlight.delete(projectPath)
+	await oneAtATime(projectPath, "abandon", () => clearInterviewScratch(projectPath))
 }

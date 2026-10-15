@@ -53,8 +53,8 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 | Event | Properties |
 |---|---|
 | `setup_route_chosen` | `route`: from-app / ai-new-look / ai-describe / manual; `has_app_code` (bool) |
-| `wizard_started` | `mode`: ai-led / collaborative / from-app / other |
-| `wizard_step` | `action`: answer / back / retry / finish_now; `ok`; `duration_s` |
+| `wizard_started` | `mode`: collaborative / from-app / other |
+| `wizard_step` | `action`: opening / answer / back / retry / finish_now; `ok`; `duration_s` |
 | `wizard_committed` | `ok`; `duration_s` |
 | `wizard_abandoned` | `ok`; `duration_s` |
 

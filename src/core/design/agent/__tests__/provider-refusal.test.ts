@@ -1,5 +1,5 @@
 import { strict as assert } from "assert"
-import { nextWizardTurn } from "../../interview/conductor"
+import { InterviewSession } from "../../interview/session"
 import type { CodingBackend } from "../backend"
 import { isProviderRefusal, ProviderRefusalError } from "../backend"
 
@@ -37,10 +37,14 @@ describe("a provider's refusal is said at once, never retried", () => {
 				throw new ProviderRefusalError("The usage limit has been reached")
 			},
 		} as unknown as CodingBackend
-		await assert.rejects(
-			nextWizardTurn({ backend, workingDirectory: "/tmp", description: "A product", history: [], mode: "collaborative" }),
-			(err: unknown) => err instanceof ProviderRefusalError && /usage limit has been reached/.test(err.message),
-		)
+		const session = await InterviewSession.start("collaborative", "A product", {
+			backend,
+			workingDirectory: "/tmp",
+			persist: async () => {},
+		})
+		const view = session.view()
+		assert.equal(view?.phase, "error")
+		if (view?.phase === "error") assert.match(view.message, /usage limit has been reached/)
 		assert.equal(calls, 1, "a refusal was retried")
 	})
 })

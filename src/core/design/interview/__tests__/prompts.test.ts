@@ -16,12 +16,10 @@ import { strict as assert } from "assert"
 import * as fs from "fs"
 import * as path from "path"
 
-import type { CodingBackend, StructuredRequest } from "../../agent/backend"
 import type { Recording } from "../../agent/replay"
 import { commonValues } from "../../design-pass/foundation-check"
 import { activeHabits } from "../../design-pass/slop-list"
 import { AREA_ORDER } from "../areas"
-import { nextWizardTurn } from "../conductor"
 import { avoidListFor, userChoicesFrom } from "../defaults"
 import { areaSystemPrompt, areaUserPrompt, fillSystemPrompt, openingSystemPrompt, proseSystemPrompt } from "../model-calls"
 import { newRecord } from "../state"
@@ -43,29 +41,7 @@ function overusedDefaultsIn(text: string, userWords: string): string[] {
 	return commonValues({ colours, fonts }, { words: userWords, colours: [], fonts: [] }).map((found) => found.value)
 }
 
-async function firstRequest(mode: "collaborative" | "from-app"): Promise<StructuredRequest> {
-	let captured: StructuredRequest | undefined
-	const backend = {
-		id: "opencode",
-		async structured(request: StructuredRequest) {
-			captured = request
-			throw new Error("captured")
-		},
-	} as unknown as CodingBackend
-	await nextWizardTurn({ backend, workingDirectory: "/tmp/x", description: DESCRIPTION, history: [], mode }).catch(() => {})
-	assert.ok(captured, "the interview made no model request")
-	return captured
-}
-
 describe("the interview's instructions to the AI", () => {
-	for (const mode of ["collaborative", "from-app"] as const) {
-		it(`recommend no overused AI default (${mode})`, async () => {
-			const request = await firstRequest(mode)
-			const found = overusedDefaultsIn(`${request.systemPrompt ?? ""}\n${request.prompt}`, DESCRIPTION)
-			assert.deepEqual(found, [], `the instructions name overused defaults outside an avoid line: ${found.join(", ")}`)
-		})
-	}
-
 	it("recommend no overused AI default in any recorded real request", () => {
 		const files = fs.existsSync(RECORDINGS) ? fs.readdirSync(RECORDINGS).filter((f) => f.endsWith(".json")) : []
 		assert.ok(files.length > 0, `no interview recordings in ${RECORDINGS}`)
