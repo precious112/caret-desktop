@@ -1044,6 +1044,8 @@ export interface IpcEvents {
 	"libraries:changed": (projectPath: string | null) => void
 	/** An exploration opened or resolved — the Canvas button badges while one is open. */
 	"explore:open-changed": (projectPath: string, open: boolean) => void
+	/** The canvas's property sidebar opened or closed (an element was selected or let go). */
+	"canvas:inspector-changed": (projectPath: string, open: boolean) => void
 	/** The chat moved on: a token streamed, a permission was raised, a turn ended. */
 	"agent:state": (projectPath: string, state: AgentStateWire) => void
 	/** An app import (code → design) moved: a screen started, landed or failed. */

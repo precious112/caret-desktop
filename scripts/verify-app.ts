@@ -2740,13 +2740,20 @@ async function main(): Promise<void> {
 					pageFrame = wc.mainFrame.frames.find((f: any) => f.url.includes("mode=focused")) ?? pageFrame
 					// Selection is react-grab's, which starts off when a page opens; a person turns it on from its toolbar.
 					await pageFrame.executeJavaScript(`((window).__REACT_GRAB__?.activate?.(), true)`).catch(() => {})
-					wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
-					await new Promise((r) => setTimeout(r, 200))
-					wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
-					wc.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "left", clickCount: 1 })
+					// Click only while nothing is selected: a click on the paused page does nothing.
+					const selected = await wc
+						.executeJavaScript(`!!document.querySelector('#caret-param-panel')`)
+						.catch(() => false)
+					if (!selected) {
+						wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
+						await new Promise((r) => setTimeout(r, 200))
+						wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
+						wc.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "left", clickCount: 1 })
+					}
 					const rowDeadline = Date.now() + 5000
 					while (Date.now() < rowDeadline && !colorRow) {
-						colorRow = await pageFrame
+						// The panel lives in the canvas's sidebar beside the page, not in the page.
+						colorRow = await wc
 							.executeJavaScript(
 								`(() => {
 									const row = document.querySelector('#caret-param-panel [data-param-row="color"]')
@@ -2760,7 +2767,7 @@ async function main(): Promise<void> {
 				if (!colorRow) return { error: "the panel never rendered a colour row from the host's Params" }
 
 				// Commit a padding value through the row's input.
-				const committed = await pageFrame.executeJavaScript(
+				const committed = await wc.executeJavaScript(
 					`(() => {
 						const input = document.querySelector('#caret-param-panel [data-param-input="padding"]')
 						if (!input || input.disabled) return false
@@ -2874,7 +2881,7 @@ async function main(): Promise<void> {
 					let onSubtitle = false
 					const subtitleDeadline = Date.now() + 8000
 					while (Date.now() < subtitleDeadline && !onSubtitle) {
-						onSubtitle = await pageFrame
+						onSubtitle = await wc
 							.executeJavaScript(
 								`(document.querySelector('#caret-param-panel')?.dataset?.caretId === 'hero-subtitle')`,
 							)
@@ -2919,14 +2926,14 @@ async function main(): Promise<void> {
 
 					const announceDeadline = Date.now() + 8000
 					while (Date.now() < announceDeadline && !announced) {
-						announced = await pageFrame
+						announced = await wc
 							.executeJavaScript(`(document.querySelector('#caret-param-panel')?.dataset?.selectionCount === '2')`)
 							.catch(() => false)
 						if (!announced) await new Promise((r) => setTimeout(r, 250))
 					}
 				}
 				if (!announced) {
-					const diag = await pageFrame
+					const diag = await wc
 						.executeJavaScript(
 							`(() => { const p = document.querySelector('#caret-param-panel'); return { count: p?.dataset?.selectionCount ?? null, panelId: p?.dataset?.caretId ?? null } })()`,
 						)
@@ -2938,7 +2945,7 @@ async function main(): Promise<void> {
 				let committed = false
 				const commitDeadline = Date.now() + 15000
 				while (Date.now() < commitDeadline && !committed) {
-					committed = await pageFrame.executeJavaScript(
+					committed = await wc.executeJavaScript(
 						`(() => {
 							const input = document.querySelector('#caret-param-panel [data-param-input="padding"]')
 							if (!input || input.disabled) return false
@@ -3013,6 +3020,175 @@ async function main(): Promise<void> {
 		}
 
 		return `one commit put p-[32px] on both elements; Ctrl+Z restored the batch as one step`
+	})
+
+	await scenario("ci. a selection gets a sidebar beside the page and pauses the rest until Enter", async () => {
+		// The property panel used to float over the page, and while an element
+		// was selected every other element still lit up under the pointer. Now
+		// the panel is a sidebar beside the page (the chat closes for it and
+		// comes back after), and the rest of the page is paused until Enter,
+		// or Escape. Real mouse and keys
+		// throughout, and react-grab's own hover target is the witness.
+		await ensureChatOpen(chrome)
+		await chrome.waitForTimeout(800)
+
+		// One small action per call. No named helpers inside the evaluate body:
+		// esbuild wraps them in a __name helper the main process doesn't have.
+		const act = (action: string, arg: any = null) =>
+			app!.evaluate(
+				async ({ BrowserWindow }, input: { action: string; arg: any }) => {
+					let canvas: any = null
+					for (const win of BrowserWindow.getAllWindows()) {
+						const found = ((win?.contentView?.children ?? []) as any[]).find(
+							(v) =>
+								v.webContents &&
+								!v.webContents.isDestroyed() &&
+								v.webContents.getURL().startsWith("http://127.0.0.1"),
+						)
+						if (found && found.webContents.mainFrame.frames.some((f: any) => f.url.includes("mode=focused")))
+							canvas = found
+					}
+					if (!canvas) return { error: "no canvas view with a focused page" }
+					const wc = canvas.webContents
+					const pageFrame = wc.mainFrame.frames.find(
+						(f: any) => f.url.includes("mode=focused") && f.url.includes("page=home"),
+					)
+					if (!pageFrame) return { error: "the focused Home page is not open (bv leaves it open)" }
+					const { action, arg } = input
+
+					if (action === "point") {
+						// Where an element of the page is, in the view's coordinates, right now.
+						const frameBox = await wc.executeJavaScript(
+							`(() => { const r = document.querySelector('.caret-focused-iframe').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width } })()`,
+						)
+						const raw = await pageFrame.executeJavaScript(
+							`(() => { const el = document.querySelector(${JSON.stringify(arg)}); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: innerWidth } })()`,
+						)
+						if (!raw) return { error: `nothing matches ${arg} on the page` }
+						const scale = frameBox.w / raw.w
+						return { x: Math.round(frameBox.x + raw.x * scale), y: Math.round(frameBox.y + raw.y * scale) }
+					}
+					if (action === "click") {
+						wc.sendInputEvent({ type: "mouseMove", x: arg.x, y: arg.y })
+						await new Promise((r) => setTimeout(r, 200))
+						wc.sendInputEvent({ type: "mouseDown", x: arg.x, y: arg.y, button: "left", clickCount: 1 })
+						wc.sendInputEvent({ type: "mouseUp", x: arg.x, y: arg.y, button: "left", clickCount: 1 })
+						await new Promise((r) => setTimeout(r, 900))
+						return { url: pageFrame.url }
+					}
+					if (action === "hover") {
+						wc.sendInputEvent({ type: "mouseMove", x: arg.x - 6, y: arg.y })
+						await new Promise((r) => setTimeout(r, 120))
+						wc.sendInputEvent({ type: "mouseMove", x: arg.x, y: arg.y })
+						await new Promise((r) => setTimeout(r, 400))
+						return {
+							hovered: await pageFrame.executeJavaScript(
+								`(() => { const t = window.__REACT_GRAB__?.getState?.().targetElement; return t ? (t.closest('[data-caret-id]')?.getAttribute('data-caret-id') ?? t.tagName) : null })()`,
+							),
+							// Whether react-grab's highlight is drawn at all: what a person sees.
+							drawn: await pageFrame.executeJavaScript(
+								`(() => { const c = document.querySelector('[data-react-grab]')?.shadowRoot?.querySelector('[data-react-grab-overlay-canvas]'); return !!c && getComputedStyle(c).visibility !== 'hidden' })()`,
+							),
+						}
+					}
+					if (action === "enter") {
+						wc.sendInputEvent({ type: "keyDown", keyCode: "Return" })
+						wc.sendInputEvent({ type: "char", keyCode: "\r" })
+						wc.sendInputEvent({ type: "keyUp", keyCode: "Return" })
+						await new Promise((r) => setTimeout(r, 900))
+						return {}
+					}
+					if (action === "escape") {
+						wc.sendInputEvent({ type: "keyDown", keyCode: "Escape" })
+						wc.sendInputEvent({ type: "keyUp", keyCode: "Escape" })
+						await new Promise((r) => setTimeout(r, 900))
+						return {}
+					}
+					if (action === "page") return { value: await pageFrame.executeJavaScript(arg) }
+					if (action === "panel") {
+						return await wc.executeJavaScript(
+							`(() => {
+								const p = document.querySelector('#caret-inspector #caret-param-panel')
+								const side = document.querySelector('#caret-inspector').getBoundingClientRect()
+								const page = document.querySelector('.caret-focused-iframe-container').getBoundingClientRect()
+								return { subject: p ? p.dataset.caretId : null, sideWidth: Math.round(side.width), sideLeft: Math.round(side.left), pageRight: Math.round(page.right) }
+							})()`,
+						)
+					}
+					return { error: "unknown action " + action }
+				},
+				{ action, arg },
+			) as Promise<any>
+		const must = async (action: string, arg: any = null) => {
+			const result = await act(action, arg)
+			assert(!result?.error, `${action}: ${result?.error}`)
+			return result
+		}
+
+		// Start from nothing selected, with react-grab on as a person turns it on.
+		await must("page", `(window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })), true)`)
+		await chrome.waitForTimeout(800)
+		await must("page", `((window).__REACT_GRAB__?.activate?.(), true)`)
+
+		await must("click", await must("point", '[data-caret-id="hero-subtitle"]'))
+		const selected = await must("panel")
+		assert(
+			selected.subject === "hero-subtitle",
+			`clicking the subtitle did not put it in the sidebar: ${JSON.stringify(selected)}`,
+		)
+		const inPage = (await must("page", `!!document.querySelector('#caret-param-panel')`)).value
+		assert(!inPage, "the panel is still drawn inside the page")
+		assert(selected.sideWidth >= 270, `the sidebar did not open beside the page: ${JSON.stringify(selected)}`)
+		assert(selected.pageRight <= selected.sideLeft + 1, `the sidebar overlaps the page: ${JSON.stringify(selected)}`)
+		await waitFor(
+			"the chat to close while the sidebar is open",
+			async () => ((await chrome.locator('[data-testid="chat-transcript"]').count()) === 0 ? true : null),
+			5000,
+		)
+		await shot(chrome, "ci-sidebar-open")
+
+		// Paused: hovering the headline draws nothing and clicking it picks nothing.
+		const headlineId = (await must("page", `document.querySelector('h1[data-caret-id]').getAttribute('data-caret-id')`)).value
+		const headline = await must("point", "h1[data-caret-id]")
+		const lockedHover = await must("hover", headline)
+		assert(!lockedHover.drawn, `hovering the headline still drew a highlight while paused: ${JSON.stringify(lockedHover)}`)
+		const clicked = await must("click", headline)
+		assert(clicked.url.includes("page=home"), "a click on the paused page navigated it")
+		const stillSubtitle = await must("panel")
+		assert(
+			stillSubtitle.subject === "hero-subtitle",
+			`a click on the headline changed the selection while paused: ${JSON.stringify(stillSubtitle)}`,
+		)
+
+		// Enter finishes: the sidebar closes and the chat comes back.
+		await must("enter")
+		const finished = await must("panel")
+		assert(finished.subject === null, `Enter did not finish with the element: ${JSON.stringify(finished)}`)
+		assert(finished.sideWidth === 0, `the sidebar stayed open after Enter: ${JSON.stringify(finished)}`)
+		await waitFor(
+			"the chat to come back once the sidebar closed",
+			async () => ((await chrome.locator('[data-testid="chat-transcript"]').count()) > 0 ? true : null),
+			5000,
+		)
+
+		// With nothing selected, the same hover is highlighted. This proves the
+		// missing highlight above was the pause, not a probe that can't see it.
+		const freeHover = await must("hover", await must("point", "h1[data-caret-id]"))
+		assert(
+			freeHover.drawn && freeHover.hovered === headlineId,
+			`with nothing selected, hovering the headline did not highlight it: ${JSON.stringify(freeHover)}`,
+		)
+
+		// After letting go, another element can be picked (the paused page left
+		// react-grab able to select), and a real Escape lets that one go too.
+		await must("click", await must("point", "h1[data-caret-id]"))
+		const next = (await must("panel")).subject
+		assert(next === headlineId, `after Enter, clicking the headline did not select it: ${next}`)
+		await must("escape")
+		const released = await must("panel")
+		assert(released.subject === null, `Escape did not let the headline go: ${JSON.stringify(released)}`)
+
+		return `sidebar beside the page (${selected.sideWidth}px; chat closed, then back); hover and clicks paused until Enter; the next element picks, and Escape lets it go`
 	})
 
 	await scenario("bu. editing one .map() row's text writes that row's data item, and only it", async () => {
@@ -3562,10 +3738,19 @@ export default function ShaderDemo() {
 				// __name wrapper, which does not exist on the Electron side (see the
 				// harness notes; this file has hit that exact ReferenceError).
 
-				// Select the subtitle, which the handles attach to.
-				const subtitleRaw = await pageFrame.executeJavaScript(
-					`(() => { const el = document.querySelector('[data-caret-id="hero-subtitle"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`,
-				)
+				// Select the subtitle, which the handles attach to. The page has only
+				// just opened, so wait for it to draw.
+				let subtitleRaw: { x: number; y: number } | null = null
+				deadline = Date.now() + 30000
+				while (Date.now() < deadline && !subtitleRaw) {
+					pageFrame = wc.mainFrame.frames.find((f: any) => f.url.includes("page=home")) ?? pageFrame
+					subtitleRaw = await pageFrame
+						.executeJavaScript(
+							`(() => { const el = document.querySelector('[data-caret-id="hero-subtitle"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`,
+						)
+						.catch(() => null)
+					if (!subtitleRaw) await new Promise((r) => setTimeout(r, 500))
+				}
 				if (!subtitleRaw) return { error: "no subtitle on the page" }
 				const at = {
 					x: Math.round(offset.x + subtitleRaw.x * scale),
@@ -3593,9 +3778,15 @@ export default function ShaderDemo() {
 				if (!handles) {
 					const diag = await pageFrame
 						.executeJavaScript(
-							`(() => { const p = document.querySelector('#caret-param-panel'); return { panel: !!p, panelId: p?.dataset?.caretId ?? null, grab: !!window.__REACT_GRAB__, ids: document.querySelectorAll('[data-caret-id]').length } })()`,
+							`(() => ({ grab: !!window.__REACT_GRAB__, ids: document.querySelectorAll('[data-caret-id]').length }))()`,
 						)
 						.catch(() => null)
+					const panel = await wc
+						.executeJavaScript(
+							`(() => { const p = document.querySelector('#caret-param-panel'); return { panel: !!p, panelId: p?.dataset?.caretId ?? null } })()`,
+						)
+						.catch(() => null)
+					Object.assign(diag ?? {}, panel ?? {})
 					return { error: "the resize handles never appeared on selection — diag: " + JSON.stringify(diag) }
 				}
 
@@ -3606,6 +3797,20 @@ export default function ShaderDemo() {
 				// that way. The committed width lands back in the DOM as a w-[..px]
 				// class within about a second of a real drag, so each attempt polls
 				// for it and a miss retries the grab instead of reporting nothing.
+				// Selecting opened the property sidebar beside the page (and closed the
+				// chat), so the page has moved since the click: measure it again.
+				await new Promise((r) => setTimeout(r, 600))
+				const placed = await wc.executeJavaScript(
+					`(() => { const r = document.querySelector('.caret-focused-iframe').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width } })()`,
+				)
+				const placedInner = await pageFrame.executeJavaScript(`window.innerWidth`)
+				const dragScale = placedInner > 0 ? placed.w / placedInner : 1
+				// What each press reached, for the failure message.
+				await pageFrame.executeJavaScript(
+					`(window.__DOWNS__ = [], window.addEventListener('pointerdown', (e) => window.__DOWNS__.push(e.type + ':' + (e.target.id || e.target.parentElement?.id || e.target.tagName)), true), window.addEventListener('mousedown', (e) => window.__DOWNS__.push(e.type + ':' + (e.target.id || e.target.parentElement?.id || e.target.tagName)), true), true)`,
+				)
+				let lastFrom = { x: 0, y: 0 }
+
 				let dragged = false
 				for (let attempt = 0; attempt < 3 && !dragged; attempt++) {
 					const handleRaw = await pageFrame.executeJavaScript(
@@ -3613,9 +3818,10 @@ export default function ShaderDemo() {
 					)
 					if (!handleRaw) return { error: "the resize handles disappeared before the drag" }
 					const from = {
-						x: Math.round(offset.x + handleRaw.x * scale),
-						y: Math.round(offset.y + handleRaw.y * scale),
+						x: Math.round(placed.x + handleRaw.x * dragScale),
+						y: Math.round(placed.y + handleRaw.y * dragScale),
 					}
+					lastFrom = from
 					wc.sendInputEvent({ type: "mouseMove", x: from.x, y: from.y })
 					wc.sendInputEvent({ type: "mouseDown", x: from.x, y: from.y, button: "left", clickCount: 1 })
 					for (let step = 1; step <= 6; step++) {
@@ -3640,10 +3846,22 @@ export default function ShaderDemo() {
 						if (!dragged) await new Promise((r) => setTimeout(r, 300))
 					}
 				}
-				if (!dragged)
+				if (!dragged) {
+					const under = await wc
+						.executeJavaScript(
+							`(() => { const el = document.elementFromPoint(${lastFrom.x}, ${lastFrom.y}); return el ? el.tagName + '.' + el.className : 'nothing' })()`,
+						)
+						.catch(() => "?")
+					const downs = await pageFrame.executeJavaScript(`window.__DOWNS__`).catch(() => null)
+					const handleNow = await pageFrame
+						.executeJavaScript(
+							`(() => { const h = document.querySelector('#caret-resize-handles'); if (!h) return null; const r = h.children[0].getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width) } })()`,
+						)
+						.catch(() => null)
 					return {
-						error: `three drags on the handle produced no committed width in the DOM (iframe scale ${scale.toFixed(3)}, iframe ${Math.round(offset.w)}px wide at x=${Math.round(offset.x)} showing innerWidth ${innerWidth}px, in a canvas view ${Math.round(canvas.getBounds().width)}px wide)`,
+						error: `three drags on the handle produced no committed width in the DOM (pressed at ${JSON.stringify(lastFrom)}, view element there ${under}, presses the page saw ${JSON.stringify(downs)}, handle now ${JSON.stringify(handleNow)}; iframe scale ${dragScale.toFixed(3)}, iframe ${Math.round(placed.w)}px wide at x=${Math.round(placed.x)} showing innerWidth ${placedInner}px, in a canvas view ${Math.round(canvas.getBounds().width)}px wide)`,
 					}
+				}
 
 				return { ok: true }
 			} catch (err) {
@@ -3739,6 +3957,13 @@ export default function ShaderDemo() {
 					if (!pageFrame) return { error: "the focused page never became a frame of the canvas" }
 				}
 
+				// bz leaves the subtitle selected, which pauses the rest of the page.
+				// A person lets it go first (Escape); the sidebar then closes and the
+				// page moves back, so measure after.
+				await pageFrame
+					.executeJavaScript(`(window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })), true)`)
+					.catch(() => {})
+				await new Promise((r) => setTimeout(r, 800))
 				const offset = await wc.executeJavaScript(
 					`(() => { const r = document.querySelector('.caret-focused-iframe').getBoundingClientRect(); return { x: r.x, y: r.y } })()`,
 				)

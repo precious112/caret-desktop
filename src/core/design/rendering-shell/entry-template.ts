@@ -162,6 +162,13 @@ if (isolatedPageId && mode === "focused") {
   document.body.style.background = "#ffffff"
   document.body.style.overflow = "auto"
 
+  // The selection lock (lib/param-panel.ts) must see each pointer event (and Escape) before
+  // react-grab does, so these listeners are added before react-grab loads:
+  // listeners on one target in one phase run in the order they were added.
+  for (const type of ["pointermove", "mousemove", "pointerdown", "mousedown", "pointerup", "mouseup", "click", "auxclick", "contextmenu", "keydown"]) {
+    window.addEventListener(type, (e) => (window as any).__CARET_POINTER_GATE__?.(e), { capture: true })
+  }
+
   import("react-grab").then(() => {
     flog("react-grab loaded")
     return import("./lib/caret-grab-plugin")

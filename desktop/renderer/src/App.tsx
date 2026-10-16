@@ -69,6 +69,27 @@ export function App() {
 	// tokens change — the renderer never polls for it.
 	useEffect(() => on("project:stateChanged", (next) => setProject(next)), [])
 
+	// Selecting an element on the canvas opens a property sidebar beside the
+	// page. The chat closes while it is open, so the page doesn't get narrower
+	// twice, and comes back when it closes if it was open before.
+	const chatOpenRef = useRef(chatOpen)
+	chatOpenRef.current = chatOpen
+	const chatClosedForInspector = useRef(false)
+	useEffect(
+		() =>
+			on("canvas:inspector-changed", (projectPath, open) => {
+				if (projectPath !== project?.path) return
+				if (open && chatOpenRef.current) {
+					chatClosedForInspector.current = true
+					setChatOpen(false)
+				} else if (!open && chatClosedForInspector.current) {
+					chatClosedForInspector.current = false
+					setChatOpen(true)
+				}
+			}),
+		[project?.path],
+	)
+
 	useEffect(
 		() =>
 			on("explore:open-changed", (projectPath, open) => {
@@ -239,7 +260,11 @@ export function App() {
 				exploreOpen={exploreOpen}
 				onSetupClick={() => (setupStepOf(project) === 1 || project.app ? requestSurface("foundation") : openFirstPage())}
 				onSurfaceChange={requestSurface}
-				onToggleChat={() => setChatOpen((open) => !open)}
+				onToggleChat={() => {
+					// Opened or closed by hand: the sidebar no longer decides.
+					chatClosedForInspector.current = false
+					setChatOpen((open) => !open)
+				}}
 				project={project}
 				ref={topBarRef}
 				surface={surface}
@@ -295,7 +320,10 @@ export function App() {
 
 				{chatOpen && (
 					<ChatSidebar
-						onClose={() => setChatOpen(false)}
+						onClose={() => {
+							chatClosedForInspector.current = false
+							setChatOpen(false)
+						}}
 						onOpenBackendSetup={() => requestSurface("agent")}
 						onOpenSkills={() => requestSurface("skills")}
 						onViewAsset={setViewerTag}

@@ -524,9 +524,14 @@ export class ProjectWindow {
 				},
 			})
 			this.canvas.webContents.on("ipc-message", (_event, channel, payload) => {
-				if (channel === "canvas:toHost") {
-					void this.handleCanvasMessage(payload as DesignInboundMessage)
+				if (channel !== "canvas:toHost") return
+				// The canvas's property sidebar opened or closed: the chrome makes room.
+				if ((payload as { type?: unknown })?.type === "inspector-changed") {
+					const open = (payload as { payload?: { open?: unknown } }).payload?.open === true
+					this.sendToChrome("canvas:inspector-changed", this.projectPath, open)
+					return
 				}
+				void this.handleCanvasMessage(payload as DesignInboundMessage)
 			})
 			// The gap that made the Windows canvas failure invisible: the main
 			// process watched Vite (healthy) but nothing watched whether the

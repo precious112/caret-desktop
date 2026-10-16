@@ -1647,7 +1647,45 @@ function generateFocusedPageView(): string {
 
 		export function FocusedPageView({ pageId, title, states, onBack, onSimulate, onExplore, viewport, onSetViewport }: Props) {
 		  const iframeRef = useRef<HTMLIFrameElement>(null)
+		  const inspectorRef = useRef<HTMLElement>(null)
+		  const [inspectorOpen, setInspectorOpen] = React.useState(false)
 		  const preset = VIEWPORT_PRESETS[viewport]
+
+		  // The page writes its property panel into the sidebar (param-panel.ts),
+		  // so the sidebar is open exactly while it holds something.
+		  useEffect(() => {
+		    const slot = inspectorRef.current
+		    if (!slot) return
+		    const sync = () => setInspectorOpen(slot.childElementCount > 0)
+		    const observer = new MutationObserver(sync)
+		    observer.observe(slot, { childList: true })
+		    sync()
+		    return () => observer.disconnect()
+		  }, [])
+
+		  // The app closes the chat while the sidebar is open, so the page keeps its width.
+		  useEffect(() => {
+		    window.parent.postMessage({ source: "caret-vite", type: "inspector-changed", payload: { open: inspectorOpen } }, "*")
+		  }, [inspectorOpen])
+		  useEffect(
+		    () => () => window.parent.postMessage({ source: "caret-vite", type: "inspector-changed", payload: { open: false } }, "*"),
+		    [],
+		  )
+
+		  // Enter or Escape pressed while the keyboard is here rather than in the
+		  // page still finishes with the selected element. The sidebar's own
+		  // fields handle their keys themselves.
+		  useEffect(() => {
+		    if (!inspectorOpen) return
+		    const onKey = (e: KeyboardEvent) => {
+		      if ((e.key !== "Enter" && e.key !== "Escape") || e.shiftKey || e.isComposing) return
+		      const target = e.target as HTMLElement | null
+		      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return
+		      ;(iframeRef.current?.contentWindow as any)?.__CARET_FINISH_SELECTION__?.()
+		    }
+		    window.addEventListener("keydown", onKey)
+		    return () => window.removeEventListener("keydown", onKey)
+		  }, [inspectorOpen])
 
 		  useEffect(() => {
 		    const log = (msg: string) => window.parent.postMessage({ source: "caret-vite", type: "log", payload: { message: msg } }, "*")
@@ -1724,14 +1762,19 @@ function generateFocusedPageView(): string {
 		        </div>
 		        <button onClick={onExplore} className="caret-focused-toolbar-btn" data-testid="explore-enter-focused" title="Experiment with this page in the playground">⚗ Experiment</button>
 		      </div>
-		      <div className="caret-focused-iframe-container">
-		        <iframe
-		          ref={iframeRef}
-		          src={"/?page=" + encodeURIComponent(pageId) + "&mode=focused"}
-		          className="caret-focused-iframe"
-		          style={{ width: preset.width }}
-		          title={title}
-		        />
+		      <div className="caret-focused-body">
+		        <div className="caret-focused-iframe-container">
+		          <iframe
+		            ref={iframeRef}
+		            src={"/?page=" + encodeURIComponent(pageId) + "&mode=focused"}
+		            className="caret-focused-iframe"
+		            style={{ width: preset.width }}
+		            title={title}
+		            // A reloaded page starts with nothing selected.
+		            onLoad={() => inspectorRef.current?.replaceChildren()}
+		          />
+		        </div>
+		        <aside ref={inspectorRef} id="caret-inspector" className={"caret-inspector" + (inspectorOpen ? " open" : "")} />
 		      </div>
 		    </div>
 		  )
@@ -2638,8 +2681,33 @@ function generateCanvasCSS(): string {
 		}
 		.caret-explore-pill:hover { border-color: #0b7aff; background: #1a1a28; }
 
+		.caret-focused-body {
+		  flex: 1;
+		  display: flex;
+		  min-height: 0;
+		}
+
+		/* The property panel's sidebar. It slides in by growing from nothing, so
+		   the page beside it moves over rather than being covered. */
+		.caret-inspector {
+		  flex: none;
+		  width: 0;
+		  overflow: hidden;
+		  background: #14141c;
+		  border-left: 0 solid #2a2a36;
+		  transition: width 180ms ease;
+		}
+		.caret-inspector.open {
+		  width: 280px;
+		  border-left-width: 1px;
+		}
+		@media (prefers-reduced-motion: reduce) {
+		  .caret-inspector { transition: none; }
+		}
+
 		.caret-focused-iframe-container {
 		  flex: 1;
+		  min-width: 0;
 		  display: flex;
 		  justify-content: center;
 		  overflow: auto;
@@ -3528,10 +3596,10 @@ function generateLayersPanel(): string {
 		  overlay.style.cssText =
 		    "position:fixed;inset:0;z-index:99999;background:rgba(10,10,16,0.72);display:flex;align-items:center;justify-content:center;pointer-events:auto;"
 		  const SHORTCUTS: Array<[string, string]> = [
-		    ["Click", "select an element (opens the property panel)"],
+		    ["Click", "select an element (opens the property panel; the rest of the page pauses)"],
 		    ["Shift+Click", "grow the selection — one edit hits all of it"],
 		    ["Drag a handle", "resize; flex and grid preview through a clamp"],
-		    ["Enter (in a panel row)", "commit the value"],
+		    ["Enter", "commit the value and finish with the element"],
 		    ["\u2318Z / Ctrl+Z", "undo the last design change (one step per gesture)"],
 		    ["\u21e7\u2318Z / Ctrl+Shift+Z", "redo what you just undid"],
 		    ["L", "toggle the layers panel"],
@@ -3830,22 +3898,198 @@ function generateParamPanel(): string {
 		  return window.innerWidth
 		}
 
+		/**
+		 * The canvas's sidebar beside the focused page (FocusedPageView's
+		 * #caret-inspector). The panel lives there, in the canvas document, so it
+		 * never covers the page. Same origin, so this page can write into it. A
+		 * page shown anywhere else (a thumbnail, the shell harness) has none and
+		 * the panel floats over the page as before.
+		 */
+		function inspectorSlot(): HTMLElement | null {
+		  try {
+		    if (window.parent === window) return null
+		    return window.parent.document.getElementById("caret-inspector")
+		  } catch {
+		    return null
+		  }
+		}
+
 		function ensurePanel(): HTMLDivElement {
 		  if (panel && panel.isConnected) return panel
-		  panel = document.createElement("div")
+		  const slot = inspectorSlot()
+		  if (slot) {
+		    panel = slot.ownerDocument.createElement("div") as HTMLDivElement
+		    panel.style.cssText = "box-sizing:border-box;width:280px;height:100%;overflow:auto;padding:14px 16px;font:12.5px/1.5 system-ui,sans-serif;color:#e5e7eb;"
+		    slot.replaceChildren(panel)
+		  } else {
+		    panel = document.createElement("div")
+		    panel.setAttribute("data-react-grab-ignore-events", "")
+		    panel.style.cssText = "position:fixed;top:64px;right:16px;width:264px;max-height:70vh;overflow:auto;z-index:99998;background:rgba(20,20,30,0.97);border:1px solid #3a3a4a;border-radius:12px;padding:12px 14px;font:12.5px/1.5 system-ui,sans-serif;color:#e5e7eb;box-shadow:0 8px 32px rgba(0,0,0,0.4);pointer-events:auto;"
+		    document.body.appendChild(panel)
+		  }
 		  panel.id = "caret-param-panel"
-		  panel.setAttribute("data-react-grab-ignore-events", "")
-		  panel.style.cssText = "position:fixed;top:64px;right:16px;width:264px;max-height:70vh;overflow:auto;z-index:99998;background:rgba(20,20,30,0.97);border:1px solid #3a3a4a;border-radius:12px;padding:12px 14px;font:12.5px/1.5 system-ui,sans-serif;color:#e5e7eb;box-shadow:0 8px 32px rgba(0,0,0,0.4);pointer-events:auto;"
-		  document.body.appendChild(panel)
+		  // Keys typed in the sidebar never reach this page's window.
+		  panel.addEventListener("keydown", (e) => {
+		    if (e.key === "Escape") hideParamPanel()
+		  })
 		  return panel
 		}
 
+		/** The element the panel last showed: an edit committed with Enter lands after the panel closed. */
+		let lastSelected: Element | null = null
+
 		export function hideParamPanel() {
+		  if (currentTarget) lastSelected = currentTarget.element
 		  panel?.remove()
 		  removeResizeHandles()
 		  clearSelectionExtras()
 		  currentTarget = null
+		  pauseHighlight(false)
 		}
+
+		// A page that goes away (a reload, another page) takes its panel with it.
+		window.addEventListener("pagehide", () => panel?.remove())
+
+		// The floating panel (pages shown outside the canvas) keeps clear of the
+		// element when the page changes width.
+		window.addEventListener("resize", () => {
+		  if (currentTarget) positionPanel()
+		})
+
+		// The canvas around the page may hold the keyboard focus (a click on the
+		// page doesn't always move it), so it hands Enter and Escape over here.
+		;(window as any).__CARET_FINISH_SELECTION__ = () => {
+		  if (isParamPanelOpen()) hideParamPanel()
+		}
+
+		/* ── the selection lock ───────────────────────────────────────────────
+		 * While an element is selected, the rest of the page is paused: hovering
+		 * highlights nothing and clicks pick nothing, until the selection ends
+		 * (Enter, Escape, or the panel's ×).
+		 *
+		 * react-grab keeps seeing the pointer move as usual (it has its own rules
+		 * about the first move after a selection, and hiding moves from it left
+		 * it unable to pick anything afterwards). What it draws is hidden instead,
+		 * and presses outside the selection are stopped before it or the page
+		 * sees them: the entry adds the gate's listeners before react-grab loads,
+		 * so the gate runs first. */
+
+		const PAUSED_STYLE_ID = "caret-paused-highlight"
+		function pauseHighlight(paused: boolean) {
+		  const root = document.querySelector("[data-react-grab]")?.shadowRoot
+		  if (!root) return
+		  const existing = root.getElementById(PAUSED_STYLE_ID)
+		  if (!paused) {
+		    existing?.remove()
+		    return
+		  }
+		  if (existing) return
+		  const style = document.createElement("style")
+		  style.id = PAUSED_STYLE_ID
+		  style.textContent =
+		    "[data-react-grab-overlay-canvas], [data-react-grab-selection-label] { visibility: hidden !important; }"
+		  root.appendChild(style)
+		}
+
+		/** A press outside the selection was stopped: its release and click go with it. */
+		let swallowing = false
+
+		function insideSelection(x: number, y: number): boolean {
+		  if (!currentTarget) return false
+		  for (const el of [currentTarget.element, ...alsoSelected.map((s) => s.element)]) {
+		    const r = el.getBoundingClientRect()
+		    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return true
+		  }
+		  return false
+		}
+
+		function onOwnUi(e: Event): boolean {
+		  for (const node of e.composedPath()) {
+		    if (node === document.documentElement) break
+		    const el = node as Element
+		    if (!el.hasAttribute) continue
+		    if (el.hasAttribute("data-react-grab") || el.hasAttribute("data-react-grab-ignore-events")) return true
+		    if (el.classList.contains("caret-focused-fab")) return true
+		    if (typeof el.className === "string" && el.className.indexOf("caret-overlay") !== -1) return true
+		  }
+		  return false
+		}
+
+		;(window as any).__CARET_POINTER_GATE__ = (e: MouseEvent | KeyboardEvent) => {
+		  if (!(e instanceof KeyboardEvent)) {
+		    const release = e.type === "pointerup" || e.type === "mouseup" || e.type === "click"
+		    if (release) {
+		      if (!swallowing) return
+		      e.preventDefault()
+		      e.stopImmediatePropagation()
+		      if (e.type === "click") swallowing = false
+		      return
+		    }
+		    const press = e.type === "pointerdown" || e.type === "mousedown" || e.type === "contextmenu" || e.type === "auxclick"
+		    if (!press) return
+		    if (e.type === "pointerdown") swallowing = false
+		  }
+		  if (!isParamPanelOpen()) return
+		  if (e instanceof KeyboardEvent) {
+		    // Enter finishes with the selection. Typed into a field, the text edit
+		    // or react-grab's prompt, it does its job there first; anywhere else it
+		    // is only that, or react-grab would open its comment prompt on it.
+		    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+		      const active = document.activeElement as HTMLElement | null
+		      const typing =
+		        !!active &&
+		        (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA" || !!active.closest?.("[data-react-grab]"))
+		      if (typing || (window as any).__REACT_GRAB__?.getState?.().isPromptMode) {
+		        setTimeout(() => {
+		          if (isParamPanelOpen()) hideParamPanel()
+		        }, 0)
+		        return
+		      }
+		      e.preventDefault()
+		      e.stopImmediatePropagation()
+		      hideParamPanel()
+		      return
+		    }
+		    // Escape lets the selection go and nothing else. react-grab would also
+		    // switch itself off on it, and then nothing could be picked until the
+		    // person turned it on again. Typing, the text edit and react-grab's own
+		    // prompt keep their Escape.
+		    if (e.key !== "Escape") return
+		    const active = document.activeElement as HTMLElement | null
+		    const inCaretPanel = !!active?.closest?.("#caret-param-panel, #caret-layers-panel")
+		    if (active?.isContentEditable) return
+		    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA") && !inCaretPanel) return
+		    if ((window as any).__REACT_GRAB__?.getState?.().isPromptMode) return
+		    if (active?.closest?.("[data-react-grab]") || document.getElementById("caret-color-popover")) return
+		    // react-grab's right-click menu is open: Escape closes the menu first.
+		    if (document.querySelector("[data-react-grab]")?.shadowRoot?.querySelector("[data-react-grab-context-menu]")) return
+		    e.preventDefault()
+		    e.stopImmediatePropagation()
+		    hideParamPanel()
+		    // Escape closes the layers panel and the keyboard map too; their own
+		    // listener never sees this one.
+		    document.getElementById("caret-layers-panel")?.remove()
+		    document.getElementById("caret-shortcuts")?.remove()
+		    return
+		  }
+		  // Caret's own controls and react-grab's own menus work as usual, and a
+		  // shift-press grows the selection.
+		  if (onOwnUi(e) || e.shiftKey) return
+		  // Placing the cursor in text being edited.
+		  if ((e.target as HTMLElement | null)?.isContentEditable) return
+		  // A right-click on the selection opens its menu. A plain click on it is
+		  // stopped too: react-grab treats a second click on what it holds as
+		  // something else, and afterwards picked nothing.
+		  const rightButton = e.type === "contextmenu" || e.button === 2
+		  if (rightButton && insideSelection(e.clientX, e.clientY)) return
+		  // The colour popover closes on a press outside it, so leave those alone.
+		  if (document.getElementById("caret-color-popover")) return
+		  e.preventDefault()
+		  e.stopImmediatePropagation()
+		  if (e.type === "pointerdown" || e.type === "mousedown") swallowing = true
+		}
+
+
 
 		/* The panel must sit BESIDE the selection, never on it. Its home is the
 		 * top-right corner — which is exactly where a hero image or nav lives, so
@@ -3856,6 +4100,8 @@ function generateParamPanel(): string {
 		 * every render, since the panel's height depends on its rows. */
 		function positionPanel() {
 		  if (!panel || !currentTarget || !currentTarget.element.isConnected) return
+		  // In the sidebar it is beside the page already.
+		  if (panel.ownerDocument !== document) return
 		  // Start from the home corner so measurement is deterministic.
 		  panel.style.left = "auto"
 		  panel.style.right = "16px"
@@ -3920,6 +4166,15 @@ function generateParamPanel(): string {
 		  handleHost.append(right, bottom)
 		  document.body.appendChild(handleHost)
 		  positionResizeHandles()
+		  // The handles stay on the element every frame while it is selected:
+		  // after a drag, an edit landing, an animation, the page changing width.
+		  const host = handleHost
+		  const follow = () => {
+		    if (handleHost !== host || !host.isConnected) return
+		    positionResizeHandles()
+		    requestAnimationFrame(follow)
+		  }
+		  requestAnimationFrame(follow)
 
 		  for (const handle of [right, bottom]) {
 		    handle.addEventListener("pointerdown", (e) => startResizeDrag(e, handle.dataset.axis as "width" | "height"))
@@ -4025,6 +4280,7 @@ function generateParamPanel(): string {
 		  currentTarget = { filePath, caretId, lineNumber, element }
 		  outline(element, true)
 		  for (const extra of alsoSelected) outline(extra.element, true)
+		  pauseHighlight(true)
 		  const host = ensurePanel()
 		  host.dataset.selectionCount = String(alsoSelected.length + 1)
 		  // The panel's subject, known before its rows resolve.
@@ -4102,9 +4358,9 @@ function generateParamPanel(): string {
 		    \`<button data-size-mode="\${axis}:\${mode}" style="all:unset;cursor:pointer;border:1px solid #3a3a4a;border-radius:6px;padding:1px 7px;font-size:11px;color:#c9cede">\${label}</button>\`
 		  const modesLine =
 		    alsoSelected.length === 0
-		      ? \`<div style="display:flex;gap:6px;align-items:center;margin:-2px 0 10px;color:#8b93a7;font-size:11px">
-		          <span>W</span>\${chip("width", "hug", "Hug")}\${chip("width", "fill", "Fill")}\${chip("width", "fixed", "Fixed")}
-		          <span style="margin-left:6px">H</span>\${chip("height", "hug", "Hug")}\${chip("height", "fill", "Fill")}\${chip("height", "fixed", "Fixed")}
+		      ? \`<div style="display:flex;flex-direction:column;gap:6px;margin:-2px 0 10px;color:#8b93a7;font-size:11px">
+		          <div style="display:flex;gap:6px;align-items:center"><span style="width:12px">W</span>\${chip("width", "hug", "Hug")}\${chip("width", "fill", "Fill")}\${chip("width", "fixed", "Fixed")}</div>
+		          <div style="display:flex;gap:6px;align-items:center"><span style="width:12px">H</span>\${chip("height", "hug", "Hug")}\${chip("height", "fill", "Fill")}\${chip("height", "fixed", "Fixed")}</div>
 		        </div>\`
 		      : ""
 
@@ -4113,6 +4369,7 @@ function generateParamPanel(): string {
 		      <strong style="font-size:12px">\${esc(currentTarget.caretId)}</strong>
 		      <button data-param-close style="all:unset;cursor:pointer;color:#8b93a7;font-size:15px;line-height:1">×</button>
 		    </div>
+		    <div data-param-hint style="color:#8b93a7;font-size:11px;margin:-4px 0 10px">The rest of the page is paused. Press Enter or Esc to pick another.</div>
 		    \${bulkLine}\${rowLine}\${modesLine}\${rows}\`
 
 		  host.querySelector("[data-param-close]")?.addEventListener("click", hideParamPanel)
@@ -4168,6 +4425,8 @@ function generateParamPanel(): string {
 		          ...(alsoSelected.length > 0 ? { alsoCaretIds: alsoSelected.map((s) => s.caretId) } : {}),
 		        },
 		      })
+		      // Enter finishes with the selection here too.
+		      hideParamPanel()
 		    })
 		  }
 		  positionPanel()
@@ -4340,6 +4599,8 @@ function generateParamPanel(): string {
 		  if (payload?.success && currentTarget) {
 		    releaseFreezePins(currentTarget.element)
 		    setTimeout(requestRefresh, 250)
+		  } else if (payload?.success && lastSelected?.isConnected) {
+		    releaseFreezePins(lastSelected)
 		  }
 		  if (payload?.success && pendingVerify) setTimeout(() => void runPendingVerify(), 700)
 		  if (payload?.success === false) pendingVerify = null

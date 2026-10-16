@@ -441,7 +441,12 @@ async function waitFor(check: () => Promise<boolean>, timeoutMs: number, label: 
 	throw new Error(`timed out waiting for ${label}`)
 }
 
+/** `--only o,cc` runs just those scenarios (each one here sets up its own page). */
+const onlyIdx = args.indexOf("--only")
+const ONLY = onlyIdx !== -1 ? new Set(args[onlyIdx + 1].split(",")) : null
+
 async function scenario(name: string, fn: () => Promise<string>) {
+	if (ONLY && !ONLY.has(name.split(".")[0])) return
 	try {
 		const detail = await fn()
 		results.push({ name, passed: true, detail })
@@ -455,6 +460,15 @@ async function scenario(name: string, fn: () => Promise<string>) {
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+
+/**
+ * react-grab starts off when a focused page opens (it pauses the page's
+ * animations while on); a person turns it on from its toolbar to select.
+ */
+async function turnOnGrab(page: import("playwright").Page): Promise<void> {
+	await page.waitForFunction(() => !!(window as any).__REACT_GRAB__, null, { timeout: 15000 })
+	await page.evaluate(() => (window as any).__REACT_GRAB__.activate())
+}
 
 async function main() {
 	log("building fixture from current templates...")
@@ -883,6 +897,7 @@ async function main() {
 	await scenario("o. element click resolves the exact source line (fragment page)", async () => {
 		const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 		await page.goto(`http://localhost:${port}/?page=fragmented&mode=focused`)
+		await turnOnGrab(page)
 		await page.waitForSelector('[data-testid="frag-title"]', { state: "attached", timeout: 15000 })
 		await page.waitForTimeout(2500)
 		await page.evaluate(() => {
@@ -1696,6 +1711,7 @@ async function main() {
 		const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 		try {
 			await page.goto(`http://localhost:${port}/?page=fragmented&mode=focused`)
+			await turnOnGrab(page)
 			await page.waitForSelector('[data-testid="frag-title"]', { state: "attached", timeout: 15000 })
 			await page.waitForTimeout(2500)
 			await page.evaluate(() => {
@@ -1889,6 +1905,7 @@ async function main() {
 		const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 		try {
 			await page.goto(`http://localhost:${port}/?page=layouts&mode=focused`)
+			await turnOnGrab(page)
 			await page.waitForSelector('[data-testid="lay-flex"]', { state: "attached", timeout: 15000 })
 			await page.waitForTimeout(2000)
 			await page.evaluate(() => {
@@ -2142,6 +2159,7 @@ async function main() {
 		const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 		try {
 			await page.goto(`http://localhost:${port}/?page=layouts&mode=focused`)
+			await turnOnGrab(page)
 			await page.waitForSelector('[data-testid="lay-flex"]', { state: "attached", timeout: 15000 })
 			await page.waitForTimeout(2000)
 			await page.evaluate(() => {
@@ -2163,7 +2181,12 @@ async function main() {
 				// and the loop destroys its own success. Instead, if a leftover
 				// handle covers the click point, aim slightly inside the element.
 				let target = { x: 0, y: 0, width: 0 }
-				let selected = ""
+				// Already selected: a second click would let it go, so don't click.
+				let selected = await page.evaluate(() =>
+					document.querySelector("#caret-resize-handles")
+						? ((document.querySelector("#caret-param-panel") as HTMLElement | null)?.dataset?.caretId ?? "")
+						: "",
+				)
 				for (let attempt = 0; attempt < 6 && selected !== testId; attempt++) {
 					target = await page.evaluate((id) => {
 						const el = document.querySelector(`[data-testid="${id}"]`)
@@ -2179,6 +2202,21 @@ async function main() {
 						await page.waitForTimeout(300)
 						continue
 					}
+					// While another element is selected the rest of the page is
+					// paused, so a person lets it go first (Escape).
+					const other = await page.evaluate((id) => {
+						const p = document.querySelector("#caret-param-panel") as HTMLElement | null
+						return !!p && p.dataset.caretId !== id
+					}, testId)
+					if (other) {
+						await page.keyboard.press("Escape")
+						await page.waitForTimeout(200)
+					}
+					// The pointer travels to the element, as a person's does: react-grab
+					// spends the first move after a selection on letting go of it, so a
+					// lone jump straight onto the target never reaches it.
+					await page.mouse.move(target.x - 12, target.y, { steps: 4 })
+					await page.mouse.move(target.x, target.y, { steps: 2 })
 					await page.mouse.click(target.x, target.y)
 					const deadline = Date.now() + 4000
 					while (Date.now() < deadline && selected !== testId) {
@@ -2199,11 +2237,31 @@ async function main() {
 								(document.querySelector("#caret-param-panel") as HTMLElement | null)?.dataset?.caretId ?? null,
 							handles: !!document.querySelector("#caret-resize-handles"),
 							grab: !!(window as any).__REACT_GRAB__,
+							grabOn: (window as any).__REACT_GRAB__?.isActive?.() ?? null,
+							grabState: (() => {
+								const st = (window as any).__REACT_GRAB__?.getState?.()
+								if (!st) return null
+								return {
+									dragging: st.isDragging,
+									copying: st.isCopying,
+									prompt: st.isPromptMode,
+									box: st.isSelectionBoxVisible,
+									target: st.targetElement?.getAttribute?.("data-testid") ?? st.targetElement?.tagName ?? null,
+								}
+							})(),
+							pausedAttr: document.documentElement.hasAttribute("data-react-grab-ignore-events"),
+							focus: document.activeElement?.tagName ?? null,
 							selectedMsgs: (window as any).__SEL__?.length ?? -1,
 							under: under ? `${under.tagName.toLowerCase()}.${under.className}`.slice(0, 80) : "nothing",
 						}
 					}, target)
 					throw new Error(`meant to drag ${testId}, but ${selected || "nothing"} is selected — ${JSON.stringify(diag)}`)
+				}
+				if (target.width === 0) {
+					target = await page.evaluate((id) => {
+						const r = document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect()
+						return { x: r.x + r.width / 2, y: r.y + r.height / 2, width: r.width }
+					}, testId)
 				}
 				const handle = await page.evaluate(() => {
 					const r = (
@@ -2288,6 +2346,7 @@ async function main() {
 		const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 		try {
 			await page.goto(`http://localhost:${port}/?page=layouts&mode=focused`)
+			await turnOnGrab(page)
 			await page.waitForSelector('[data-testid="lay-flex"]', { state: "attached", timeout: 15000 })
 			await page.waitForTimeout(2000)
 
@@ -2360,6 +2419,7 @@ async function main() {
 		const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 		try {
 			await page.goto(`http://localhost:${port}/?page=fragmented&mode=focused`)
+			await turnOnGrab(page)
 			await page.waitForSelector('[data-testid="frag-title"]', { state: "attached", timeout: 15000 })
 			await page.waitForTimeout(2500)
 			await page.evaluate(() => {
@@ -2444,6 +2504,7 @@ async function main() {
 		const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 		try {
 			await page.goto(`http://localhost:${port}/?page=fragmented&mode=focused`)
+			await turnOnGrab(page)
 			await page.waitForSelector('[data-testid="frag-title"]', { state: "attached", timeout: 15000 })
 			await page.waitForTimeout(2500)
 
@@ -2474,6 +2535,15 @@ async function main() {
 			// The reported case: the element occupies the panel's home corner.
 			const corner = await overlapAfterSelect("position:fixed;top:40px;right:0;left:auto;width:620px;height:320px;")
 			if (corner.overlap) throw new Error(`panel covers a top-right selection (panel at ${corner.panel})`)
+
+			// A second click on the selected element lets it go, so let it go
+			// first (Escape) and select it afresh in its new place.
+			await page.keyboard.press("Escape")
+			await waitFor(
+				async () => await page.evaluate(() => !document.querySelector("#caret-param-panel")),
+				5000,
+				"Escape to let the selection go",
+			)
 
 			// The hard case: the element spans BOTH top corners — the panel must
 			// leave the top band entirely rather than pick the covered mirror.

@@ -140,6 +140,7 @@ const EVENT_CHANNELS: Record<IpcEventChannel, boolean> = {
 	"skills:changed": true,
 	"libraries:changed": true,
 	"explore:open-changed": true,
+	"canvas:inspector-changed": true,
 	"import:progress": true,
 	"agent:state": true,
 	"generate:progress": true,
