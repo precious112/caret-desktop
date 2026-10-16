@@ -44,7 +44,8 @@
 		"test:skills": "npm run build && tsx scripts/verify-skills.ts",
 		"test:skills:live": "npm run build && tsx scripts/verify-skills.ts --live",
 		"test:checks": "npm run build && tsx scripts/verify-checks.ts",
-		"test:boards": "npm run build && tsx scripts/verify-boards.ts"
+		"test:boards": "npm run build && tsx scripts/verify-boards.ts",
+		"test:crawl": "npm run build && tsx scripts/verify-crawl.ts"
 	},
 	"dependencies": {
 		"@babel/parser": "^7.29.8",
