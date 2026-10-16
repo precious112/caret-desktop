@@ -75,7 +75,7 @@ const KINDS: Array<{ id: GenerationKindWire; label: string; hint: string }> = [
 	{
 		id: "shader",
 		label: "An animated background",
-		hint: "A living gradient, written as code — colours and motion stay tunable.",
+		hint: "A living gradient, written as code. Colours and motion stay tunable.",
 	},
 ]
 
@@ -1027,7 +1027,7 @@ export function GenerateAsset({ project, onClose }: { project: ProjectState; onC
 											disabled={busy || refining}
 											onChange={(event) => setRefineNote(event.target.value)}
 											onKeyDown={(event) => event.key === "Enter" && refine()}
-											placeholder='What should change on this take? — "harder shadow", "label bigger", "less clutter"'
+											placeholder='What should change on this take? For example "harder shadow", "label bigger", "less clutter"'
 											value={refineNote}
 										/>
 										<button
@@ -1382,7 +1382,7 @@ function MarkFlow({
 									disabled={busy || targetRefining}
 									onChange={(event) => setTargetNote(event.target.value)}
 									onKeyDown={(event) => event.key === "Enter" && refineTarget()}
-									placeholder={'What should change? — "thicker stroke", "flame taller", "simpler"'}
+									placeholder={'What should change? For example "thicker stroke", "flame taller", "simpler"'}
 									value={targetNote}
 								/>
 								<button
@@ -1746,7 +1746,7 @@ function ShaderFlow({
 								disabled={busy || refining}
 								onChange={(event) => setNote(event.target.value)}
 								onKeyDown={(event) => event.key === "Enter" && refine()}
-								placeholder='What should change? — "slower", "more layered", "less green"'
+								placeholder='What should change? For example "slower", "more layered", "less green"'
 								value={note}
 							/>
 							<button
@@ -2059,7 +2059,7 @@ function Model3dFlow({
 							disabled={busy || sourceBusy || sourceRefining}
 							onChange={(event) => setSourceNote(event.target.value)}
 							onKeyDown={(event) => event.key === "Enter" && refineSource()}
-							placeholder={'What should change? — "thicker profile", "heavier base", "cleaner silhouette"'}
+							placeholder={'What should change? For example "thicker profile", "heavier base", "cleaner silhouette"'}
 							value={sourceNote}
 						/>
 						<button

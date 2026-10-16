@@ -672,13 +672,15 @@ const CASES: Array<{ id: string; title: string; run(): Promise<string> }> = [
 
 				await openLibraries(run)
 				await chrome.locator('[data-library="testlib"]').getByTestId("library-toggle").click()
+				// The rules files are rewritten one after another, so wait for both.
 				await waitFor(
-					"the libraries section to leave the rules",
-					async () => (!(await rulesText(run.project)).includes(heading) ? true : null),
+					"the libraries section to leave AGENTS.md and CLAUDE.md",
+					async () => {
+						const claude = await fs.readFile(path.join(run.project, "CLAUDE.md"), "utf8").catch(() => heading)
+						return !(await rulesText(run.project)).includes(heading) && !claude.includes(heading) ? true : null
+					},
 					30_000,
 				)
-				const claude = await fs.readFile(path.join(run.project, "CLAUDE.md"), "utf8")
-				assert(!claude.includes(heading), "CLAUDE.md still suggests the libraries")
 
 				await chrome.locator('[data-library="testlib"]').getByTestId("library-toggle").click()
 				await waitFor(
