@@ -2738,6 +2738,8 @@ async function main(): Promise<void> {
 				const deadline = Date.now() + 30000
 				while (Date.now() < deadline && !colorRow) {
 					pageFrame = wc.mainFrame.frames.find((f: any) => f.url.includes("mode=focused")) ?? pageFrame
+					// Selection is react-grab's, which starts off when a page opens; a person turns it on from its toolbar.
+					await pageFrame.executeJavaScript(`((window).__REACT_GRAB__?.activate?.(), true)`).catch(() => {})
 					wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
 					await new Promise((r) => setTimeout(r, 200))
 					wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
@@ -2860,6 +2862,8 @@ async function main(): Promise<void> {
 						continue
 					}
 					const at = { x: Math.round(offset.x + subtitleRaw.x), y: Math.round(offset.y + subtitleRaw.y) }
+					// Selection is react-grab's, which starts off when a page opens; a person turns it on from its toolbar.
+					await pageFrame.executeJavaScript(`((window).__REACT_GRAB__?.activate?.(), true)`).catch(() => {})
 					wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
 					await new Promise((r) => setTimeout(r, 200))
 					wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
@@ -3572,6 +3576,8 @@ export default function ShaderDemo() {
 				deadline = Date.now() + 30000
 				while (Date.now() < deadline && !handles) {
 					pageFrame = wc.mainFrame.frames.find((f: any) => f.url.includes("page=home")) ?? pageFrame
+					// Selection is react-grab's, which starts off when a page opens; a person turns it on from its toolbar.
+					await pageFrame.executeJavaScript(`((window).__REACT_GRAB__?.activate?.(), true)`).catch(() => {})
 					wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
 					await new Promise((r) => setTimeout(r, 200))
 					wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
