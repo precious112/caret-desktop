@@ -402,8 +402,12 @@ export function TakeBoard({
 									}}
 								/>
 								<b className="min-w-0 truncate">{takeLabel(current)}</b>
-								{current.savedAs && <span className="text-xs text-emerald-400">saved as @{current.savedAs}</span>}
 							</div>
+							{current.savedAs && (
+								<div className="mt-0.5 text-xs text-emerald-400" data-testid="board-saved-as">
+									Saved as @{current.savedAs}
+								</div>
+							)}
 
 							{current.status !== "ready" ? (
 								<p className="mt-2 text-xs text-shell-muted" data-testid="board-inspector-status">
