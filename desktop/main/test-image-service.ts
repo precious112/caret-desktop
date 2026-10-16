@@ -12,7 +12,7 @@
  */
 import { app } from "electron"
 
-import { configureRasterPacing } from "../../src/core/design/asset-library/raster/gemini"
+import { configureCallCap, configureRasterPacing } from "../../src/core/design/asset-library/raster/gemini"
 import { Logger } from "../../src/shared/services/Logger"
 
 let announced = false
@@ -27,4 +27,16 @@ export function testImageService(env: NodeJS.ProcessEnv = process.env, isPackage
 		Logger.info(`[generate] TEST IMAGE SERVICE at ${url}: no image call reaches Google`)
 	}
 	return url
+}
+
+/**
+ * Development builds only: CARET_IMAGE_CALL_CAP caps the real image calls this
+ * app may make (counting retries), for paid test runs.
+ */
+export function applyImageCallCap(env: NodeJS.ProcessEnv = process.env, isPackaged = app.isPackaged): void {
+	if (isPackaged) return
+	const cap = Number(env.CARET_IMAGE_CALL_CAP)
+	if (!Number.isFinite(cap) || cap <= 0) return
+	configureCallCap(cap)
+	Logger.info(`[generate] TEST SPENDING CAP: at most ${cap} image calls in this run`)
 }

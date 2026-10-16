@@ -5,10 +5,10 @@
  * project-specific lives on a {@link ProjectWindow}; this file only decides what
  * exists and when.
  */
+
 import { app, BrowserWindow, dialog, nativeImage, shell } from "electron"
 import * as path from "path"
 import { fileURLToPath } from "url"
-
 import { disposeBackends, setBundledBackendDirectory } from "../../src/core/design"
 import { extendOpencodeServerConfig } from "../../src/core/design/agent/opencode"
 import { subscribeDesignEvents } from "../../src/core/design/telemetry-hooks"
@@ -35,6 +35,7 @@ import { loadPrefs } from "./prefs"
 import { setLibrariesOnSource } from "./rules/context"
 import { regenerateRulesFiles } from "./rules/generate"
 import { skillsSourceFromEnv, startSkillService } from "./skills/skills"
+import { applyImageCallCap } from "./test-image-service"
 import { WindowManager } from "./window-manager"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -127,6 +128,7 @@ async function main(): Promise<void> {
 	// Caret connects to the component and reference libraries itself and passes
 	// their tools on through its own connection; started early so the first
 	// tool list finds them ready.
+	applyImageCallCap()
 	const testLibrary = testLibraryFromEnv(process.env, app.isPackaged, process.execPath)
 	if (testLibrary)
 		Logger.info(`[main] TEST LIBRARY from ${testLibrary.connection.kind === "stdio" ? testLibrary.connection.args[0] : ""}`)

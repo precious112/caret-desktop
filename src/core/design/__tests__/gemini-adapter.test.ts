@@ -2,7 +2,7 @@ import { describe, it } from "mocha"
 import "should"
 
 import { mockFetchForTesting } from "@/shared/net"
-import { composePrompt, configureRasterPacing, GeminiImages } from "../asset-library/raster/gemini"
+import { composePrompt, configureCallCap, configureRasterPacing, GeminiImages } from "../asset-library/raster/gemini"
 
 const request = {
 	prompt: "An overhead photograph of a wooden workbench, low warm light, empty space top-left.",
@@ -241,5 +241,29 @@ describe("the Gemini image adapter", () => {
 			},
 		)
 		peak.should.equal(1)
+	})
+
+	it("never sends a call past the test spending cap", async () => {
+		configureCallCap(2)
+		let sent = 0
+		try {
+			await mockFetchForTesting(
+				async () => {
+					sent++
+					return reply(IMAGE_REPLY)
+				},
+				async () => {
+					const client = new GeminiImages({ backend: "api-key", apiKey: "k" })
+					;(await client.generate(request)).ok.should.be.true()
+					;(await client.generate(request)).ok.should.be.true()
+					const third = await client.generate(request)
+					third.ok.should.be.false()
+					if (!third.ok) third.reason.should.containEql("spending cap")
+				},
+			)
+		} finally {
+			configureCallCap(null)
+		}
+		sent.should.equal(2)
 	})
 })

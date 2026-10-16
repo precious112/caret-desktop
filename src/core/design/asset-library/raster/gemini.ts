@@ -143,6 +143,19 @@ const PACING = {
 	now: () => Date.now(),
 }
 
+/**
+ * A hard ceiling on real image calls in this process, for paid test runs only
+ * (set by the desktop app from CARET_IMAGE_CALL_CAP in development builds).
+ * Past it every call is refused without being sent, so a test run can never
+ * spend more than it was allowed.
+ */
+let callCap: number | null = null
+let callsSent = 0
+export function configureCallCap(cap: number | null): void {
+	callCap = cap
+	callsSent = 0
+}
+
 /** Test hook (and tuning): override timing without touching the queue logic. */
 export function configureRasterPacing(overrides: Partial<typeof PACING>): void {
 	Object.assign(PACING, overrides)
@@ -214,6 +227,10 @@ export class GeminiImages {
 		if (misconfigured) return { ok: false, reason: misconfigured, retryable: false }
 
 		const { model, prompt, url } = this.resolve(request)
+		if (callCap !== null && callsSent >= callCap) {
+			return { ok: false, reason: `The test spending cap (${callCap} image calls) is reached; nothing was sent.`, retryable: false }
+		}
+		callsSent++
 
 		let headers: Record<string, string>
 		try {
