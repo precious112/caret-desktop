@@ -64,6 +64,8 @@ function generateTypes(): string {
 		  status: "working" | "ready" | "failed" | "cancelled"
 		  error?: string
 		  startedAt: string
+		  round?: string
+		  strength?: "subtle" | "strong"
 		}
 
 		export interface Exploration {
@@ -359,39 +361,16 @@ function generateExploreView(): string {
 
 		/**
 		 * The playground: exploration on its own canvas mode, never an overlay.
-		 * With nothing open it is the start screen. With an exploration open the
-		 * view is a centered lineage walked downward: the current round's takes
-		 * side by side — skeletons while they generate, the live page the moment
-		 * each finishes — and branching clears the siblings, keeps the pick, and
-		 * grows the next round below it. Clicking a page shows it full size.
+		 * With nothing open it is the start screen. With an exploration open it is
+		 * a branching board: the page as it is now is the first box, every round
+		 * of takes branches from the exact page it was grown from (joined by a line
+		 * in the branch's colour), and nothing is hidden when you branch. Any take,
+		 * or the page itself, can be branched again and again. The side panel acts
+		 * on the selected take: use it, or change it into a new round.
 		 */
 
 		function send(type: string, payload: any) {
 		  window.parent.postMessage({ source: "caret-vite", type, payload }, "*")
-		}
-
-		/** A live page iframe scaled to exactly fill its card — no dead space at any column width. */
-		function ScaledFrame({ pageId, border }: { pageId: string; border?: string }) {
-		  const box = useRef<HTMLDivElement>(null)
-		  const [scale, setScale] = useState(0.24)
-		  useEffect(() => {
-		    const el = box.current
-		    if (!el) return
-		    const measure = () => { if (el.clientWidth > 0) setScale(el.clientWidth / 1440) }
-		    measure()
-		    const ro = new ResizeObserver(measure)
-		    ro.observe(el)
-		    return () => ro.disconnect()
-		  }, [])
-		  return (
-		    <div ref={box} style={{ position: "relative", borderRadius: 10, overflow: "hidden",
-		      border: border || "1px solid #2a2a3a", background: "#fff", aspectRatio: "16 / 10" }}>
-		      {/* Stable key: a finished take updates live over HMR — no remount flash. */}
-		      <iframe key={pageId} src={"/?page=" + pageId} title={pageId}
-		        style={{ width: 1440, height: 900, border: "none",
-		          transform: "scale(" + scale + ")", transformOrigin: "top left", pointerEvents: "none" }} />
-		    </div>
-		  )
 		}
 
 		function elapsedLabel(startedAt: string): string {
@@ -513,44 +492,48 @@ function generateExploreView(): string {
 		  const nodes = exploration.nodes
 		  const isNew = exploration.mode === "new"
 		  const isProposal = exploration.kind === "drift-proposal"
-		  const [expandedId, setExpandedId] = useState<string | null>(null)
-		  // The verdict beat: set on settle. The winner rings, the rest fall back,
-		  // and the pick itself posts a beat later. Unmount clears the timer, so
-		  // leaving the exploration during the beat cancels the settle.
-		  const [settlingId, setSettlingId] = useState<string | null>(null)
-		  const settleTimer = useRef(0)
-		  useEffect(() => () => window.clearTimeout(settleTimer.current), [])
-		  const [branchingId, setBranchingId] = useState<string | null>(null)
-		  const [branchText, setBranchText] = useState("")
-		  // Set on branch submit; renders three skeletons until the round registers.
-		  const [pendingBranch, setPendingBranch] = useState<string | null>(null)
-
+		  const rootId = exploration.pageId
 		  const byId: Record<string, ExploreNode> = {}
 		  nodes.forEach(n => { byId[n.id] = n })
 
-		  // The lineage: every branch point picked so far, oldest first. Branching
-		  // commits to it — the passed-over siblings leave the view (the header's
-		  // discard is still the way out of the whole exploration). Derived from
-		  // the data on mount so a reopened exploration lands on its deepest round.
-		  const [lineage, setLineage] = useState<string[]>(() => {
-		    const map: Record<string, ExploreNode> = {}
-		    nodes.forEach(n => { map[n.id] = n })
-		    const chain: string[] = []
-		    let p = nodes.length ? nodes[nodes.length - 1].parentId : ""
-		    while (p && map[p]) { chain.unshift(p); p = map[p].parentId }
-		    return chain
+		  const [selected, setSelected] = useState<string>(() => {
+		    const working = nodes.filter(n => n.status === "working")
+		    return (working.length ? working[0] : nodes[nodes.length - 1])?.id ?? rootId
 		  })
+		  const [chips, setChips] = useState<string[]>([])
+		  const [strength, setStrength] = useState<"subtle" | "strong">("subtle")
+		  const [note, setNote] = useState("")
+		  const [error, setError] = useState<string | null>(null)
+		  const [fullId, setFullId] = useState<string | null>(null)
+		  const [details, setDetails] = useState<Record<string, string>>({})
+		  const noteRef = useRef<HTMLTextAreaElement>(null)
+		  const boardRef = useRef<HTMLDivElement>(null)
 
-		  const branchPoint = lineage.length ? lineage[lineage.length - 1] : exploration.pageId
-		  const row = nodes.filter(n => n.parentId === branchPoint)
-
-		  // The submitted branch's skeletons are placeholders only until the real
-		  // nodes land in the scratch — then the row IS the round.
+		  // The host narrates each take ("waiting for a free agent", the tool it is
+		  // using) and reports a refused request; both arrive as window messages.
 		  useEffect(() => {
-		    if (pendingBranch && nodes.some(n => n.parentId === pendingBranch)) setPendingBranch(null)
-		  }, [nodes.length, pendingBranch])
+		    const onMsg = (e: MessageEvent) => {
+		      const d = e.data
+		      if (!d || d.source !== "caret-host") return
+		      if (d.type === "explore-status" && d.payload?.nodeId) {
+		        setDetails(now => ({ ...now, [d.payload.nodeId]: d.payload.detail || "" }))
+		      }
+		      if (d.type === "edit-result" && d.payload && d.payload.success === false && d.payload.error) {
+		        setError(String(d.payload.error))
+		      }
+		    }
+		    window.addEventListener("message", onMsg)
+		    return () => window.removeEventListener("message", onMsg)
+		  }, [])
 
-		  // Re-render each second while anything generates, for the elapsed tickers.
+		  // A new branch selects its first take the moment it appears.
+		  const seen = useRef(new Set(nodes.map(n => n.id)))
+		  useEffect(() => {
+		    const fresh = nodes.filter(n => !seen.current.has(n.id))
+		    fresh.forEach(n => seen.current.add(n.id))
+		    if (fresh.length) setSelected(fresh[0].id)
+		  }, [nodes.length])
+
 		  const workingCount = nodes.filter(n => n.status === "working").length
 		  const [, setTick] = useState(0)
 		  useEffect(() => {
@@ -559,218 +542,353 @@ function generateExploreView(): string {
 		    return () => clearInterval(t)
 		  }, [workingCount])
 
-		  const readyIds = nodes.filter(n => n.status === "ready").map(n => n.id)
+		  // ── the tree: the current page first, then every round as a branch ──
+		  // A round is the takes made by one request: the same parent and round id
+		  // (older explorations without round ids group by parent and instruction).
+		  type Branch = { id: string; parentTakeId: string | null; label: string; strength?: string; takeIds: string[] }
+		  const branches: Branch[] = [{ id: "root", parentTakeId: null, label: isProposal ? "Current design" : isNew ? "New page" : "The page now", takeIds: [rootId] }]
+		  for (const n of nodes) {
+		    const key = n.parentId + "|" + (n.round || n.instruction)
+		    let b = branches.find(x => x.id === key)
+		    if (!b) {
+		      b = { id: key, parentTakeId: n.parentId, label: n.instruction, strength: n.strength, takeIds: [] }
+		      branches.push(b)
+		    }
+		    b.takeIds.push(n.id)
+		  }
+		  const COLOURS = ["#3b82f6", "#f59e0b", "#10b981", "#ec4899", "#a78bfa", "#06b6d4"]
+		  const colourOf = (branchId: string) => {
+		    const i = branches.filter(b => b.parentTakeId !== null).findIndex(b => b.id === branchId)
+		    return i < 0 ? "#8b93a7" : COLOURS[i % COLOURS.length]
+		  }
+		  const branchOf = (takeId: string) => branches.find(b => b.takeIds.includes(takeId))
 
-		  const cancelBranch = () => {
-		    setBranchingId(null); setBranchText("")
-		    // Un-commit: the passed-over siblings come back.
-		    setLineage(l => l.slice(0, -1))
+		  // Placement: each branch a column of its takes; a branch one column right
+		  // of its parent's, level with the parent take when the column allows. A
+		  // line runs from the right edge of the exact take it grew from.
+		  const TW = 240, TH = 150, CAP = 22, PAD = 12, LABEL = 28, GAP = 12, COL = 96
+		  const SLOT = CAP + TH
+		  type Spot = { id: string; x: number; y: number }
+		  const placed: Array<{ id: string; x: number; y: number; w: number; h: number; takes: Spot[] }> = []
+		  const floor: Record<number, number> = {}
+		  const place = (b: Branch, x: number, wantY: number) => {
+		    const y = Math.max(wantY, floor[x] ?? 16)
+		    const takes = b.takeIds.map((id, i) => ({ id, x: x + PAD, y: y + LABEL + PAD + i * (SLOT + GAP) }))
+		    const h = LABEL + PAD + Math.max(1, takes.length) * (SLOT + GAP) - GAP + PAD
+		    placed.push({ id: b.id, x, y, w: TW + PAD * 2, h, takes })
+		    floor[x] = y + h + GAP * 2
+		    for (const t of takes) {
+		      for (const child of branches.filter(c => c.parentTakeId === t.id)) place(child, x + TW + PAD * 2 + COL, t.y - LABEL - PAD)
+		    }
+		  }
+		  place(branches[0], 20, 16)
+		  const spotOf: Record<string, Spot> = {}
+		  placed.forEach(p => p.takes.forEach(t => { spotOf[t.id] = t }))
+		  const width = Math.max(...placed.map(p => p.x + p.w)) + 40
+		  const height = Math.max(...placed.map(p => p.y + p.h)) + 40
+
+		  const path: string[] = []
+		  for (let at: string | null = selected; at; ) {
+		    path.unshift(at)
+		    const b = branchOf(at)
+		    at = b ? b.parentTakeId : null
+		  }
+		  const onPath = new Set(path.map(id => branchOf(id)?.id))
+
+		  const current = selected === rootId ? null : byId[selected]
+		  const useLabel = isProposal ? "Use the app's version" : isNew ? "Add to canvas" : "Use this one"
+		  const keepLabel = isProposal ? "Keep the design" : isNew ? "Discard" : "Keep the original"
+		  const title = isNew ? "New page: " + (exploration.title || exploration.pageId) : isProposal ? "Review: " + exploration.pageId + " vs the app" : "Experimenting with " + exploration.pageId
+		  const takeName = (id: string) => id === rootId ? branches[0].label : (byId[id]?.label ?? id)
+
+		  const settle = (id: string) => {
+		    if (workingCount > 0 && !window.confirm("Takes are still being made. Use this one and stop the rest?")) return
+		    onPick(id)
+		  }
+		  const discard = () => {
+		    if (workingCount > 0 && !window.confirm("Takes are still being made. Throw the whole experiment away?")) return
+		    onPick("")
+		  }
+		  const grow = () => {
+		    const words = [...chips.map(c => c.toLowerCase()), note.trim()].filter(Boolean).join(", ")
+		    const fromRoot = selected === rootId
+		    if (!words && fromRoot) { setError("Say what the new direction should be, or pick a chip."); return }
+		    setError(null)
+		    send("variant-request", { fromId: selected, instruction: words || "Push this direction a little further.", strength })
+		    setChips([]); setNote("")
 		  }
 
+		  // Full size: Escape closes it; the arrows move between the takes of one round.
 		  useEffect(() => {
+		    if (!fullId) return
 		    const onKey = (e: KeyboardEvent) => {
-		      if (settlingId) return
-		      if (e.key === "Escape") {
-		        if (expandedId) setExpandedId(null)
-		        else if (branchingId) cancelBranch()
-		        else onBack()
-		      }
-		      if (expandedId && (e.key === "ArrowLeft" || e.key === "ArrowRight") && readyIds.length > 1) {
-		        const i = readyIds.indexOf(expandedId)
-		        if (i >= 0) setExpandedId(readyIds[(i + (e.key === "ArrowRight" ? 1 : readyIds.length - 1)) % readyIds.length])
-		      }
+		      if (e.key === "Escape") setFullId(null)
+		      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return
+		      const ready = (branchOf(fullId)?.takeIds ?? []).filter(id => id === rootId || byId[id]?.status === "ready")
+		      if (ready.length < 2) return
+		      const i = ready.indexOf(fullId)
+		      const next = ready[(i + (e.key === "ArrowRight" ? 1 : ready.length - 1)) % ready.length]
+		      setFullId(next); setSelected(next)
 		    }
 		    window.addEventListener("keydown", onKey)
 		    return () => window.removeEventListener("keydown", onKey)
-		  }, [expandedId, branchingId, settlingId, readyIds.join(","), onBack])
+		  }, [fullId, nodes.length])
 
-		  const discard = () => {
-		    if (workingCount > 0 && !window.confirm("Takes are still generating — discard the whole exploration?")) return
-		    onPick("")
-		  }
-		  const settle = (id: string) => {
-		    if (settlingId) return
-		    if (workingCount > 0 && !window.confirm("Takes are still generating — settle on this one and drop the rest?")) return
-		    // The pick reads as a verdict before the view moves on: half a second
-		    // of the winner ringed and the passed-over takes falling back. From
-		    // full size, collapse first so the beat is visible.
-		    setExpandedId(null)
-		    setSettlingId(id)
-		    settleTimer.current = window.setTimeout(() => onPick(id), 500)
-		  }
-		  const startBranch = (id: string) => {
-		    setLineage(l => [...l, id])
-		    setBranchingId(id)
-		    setBranchText("")
-		  }
-		  const submitBranch = () => {
-		    if (!branchingId || !branchText.trim()) return
-		    const picked = byId[branchingId]
-		    if (picked) {
-		      // Branching IS the verdict on this round — passed-over siblings still
-		      // generating are cancelled, not left spending quietly out of view.
-		      nodes
-		        .filter(n => n.parentId === picked.parentId && n.id !== branchingId && n.status === "working")
-		        .forEach(n => send("variant-cancel", { nodeId: n.id }))
-		    }
-		    send("variant-request", { fromId: branchingId, instruction: branchText.trim() })
-		    setPendingBranch(branchingId)
-		    setBranchingId(null)
-		    setBranchText("")
-		  }
-
-		  const useLabel = isProposal ? "Use the app's version" : isNew ? "Add to canvas" : "Use this one"
-		  const keepLabel = isProposal ? "Keep the design" : isNew ? "Discard" : "Keep the original"
-		  const title = isNew
-		    ? "New page: " + (exploration.title || exploration.pageId)
-		    : isProposal ? "Review: " + exploration.pageId + " vs the app" : "Exploring " + exploration.pageId
-
-		  if (expandedId) {
-		    const node = byId[expandedId]
+		  if (fullId) {
+		    const node = byId[fullId]
 		    return (
 		      <div data-testid="explore-expanded" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
 		        <div className="caret-explore-header">
-		          <button className="caret-explore-btn" data-testid="explore-collapse" onClick={() => setExpandedId(null)} title="Back to the cards (Esc)">←</button>
+		          <button className="caret-explore-btn" data-testid="explore-collapse" onClick={() => setFullId(null)} title="Back to the board (Esc)">←</button>
 		          <div style={{ minWidth: 0, flex: 1 }}>
-		            <div style={{ fontSize: 14, fontWeight: 600 }}>{node ? node.label : "Current design"}{node ? " · " + node.angleLabel : ""}</div>
-		            <div style={{ fontSize: 12, color: "#8b93a7" }}>full size — ←/→ compares, Esc goes back</div>
+		            <div style={{ fontSize: 14, fontWeight: 600 }}>{node ? node.label + " · " + node.angleLabel : branches[0].label}</div>
+		            <div style={{ fontSize: 12, color: "#8b93a7" }}>Full size. ← and → move between this round's takes, Esc goes back.</div>
 		          </div>
 		          {node && node.status === "ready" && (
 		            <button className="caret-explore-primary" data-testid={"variant-use-" + node.id} onClick={() => settle(node.id)}>{useLabel}</button>
 		          )}
 		        </div>
 		        <div style={{ flex: 1, overflow: "auto", background: "#0d0d14", display: "flex", justifyContent: "center" }}>
-		          <iframe key={expandedId} src={"/?page=" + expandedId} title={expandedId}
+		          <iframe key={fullId} src={"/?page=" + fullId} title={fullId}
 		            style={{ width: 1440, height: "100%", border: "none", background: "#fff", flexShrink: 0 }} />
 		        </div>
 		      </div>
 		    )
 		  }
 
-		  // One take, rendered for any position in the lineage. What a take shows
-		  // is decided by its status alone: a skeleton while the model works, the
-		  // live page the moment it lands, a readable message when it didn't.
-		  // Actions live BELOW the frame so every frame in a row starts at the
-		  // same height, and the frame itself is the click target for full size.
-		  const takeCard = (node: ExploreNode, opts: { ancestor?: boolean } = {}) => (
-		    <div key={node.id} data-testid={"variant-card-" + node.id}
-		      className={"caret-explore-card" + (settlingId ? (settlingId === node.id ? " settling-won" : " settling-lost") : "")}
-		      style={{ width: opts.ancestor ? 380 : 400, display: "flex", flexDirection: "column", gap: 10,
-		        pointerEvents: settlingId ? "none" : undefined }}>
-		      <div style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
-		        <span style={{ fontSize: 13, fontWeight: 600 }}>{node.label}</span>
-		        <span style={{ fontSize: 11.5, color: "#8b93a7" }}>{node.angleLabel}</span>
-		        <span style={{ marginLeft: "auto" }} />
-		        {node.status === "working" && (
-		          <>
-		            <span style={{ fontSize: 12, color: "#8b93a7", fontVariantNumeric: "tabular-nums" }}>{elapsedLabel(node.startedAt)}</span>
-		            <button className="caret-explore-mini" data-testid={"explore-cancel-" + node.id}
-		              title="Cancel this take" onClick={() => send("variant-cancel", { nodeId: node.id })}>×</button>
-		          </>
-		        )}
-		      </div>
-
-		      {node.status === "working" && (
-		        <div className="caret-explore-skel" data-testid={"explore-skeleton-" + node.id}>
-		          <div className="caret-explore-skel-bar" style={{ width: "42%", height: 22 }} />
-		          <div className="caret-explore-skel-bar" style={{ width: "88%" }} />
-		          <div className="caret-explore-skel-bar" style={{ width: "76%" }} />
-		          <div className="caret-explore-skel-bar" style={{ width: "82%", height: 64 }} />
-		          <div className="caret-explore-skel-bar" style={{ width: "64%" }} />
-		        </div>
-		      )}
-		      {node.status === "ready" && (
-		        <div className="caret-explore-frame" data-testid={"explore-preview-" + node.id}
-		          title="Click to see it full size" onClick={() => setExpandedId(node.id)}>
-		          <ScaledFrame pageId={node.id} />
-		        </div>
-		      )}
-		      {(node.status === "failed" || node.status === "cancelled") && (
-		        <div style={{ borderRadius: 10, border: "1px solid #4a2a2a", background: "#1c1216", padding: 16,
-		          fontSize: 12.5, color: "#f0a8a8", lineHeight: 1.5, minHeight: 80 }}>
-		          {node.status === "cancelled"
-		            ? "Cancelled." + (node.error ? " " + node.error : "")
-		            : (node.error || "This take failed — the other cards are unaffected.")}
-		        </div>
-		      )}
-
-		      {node.status === "ready" && (
-		        <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
-		          <button className="caret-explore-primary" data-testid={"variant-use-" + node.id} onClick={() => settle(node.id)}>{useLabel}</button>
-		          {!isProposal && !opts.ancestor && (
-		            <button className="caret-explore-ghost" data-testid={"explore-branch-" + node.id} onClick={() => startBranch(node.id)}>Branch</button>
-		          )}
-		        </div>
-		      )}
-		    </div>
-		  )
-
-		  const skeletonPlaceholder = (index: number) => (
-		    <div key={"pending-" + index} data-testid={"explore-skeleton-pending-" + index} style={{ width: 400 }}>
-		      <div className="caret-explore-skel" style={{ marginTop: 30 }}>
-		        <div className="caret-explore-skel-bar" style={{ width: "42%", height: 22 }} />
-		        <div className="caret-explore-skel-bar" style={{ width: "88%" }} />
-		        <div className="caret-explore-skel-bar" style={{ width: "76%" }} />
-		        <div className="caret-explore-skel-bar" style={{ width: "82%", height: 64 }} />
-		      </div>
-		    </div>
-		  )
+		  const chipStyle = (on: boolean): React.CSSProperties => ({ border: "1px solid " + (on ? "#0b7aff" : "#2a3140"), background: on ? "rgba(11,122,255,0.15)" : "transparent",
+		    color: on ? "#9cc8ff" : "#e5e7eb", borderRadius: 999, padding: "3px 10px", fontSize: 12, cursor: "pointer" })
 
 		  return (
 		    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
 		      <div className="caret-explore-header">
-		        <button className="caret-explore-btn" data-testid="explore-back" onClick={onBack} title="Back to canvas — the exploration stays open">←</button>
+		        <button className="caret-explore-btn" data-testid="explore-back" onClick={onBack} title="Back to the canvas; the experiment stays open">←</button>
 		        <div style={{ minWidth: 0, flex: 1 }}>
 		          <div style={{ fontSize: 15, fontWeight: 600 }}>{title}</div>
-		          <div style={{ fontSize: 12.5, color: "#8b93a7", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-		            title={exploration.instruction}>
-		            “{exploration.instruction}”{workingCount > 0 ? " — " + workingCount + " take" + (workingCount === 1 ? "" : "s") + " generating" : ""}
+		          <div style={{ fontSize: 12.5, color: "#8b93a7", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={exploration.instruction}>
+		            “{exploration.instruction}”
 		          </div>
 		        </div>
 		        {workingCount > 0 && (
-		          <button className="caret-explore-btn" data-testid="explore-stop-all" onClick={() => send("variant-cancel", {})}>Stop generating</button>
+		          <button className="caret-explore-btn" data-testid="explore-stop-all" onClick={() => send("variant-cancel", {})}>Stop generating ({workingCount})</button>
 		        )}
 		        <button className="caret-explore-btn" data-testid="variant-keep-original" onClick={discard}>{keepLabel}</button>
 		      </div>
 
-		      <div style={{ flex: 1, overflow: "auto", padding: "36px 24px 80px" }}>
-		        <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 32 }}>
-		          {/* A drift review is a comparison — the current design stays visible
-		              beside the app's version. Everywhere else the original earns no
-		              card: the exploration is about where the page is going. */}
-		          {isProposal && (
-		            <div data-testid={"variant-card-" + exploration.pageId}
-		              className={"caret-explore-card" + (settlingId ? " settling-lost" : "")}
-		              style={{ width: 400, display: "flex", flexDirection: "column", gap: 10 }}>
-		              <div style={{ fontSize: 13, fontWeight: 600 }}>Current design</div>
-		              <div className="caret-explore-frame" data-testid={"explore-preview-" + exploration.pageId}
-		                title="Click to see it full size" onClick={() => setExpandedId(exploration.pageId)}>
-		                <ScaledFrame pageId={exploration.pageId} border="1px solid #3a3a4a" />
-		              </div>
-		            </div>
-		          )}
+		      <div data-testid="explore-path" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "8px 20px", borderBottom: "1px solid #1e232e", fontSize: 12.5, minHeight: 40 }}>
+		        <span style={{ color: "#8b93a7", marginRight: 4 }}>You are on</span>
+		        {path.map((id, i) => (
+		          <span key={id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+		            {i > 0 && <span style={{ color: "#5d6578" }}>›</span>}
+		            <button data-take-id={id} onClick={() => setSelected(id)}
+		              style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 6, cursor: "pointer",
+		                background: "#12151c", color: "#e5e7eb", border: "1px solid " + colourOf(branchOf(id)?.id ?? "") + "66" }}>
+		              <span style={{ width: 8, height: 8, borderRadius: 4, background: colourOf(branchOf(id)?.id ?? "") }} />
+		              {id === rootId ? branches[0].label : (branchOf(id)?.label ?? "") + " · " + takeName(id)}
+		            </button>
+		          </span>
+		        ))}
+		      </div>
 
-		          {/* The lineage: each branch point picked so far, walked downward. */}
-		          {lineage.map(id => byId[id] && takeCard(byId[id], { ancestor: true }))}
+		      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+		        <div ref={boardRef} data-testid="explore-board" style={{ flex: 1, minWidth: 0, overflow: "auto",
+		          background: "radial-gradient(circle at 1px 1px, #1a1f2a 1px, transparent 0) 0 0 / 22px 22px" }}>
+		          <div style={{ position: "relative", width, height }}>
+		            {placed.map(p => {
+		              const b = branches.find(x => x.id === p.id)!
+		              const c = colourOf(p.id)
+		              return (
+		                <div key={p.id}>
+		                  <div data-testid="explore-branch" data-branch-label={b.label}
+		                    style={{ position: "absolute", left: p.x, top: p.y, width: p.w, height: p.h, borderRadius: 12, background: "rgba(18,21,28,0.6)",
+		                      border: "1px " + (onPath.has(p.id) ? "solid " + c : "dashed #2a3140") }} />
+		                  <div style={{ position: "absolute", left: p.x + 12, top: p.y + 7, maxWidth: TW, display: "flex", alignItems: "center", gap: 6,
+		                    fontSize: 11.5, color: "#8b93a7", whiteSpace: "nowrap", overflow: "hidden" }} title={b.label}>
+		                    <span style={{ width: 8, height: 8, borderRadius: 4, background: c, flexShrink: 0 }} />
+		                    <b style={{ color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</b>
+		                    {b.strength && <span>· {b.strength}</span>}
+		                  </div>
+		                </div>
+		              )
+		            })}
 
-		          {branchingId && (
-		            <input autoFocus data-testid={"explore-branch-input-" + branchingId}
-		              style={{ width: 400, padding: "10px 14px", borderRadius: 8, border: "1px solid #0b7aff88",
-		                background: "#1e1e2a", color: "#e5e7eb", fontSize: 13.5, outline: "none" }}
-		              placeholder="How should the next round push this? — Enter to generate, Esc to go back"
-		              value={branchText} onChange={e => setBranchText(e.target.value)}
-		              onKeyDown={e => { if (e.key === "Enter") submitBranch() }} />
-		          )}
+		            <svg width={width} height={height} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", zIndex: 2 }}>
+		              {branches.filter(b => b.parentTakeId).map(b => {
+		                const from = spotOf[b.parentTakeId!]
+		                const to = spotOf[b.takeIds[0]]
+		                if (!from || !to) return null
+		                const x1 = from.x + TW, y1 = from.y + CAP + TH / 2, x2 = to.x - 2, y2 = to.y + CAP + TH / 2
+		                const c = colourOf(b.id), hot = onPath.has(b.id)
+		                return (
+		                  <g key={b.id} data-line-for={b.id}>
+		                    <path d={"M" + x1 + "," + y1 + " C" + (x1 + 48) + "," + y1 + " " + (x2 - 48) + "," + y2 + " " + x2 + "," + y2}
+		                      fill="none" stroke={c} strokeWidth={hot ? 2.5 : 1.6} strokeOpacity={hot ? 1 : 0.7} />
+		                    <path d={"M" + (x2 - 8) + "," + (y2 - 5) + " L" + x2 + "," + y2 + " L" + (x2 - 8) + "," + (y2 + 5)} fill="none" stroke={c} strokeWidth={2} />
+		                  </g>
+		                )
+		              })}
+		            </svg>
 
-		          <div style={{ display: "flex", gap: 24, justifyContent: "center", alignItems: "flex-start", flexWrap: "wrap", width: "100%" }}>
-		            {row.map(node => takeCard(node))}
-		            {pendingBranch && row.length === 0 && [0, 1, 2].map(skeletonPlaceholder)}
+		            {Object.values(spotOf).map(spot => {
+		              const id = spot.id
+		              const isRoot = id === rootId
+		              const node = byId[id]
+		              const kids = branches.filter(b => b.parentTakeId === id)
+		              const ring = kids.length === 1 ? colourOf(kids[0].id) : kids.length > 1 ? "#e6e9ef" : null
+		              const status = isRoot ? "ready" : node?.status ?? "failed"
+		              return (
+		                <div key={id} data-testid={isRoot ? "explore-root" : "variant-card-" + id} data-status={status}
+		                  style={{ position: "absolute", left: spot.x, top: spot.y, width: TW, zIndex: 3 }}>
+		                  <div style={{ height: CAP, display: "flex", alignItems: "baseline", gap: 6, fontSize: 12, whiteSpace: "nowrap" }}>
+		                    <b style={{ fontWeight: 600 }}>{isRoot ? (isNew ? exploration.title || exploration.pageId : exploration.pageId) : node.label}</b>
+		                    <span style={{ color: "#8b93a7", fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis" }}>
+		                      {isRoot ? (isNew ? "not made yet" : "as it is now") : status === "working" && details[id] ? details[id] : node.angleLabel}
+		                    </span>
+		                    {status === "working" && (
+		                      <span style={{ marginLeft: "auto", display: "flex", gap: 4, alignItems: "baseline" }}>
+		                        <span style={{ color: "#8b93a7", fontVariantNumeric: "tabular-nums" }}>{details[id] === "waiting for a free agent" ? "queued" : elapsedLabel(node.startedAt)}</span>
+		                        <button className="caret-explore-mini" data-testid={"explore-cancel-" + id} title="Cancel this take"
+		                          onClick={(e) => { e.stopPropagation(); send("variant-cancel", { nodeId: id }) }}>×</button>
+		                      </span>
+		                    )}
+		                  </div>
+		                  <div className="caret-board-take" onClick={() => setSelected(id)}
+		                    style={{ position: "relative", width: TW, height: TH, borderRadius: 8, overflow: "hidden", cursor: "pointer",
+		                      background: status === "ready" && !(isRoot && isNew) ? "#fff" : "#14171f", border: "1px solid #2a3140",
+		                      outline: selected === id ? "2px solid #0b7aff" : undefined, outlineOffset: 2, boxShadow: ring ? "0 0 0 2px " + ring : undefined }}>
+		                    {isRoot && isNew ? (
+		                      <div style={{ padding: 16, fontSize: 12.5, color: "#8b93a7", lineHeight: 1.5 }}>A page that doesn't exist yet. Using a take adds it to the canvas.</div>
+		                    ) : status === "ready" ? (
+		                      <LiveFrame pageId={id} width={TW} root={boardRef} />
+		                    ) : status === "working" ? (
+		                      <div className="caret-explore-skel" data-testid={"explore-skeleton-" + id} style={{ height: "100%", padding: 14, gap: 8 }}>
+		                        <div className="caret-explore-skel-bar" style={{ width: "42%", height: 16 }} />
+		                        <div className="caret-explore-skel-bar" style={{ width: "85%" }} />
+		                        <div className="caret-explore-skel-bar" style={{ width: "72%" }} />
+		                        <div className="caret-explore-skel-bar" style={{ width: "80%", height: 40 }} />
+		                      </div>
+		                    ) : (
+		                      <div style={{ padding: 12, fontSize: 12, color: "#f0a8a8", lineHeight: 1.45 }}>
+		                        {status === "cancelled" ? "Cancelled." : (node.error || "This take failed; the others are unaffected.")}
+		                      </div>
+		                    )}
+		                    {status === "ready" && !(isRoot && isNew) && (
+		                      <div className="caret-board-take-bar">
+		                        {!isRoot && <button className="caret-board-btn primary" data-testid={"variant-use-" + id} onClick={(e) => { e.stopPropagation(); settle(id) }}>Use</button>}
+		                        {!isProposal && <button className="caret-board-btn" data-testid={"explore-branch-" + id}
+		                          onClick={(e) => { e.stopPropagation(); setSelected(id); requestAnimationFrame(() => noteRef.current?.focus()) }}>{isRoot ? "New direction" : "Change"}</button>}
+		                        <button className="caret-board-btn" style={{ marginLeft: "auto" }} data-testid={"explore-preview-" + id} title="Full size"
+		                          onClick={(e) => { e.stopPropagation(); setSelected(id); setFullId(id) }}>⤢</button>
+		                      </div>
+		                    )}
+		                  </div>
+		                  {kids.length > 0 && (
+		                    <span data-testid="explore-kids" data-count={kids.length} title={kids.length + " branch" + (kids.length > 1 ? "es" : "") + " grown from this"}
+		                      style={{ position: "absolute", right: -9, top: CAP + TH / 2 - 9, width: 18, height: 18, borderRadius: 9, background: ring!, color: "#0b0d12",
+		                        fontSize: 10.5, fontWeight: 700, display: "grid", placeItems: "center", boxShadow: "0 0 0 3px #10101a", zIndex: 4 }}>{kids.length}</span>
+		                  )}
+		                </div>
+		              )
+		            })}
 		          </div>
 		        </div>
+
+		        <aside data-testid="explore-inspector" style={{ width: 340, flexShrink: 0, borderLeft: "1px solid #1e232e", padding: 16, overflowY: "auto", fontSize: 13 }}>
+		          {selected === rootId ? (
+		            <>
+		              {!isNew && <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #2a3140", background: "#fff" }}><LiveFrame pageId={rootId} width={306} /></div>}
+		              <div style={{ marginTop: 10, fontWeight: 600 }}>{isNew ? "New page: " + (exploration.title || rootId) : "The page as it is now"}</div>
+		              <div style={{ marginTop: 4, fontSize: 12, color: "#8b93a7" }}>
+		                {isProposal ? "Compare it with the app's version, then keep the one you want." : "Try another direction from here: a fresh set of takes beside the first."}
+		              </div>
+		            </>
+		          ) : current ? (
+		            <>
+		              {current.status === "ready" ? (
+		                <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #2a3140", background: "#fff", cursor: "zoom-in" }}
+		                  data-testid="explore-inspector-preview" onClick={() => setFullId(current.id)}>
+		                  <LiveFrame pageId={current.id} width={306} />
+		                </div>
+		              ) : (
+		                <div className="caret-explore-skel" style={{ height: 190 }} />
+		              )}
+		              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+		                <span style={{ width: 8, height: 8, borderRadius: 4, background: colourOf(branchOf(current.id)?.id ?? "") }} />
+		                <b>{current.label}</b><span style={{ color: "#8b93a7" }}>{current.angleLabel}</span>
+		                {current.status === "ready" && (
+		                  <button className="caret-explore-primary" style={{ marginLeft: "auto", padding: "6px 12px" }} data-testid="explore-inspector-use" onClick={() => settle(current.id)}>{useLabel}</button>
+		                )}
+		              </div>
+		              <div style={{ marginTop: 4, fontSize: 12, color: "#8b93a7" }} data-testid="explore-inspector-status">
+		                {current.status === "ready" ? (isNew ? "Adds this page to the canvas." : isProposal ? "Replaces the design with the app's version." : "Replaces " + rootId + ". Until then, " + rootId + " is untouched.")
+		                  : current.status === "working" ? (details[current.id] === "waiting for a free agent" ? "Waiting for a free agent; it starts when one of the takes ahead of it finishes." : "Being made. It appears here the moment it's ready.")
+		                  : current.status === "cancelled" ? "Cancelled." : current.error || "This take failed."}
+		              </div>
+		            </>
+		          ) : null}
+
+		          {!isProposal && (selected === rootId || current?.status === "ready") && (
+		            <div style={{ marginTop: 18 }}>
+		              <div style={{ fontSize: 12 }}><b>{selected === rootId ? "New direction" : "Change it"}</b> <span style={{ color: "#8b93a7" }}>· grows 3 takes out of this one</span></div>
+		              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+		                {["Warmer", "Darker", "More space", "Bolder headline", "Different photo"].map(c => (
+		                  <button key={c} data-testid="explore-chip" data-chip={c} style={chipStyle(chips.includes(c))}
+		                    onClick={() => setChips(now => now.includes(c) ? now.filter(x => x !== c) : [...now, c])}>{c}</button>
+		                ))}
+		              </div>
+		              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+		                <span style={{ display: "inline-flex", border: "1px solid #2a3140", borderRadius: 8, padding: 2 }}>
+		                  {(["subtle", "strong"] as const).map(v => (
+		                    <button key={v} data-testid={"explore-strength-" + v} onClick={() => setStrength(v)}
+		                      style={{ border: 0, borderRadius: 6, padding: "3px 10px", fontSize: 12, cursor: "pointer", background: strength === v ? "#222938" : "transparent", color: strength === v ? "#e5e7eb" : "#8b93a7" }}>
+		                      {v === "subtle" ? "Subtle" : "Strong"}
+		                    </button>
+		                  ))}
+		                </span>
+		                <span style={{ fontSize: 11, color: "#8b93a7" }}>{strength === "strong" ? "The layout may change too." : "Keeps the layout."}</span>
+		              </div>
+		              <textarea ref={noteRef} data-testid="explore-change-note" rows={3} value={note} onChange={e => setNote(e.target.value)}
+		                onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) grow() }}
+		                placeholder='or say what to change: "make the price obvious", "less copy above the fold", "add customer quotes"'
+		                style={{ marginTop: 8, width: "100%", boxSizing: "border-box", resize: "none", background: "#12151c", border: "1px solid #2a3140", borderRadius: 8, color: "#e5e7eb", padding: "8px 10px", fontSize: 13, outline: "none" }} />
+		              <button data-testid="explore-grow" onClick={grow}
+		                style={{ marginTop: 8, width: "100%", padding: "7px 0", borderRadius: 8, border: "1px solid #2a3140", background: "transparent", color: "#e5e7eb", cursor: "pointer", fontSize: 13 }}>
+		                Grow 3 from this
+		              </button>
+		            </div>
+		          )}
+		          {error && <div data-testid="explore-error" style={{ marginTop: 10, fontSize: 12, color: "#f87171" }}>{error}</div>}
+		        </aside>
 		      </div>
 		    </div>
 		  )
 		}
+
+		/**
+		 * A take as a live page, scaled to a fixed width. Mounted only once it scrolls
+		 * near view: a board can hold many takes, and every live page is a full app.
+		 */
+		function LiveFrame({ pageId, width, root }: { pageId: string; width: number; root?: React.RefObject<HTMLDivElement | null> }) {
+		  const box = useRef<HTMLDivElement>(null)
+		  const [near, setNear] = useState(!root)
+		  useEffect(() => {
+		    if (near || !box.current) return
+		    const io = new IntersectionObserver((entries) => { if (entries.some(e => e.isIntersecting)) setNear(true) },
+		      { root: root?.current ?? null, rootMargin: "400px" })
+		    io.observe(box.current)
+		    return () => io.disconnect()
+		  }, [near])
+		  const scale = width / 1440
+		  return (
+		    <div ref={box} style={{ width, height: Math.round(900 * scale), overflow: "hidden", position: "relative", background: "#fff" }}>
+		      {near && (
+		        <iframe key={pageId} src={"/?page=" + pageId} title={pageId} tabIndex={-1}
+		          style={{ width: 1440, height: 900, border: "none", transform: "scale(" + scale + ")", transformOrigin: "top left", pointerEvents: "none" }} />
+		      )}
+		    </div>
+		  )
+		}
+
 	`
 }
 
@@ -2601,6 +2719,17 @@ function generateCanvasCSS(): string {
 		  transition: filter 120ms ease, transform 120ms ease;
 		}
 		.caret-explore-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+		/* The branching board's take cards: actions appear on hover, and on the selected take. */
+		.caret-board-take-bar {
+		  position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 4px; padding: 20px 6px 6px;
+		  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75)); opacity: 0; transition: opacity 0.14s ease;
+		}
+		.caret-board-take:hover .caret-board-take-bar { opacity: 1; }
+		.caret-board-btn {
+		  border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(20, 23, 30, 0.85); color: #fff;
+		  border-radius: 6px; padding: 2px 8px; font-size: 11px; cursor: pointer;
+		}
+		.caret-board-btn.primary { background: #0b7aff; border-color: #0b7aff; }
 		.caret-explore-primary:active { transform: translateY(0); }
 		.caret-explore-primary:disabled { opacity: 0.55; cursor: default; transform: none; }
 		.caret-explore-ghost {

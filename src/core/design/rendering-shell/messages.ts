@@ -128,6 +128,8 @@ export interface VariantRequestPayload {
 	fromId?: string
 	/** A new page to explore into existence — settling adds it to the canvas. */
 	newPage?: { name: string }
+	/** For a branch: change only what the instruction names (subtle), or let the layout change too (strong). */
+	strength?: "subtle" | "strong"
 }
 
 export interface VariantPickPayload {
@@ -279,7 +281,8 @@ const PAYLOAD_VALIDATORS: Record<string, (p: Record<string, unknown>) => boolean
 	"promote-token": (p) => isStr(p.token) && isStr(p.hex) && isStr(p.filePath) && isNum(p.lineNumber),
 	"variant-request": (p) => {
 		const origins = [isStr(p.pageId), isStr(p.fromId), isNewPage(p.newPage)].filter(Boolean).length
-		return isStr(p.instruction) && origins === 1
+		const strength = p.strength === undefined || p.strength === "subtle" || p.strength === "strong"
+		return isStr(p.instruction) && origins === 1 && strength
 	},
 	"variant-cancel": (p) => p.nodeId === undefined || isStr(p.nodeId),
 	"param-resolve": (p) => isStr(p.filePath) && isStr(p.caretId) && isNum(p.viewportWidth),

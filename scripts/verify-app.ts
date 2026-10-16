@@ -1799,19 +1799,23 @@ async function main(): Promise<void> {
 
 		await ask.locator('[data-generate-kind="image"]').click()
 		await ask.getByTestId("generate-request").fill("a stainless steel ruler on a plain surface")
-		await ask.getByTestId("generate-begin").click()
 
-		// The refusal arrives where the user actually hits it — on the take screen,
+		// The refusal arrives where the user actually hits it — on the take board,
 		// after asking for something — rather than as a greyed-out card they never
 		// selected. It has to say the rest still works, or a missing key reads as
-		// the whole feature being locked behind a payment.
+		// the whole feature being locked behind a payment. With a key present,
+		// Generate is not pressed: it would spend money for nothing here.
 		let refusal = ""
 		if (!configured) {
+			await ask.locator('[data-prompt-mode="exact"]').click()
+			await ask.getByTestId("generate-begin").click()
 			refusal = await waitFor(
 				"the paid lane to refuse honestly",
 				async () => {
 					const said = await panel
-						.getByTestId("generate-variants")
+						.getByTestId("take-board")
+						.locator('[data-testid="board-take-error"]')
+						.first()
 						.innerText()
 						.catch(() => "")
 					return said.includes("key") ? said : null
@@ -1820,9 +1824,10 @@ async function main(): Promise<void> {
 			)
 			assert(/needs no account|no account/i.test(refusal), `the refusal says: ${refusal.replace(/\n/g, " ")}`)
 			assert(/Gemini|API key/i.test(refusal), "the refusal does not name what is missing")
+			await panel.getByTestId("board-done").click()
+		} else {
+			await panel.getByText("Cancel").click()
 		}
-
-		await panel.getByText("Cancel").click()
 
 		return configured
 			? "every kind offered and the image lane runnable — credentials present in this environment"
@@ -2010,144 +2015,135 @@ async function main(): Promise<void> {
 	// credentials: a mocked pass here would certify the plumbing and say nothing
 	// about the thing that actually costs money and can actually refuse.
 	if (!PAID) {
-		skipPaid("bi. a photograph is generated, picked and indexed")
+		skipPaid("bi. a photograph is generated on the board, used, then branched and used again")
 	} else if (!process.env.GEMINI_API_KEY && !process.env.CARET_VERTEX_PROJECT && !process.env.GOOGLE_CLOUD_PROJECT) {
-		skip("bi. a photograph is generated, picked and indexed", "no Gemini or Vertex credentials in this environment")
+		skip(
+			"bi. a photograph is generated on the board, used, then branched and used again",
+			"no Gemini or Vertex credentials in this environment",
+		)
 	} else {
-		await scenario("bi. a photograph is generated, picked and indexed", async () => {
+		await scenario("bi. a photograph is generated on the board, used, then branched and used again", async () => {
+			if ((await chrome.getByTestId("app-shell").getAttribute("data-surface")) !== "assets") {
+				await chrome.getByTestId("top-bar").getByRole("button", { name: "Assets" }).click()
+			}
+			await chrome.waitForSelector('[data-testid="assets-view"]', { timeout: 30_000 })
 			await chrome.getByTestId("assets-generate").click()
 			const panel = chrome.getByTestId("generate-asset")
 			await panel.waitFor({ timeout: 15_000 })
 
-			// A subject nothing in the old library could have produced. The six
-			// hardcoded objects were a vase, a lamp, headphones, a succulent, a chair
-			// and a watch; an overhead workbench is a recipe, not a request.
+			// A subject nothing in the old library could have produced, sent as
+			// typed ("Use my words"), in the shape chosen before anything is made.
 			const WANTED = "an architect's drafting table seen from above, with rolled drawings on it"
 			const ask = panel.getByTestId("generate-ask")
 			await ask.waitFor({ timeout: 15_000 })
 			await ask.locator('[data-generate-kind="image"]').click()
 			await ask.getByTestId("generate-request").fill(WANTED)
+			await ask.getByTestId("generate-aspect").selectOption("16:9")
+			await ask.locator('[data-prompt-mode="exact"]').click()
 			await ask.getByTestId("generate-begin").click()
 
-			// Clarification is optional and skippable, and skipping must reach the
-			// takes rather than stranding the user on a screen of questions. The
-			// clarify screen can arrive LATE (it is a model turn), and skipping
-			// now runs the rebuild (another model turn) before the takes stage —
-			// so this polls for either, skips at most once, and waits wide.
-			const clarify = panel.getByTestId("generate-clarify")
-			const variants = panel.getByTestId("generate-variants")
-			let skipped = false
+			const board = panel.getByTestId("take-board")
+			await board.waitFor({ timeout: 20_000 })
+			// The takes land one at a time, each a paid call of ~15s.
+			const firstReady = board.locator('[data-testid="board-take"][data-status="ready"]').first()
+			await firstReady.waitFor({ timeout: 300_000 })
 			await waitFor(
-				"the takes grid (past any clarify questions)",
-				async () => {
-					if (!skipped && (await clarify.isVisible().catch(() => false))) {
-						skipped = true
-						await clarify.getByTestId("generate-clarify-skip").click()
-						return null
-					}
-					return (await variants.isVisible().catch(() => false)) ? true : null
-				},
-				240_000,
+				"every first take to finish or fail",
+				async () =>
+					(await board
+						.locator(
+							'[data-testid="board-take"][data-status="waiting"], [data-testid="board-take"][data-status="working"]',
+						)
+						.count()) === 0
+						? true
+						: null,
+				300_000,
 			)
-			// The wait is the feature here: paid calls at ~15s apiece, run together
-			// rather than in sequence.
-			await variants.locator("[data-generate-variant] img").first().waitFor({ timeout: 180_000 })
-
-			const rendered = await waitFor(
-				"a generated photograph to decode",
-				async () => {
-					const width = await variants
-						.locator("[data-generate-variant] img")
-						.first()
-						.evaluate((img: HTMLImageElement) => img.naturalWidth)
-					return width > 0 ? width : null
-				},
-				60_000,
-			)
-			assert(rendered > 100, `the photograph decoded at ${rendered}px`)
-
-			const failures = await variants.locator("[data-generate-variant-error]").count()
-			const usable = await variants.locator("[data-generate-variant]").count()
-			assert(usable > 0, "every variant failed")
-
+			const usable = await board.locator('[data-testid="board-take"][data-status="ready"]').count()
+			const failures = await board.locator('[data-testid="board-take"][data-status="failed"]').count()
+			assert(usable > 0, "every take failed")
+			const decoded = await firstReady.locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth)
+			assert(decoded > 100, `the photograph decoded at ${decoded}px`)
 			await shot(chrome, "22-generate-photographs")
-			await variants.locator("[data-generate-variant]").first().click()
-			// Selecting a take, then "Use this take" — see bg.
-			await panel.getByTestId("generate-use-take").click()
 
-			const name = panel.getByTestId("generate-name")
-			await name.waitFor({ timeout: 15_000 })
-			await name.getByTestId("generate-tag").fill("hero-bench")
-			await name.getByTestId("generate-save").click()
+			await firstReady.click()
+			await panel.getByTestId("board-name").fill("hero-bench")
+			await panel.getByTestId("board-use").click()
+			await panel.getByTestId("board-saved-note").waitFor({ timeout: 30_000 })
 
-			// Completed entry, not first sight — see bg for why.
-			const raw = await waitFor(
-				"the photograph to reach the index with its provenance",
-				async () => {
-					const text = await fs.readFile(path.join(fixture, ".caret", "assets", "index.json"), "utf-8").catch(() => "")
-					if (!text.includes('"hero-bench"')) return null
-					const found = (JSON.parse(text) as { assets: Array<Record<string, any>> }).assets.find(
-						(asset) => asset.tag === "hero-bench",
-					)
-					return found?.description && found?.origin?.type === "generated" ? text : null
-				},
-				30_000,
-			)
-
-			const entry = (JSON.parse(raw) as { assets: Array<Record<string, unknown>> }).assets.find(
-				(asset) => asset.tag === "hero-bench",
-			)
-			assert(entry?.kind === "image", `the photograph was indexed as ${entry?.kind}`)
-			// Intrinsic size probed from the real file header, not from the request.
-			assert(Number(entry?.width) > 100, `the photograph measured ${entry?.width}x${entry?.height}`)
-
-			// Post-processing, checked on the file rather than on the intention.
-			// The model returns 1344x768 for a 16:9 request — 1.75:1, close enough
-			// to look fine and wrong enough to show a seam in a full-bleed hero.
-			const ratio = Number(entry?.width) / Number(entry?.height)
+			const readEntry = async (tag: string) =>
+				waitFor(
+					`@${tag} to reach the index with its provenance`,
+					async () => {
+						const text = await fs
+							.readFile(path.join(fixture, ".caret", "assets", "index.json"), "utf-8")
+							.catch(() => "")
+						const found = text
+							? (JSON.parse(text) as { assets: Array<Record<string, any>> }).assets.find(
+									(asset) => asset.tag === tag,
+								)
+							: undefined
+						return found?.description && found?.origin?.type === "generated" ? found : null
+					},
+					30_000,
+				)
+			const entry = await readEntry("hero-bench")
+			assert(entry.kind === "image", `the photograph was indexed as ${entry.kind}`)
+			const ratio = Number(entry.width) / Number(entry.height)
 			assert(Math.abs(ratio - 16 / 9) < 0.01, `the stored photograph is ${ratio.toFixed(3)}:1, not 16:9`)
-			assert(entry?.mime === "image/webp", `the photograph was stored as ${entry?.mime}`)
-
-			const post = (entry?.origin as Record<string, any>)?.postProcessed
+			assert(entry.mime === "image/webp", `the photograph was stored as ${entry.mime}`)
+			const post = entry.origin?.postProcessed
 			assert(Boolean(post), "post-processing was not recorded")
-			// A 1.4MB PNG per hero, committed forever, is the thing this prevents.
 			assert(
 				Number(post.to.bytes) < Number(post.from.bytes) / 3,
 				`post-processing only got ${post.from.bytes} down to ${post.to.bytes} bytes`,
 			)
-			assert(Number(entry?.bytes) === Number(post.to.bytes), "the index disagrees with what was recorded")
+			assert(entry.origin.lane === "raster", `the lane was recorded as ${entry.origin.lane}`)
+			assert(String(entry.origin.producer ?? "").includes("gemini"), `the model was recorded as ${entry.origin.producer}`)
+			// "Use my words": what was sent starts with exactly what was typed, and
+			// Caret's own avoid list was not added.
+			const resolved = String(entry.origin.resolved ?? "")
+			assert(resolved.startsWith(WANTED), `the prompt sent is not the words as typed: ${resolved.slice(0, 200)}`)
+			assert(!resolved.includes("Do not include:"), "Caret's avoid list was added to 'Use my words'")
+			assert(entry.origin.answers?.asked === WANTED, "the request was not kept in provenance")
+			assert(entry.origin.answers?.promptHelp === "exact", `prompt help recorded as ${entry.origin.answers?.promptHelp}`)
+			const cost = entry.origin.cost
+			assert(cost?.unit === "tokens" && Number(cost.amount) > 0, `the cost was not metered: ${JSON.stringify(cost)}`)
 
-			const origin = entry?.origin as Record<string, unknown> | undefined
-			assert(origin?.lane === "raster", `the lane was recorded as ${origin?.lane}`)
-			assert(String(origin?.producer ?? "").includes("gemini"), `the model was recorded as ${origin?.producer}`)
-			// For a paid lane the resolved prompt is the only record of what the
-			// money bought, and it has to carry the negative constraints too.
-			assert(String(origin?.resolved ?? "").includes("Do not include:"), "the slop constraints are not in the record")
-			// The whole point: what was sent is what the user asked for, verbatim.
-			assert(
-				String(origin?.resolved ?? "").includes(WANTED),
-				`the resolved prompt is not the user's request: ${String(origin?.resolved ?? "").slice(0, 300)}`,
+			// Branch the saved take for real: the picture goes back as the reference.
+			await panel.getByTestId("board-inspector").locator('[data-chip="Warmer light"]').click()
+			await panel.getByTestId("board-grow").click()
+			await waitFor(
+				"the branch's takes to finish or fail",
+				async () => {
+					const branchTakes = board.locator('[data-testid="board-take"]')
+					const total = await branchTakes.count()
+					const running = await board
+						.locator(
+							'[data-testid="board-take"][data-status="waiting"], [data-testid="board-take"][data-status="working"]',
+						)
+						.count()
+					return total === 4 + 2 && running === 0 ? true : null
+				},
+				300_000,
 			)
-			// And none of the old hardcoded subjects can have leaked in.
-			for (const ghost of ["ceramic vase", "table lamp", "over-ear headphones", "succulent", "wristwatch"]) {
-				assert(!String(origin?.resolved ?? "").includes(ghost), `the resolved prompt substituted "${ghost}"`)
-			}
-			assert((origin?.answers as Record<string, string>)?.asked === WANTED, "the request was not kept in provenance")
+			assert((await board.locator("[data-line-for]").count()) === 1, "the branch has no line to its take")
+			const warm = board.locator('[data-testid="board-take"][data-status="ready"]').last()
+			await warm.click()
+			await panel.getByTestId("board-name").fill("hero-bench-warm")
+			await panel.getByTestId("board-use").click()
+			const branched = await readEntry("hero-bench-warm")
+			const chain = String(branched.origin.resolved ?? "")
+			assert(
+				chain.includes("[changed from take") && chain.includes("make the light warmer"),
+				`the branch's provenance: ${chain.slice(-300)}`,
+			)
+			await shot(chrome, "22b-generate-branch")
 
-			// What the money bought is recorded from the provider's own meter — for
-			// a paid lane, "cost per asset" is provenance, not bookkeeping.
-			const cost = (entry?.origin as Record<string, any>)?.cost
-			assert(Boolean(cost), "the cost of the paid call was not recorded")
-			assert(cost.unit === "tokens", `the cost was recorded in ${cost.unit}, not the provider's meter`)
-			assert(Number(cost.amount) > 0, `the recorded cost is ${cost.amount}`)
-			assert(Number(cost.round?.calls) >= usable, `the round recorded ${cost.round?.calls} calls for ${usable} variants`)
-
-			await chrome.getByTestId("assets-view").getByText("Done").click()
+			await panel.getByTestId("board-done").click()
 			return (
-				`asked for "${WANTED}" and got it — ${usable} take(s) (${failures} refused), picked one, ` +
-				`cropped to 16:9 at ${entry?.width}x${entry?.height}, ` +
-				`${Math.round(Number(post.from.bytes) / 1024)}KB ${post.from.mime} → ${Math.round(Number(post.to.bytes) / 1024)}KB webp, ` +
-				`${cost.amount} tokens metered (round of ${cost.round?.calls}: ${cost.round?.amount})`
+				`asked for "${WANTED}" in its own words — ${usable} take(s) (${failures} refused), used one at 16:9 ` +
+				`${entry.width}x${entry.height} webp, ${cost.amount} tokens metered; branched it warmer and used that too`
 			)
 		})
 	}
@@ -2188,48 +2184,51 @@ async function main(): Promise<void> {
 			await ask.locator('[data-generate-kind="image"]').click()
 			await ask.getByTestId("generate-request").fill(WANTED_CUTOUT)
 			// Transparency is a property of the image, not a kind of its own — and
-			// it is what switches on the flat-key-colour hard requirement.
+			// it is what switches on the white-background requirement.
 			await ask.getByTestId("generate-transparent").check()
+			await ask.getByTestId("generate-aspect").selectOption("1:1")
+			await ask.locator('[data-prompt-mode="exact"]').click()
 			await ask.getByTestId("generate-begin").click()
 
-			// Same late-clarify + rebuild road as the image scenario above.
-			const clarify = panel.getByTestId("generate-clarify")
-			const variants = panel.getByTestId("generate-variants")
-			let skipped = false
+			// The board waits for the cutout tool before spending anything, then
+			// keys each take before showing it.
+			const board = panel.getByTestId("take-board")
+			await board.waitFor({ timeout: 20_000 })
 			await waitFor(
-				"the cutout takes grid (past any clarify questions)",
+				"every cutout take to finish or fail",
 				async () => {
-					if (!skipped && (await clarify.isVisible().catch(() => false))) {
-						skipped = true
-						await clarify.getByTestId("generate-clarify-skip").click()
-						return null
-					}
-					return (await variants.isVisible().catch(() => false)) ? true : null
+					const total = await board.locator('[data-testid="board-take"]').count()
+					const running = await board
+						.locator(
+							'[data-testid="board-take"][data-status="waiting"], [data-testid="board-take"][data-status="working"]',
+						)
+						.count()
+					return total > 0 && running === 0 ? true : null
 				},
-				240_000,
+				600_000,
 			)
-			await variants.locator("[data-generate-variant] img").first().waitFor({ timeout: 240_000 })
-
-			// The cut happened *before* the pick: what is on screen is the finished
-			// cutout as PNG-with-alpha, not the original on its white background.
-			const previewSrc = await variants
-				.locator("[data-generate-variant] img")
+			const usable = await board.locator('[data-testid="board-take"][data-status="ready"]').count()
+			const keyFailures = await board.locator('[data-testid="board-take"][data-status="failed"]').count()
+			assert(
+				usable > 0,
+				`every cutout take failed: ${await board
+					.locator('[data-testid="board-take-error"]')
+					.first()
+					.innerText()
+					.catch(() => "")}`,
+			)
+			const previewSrc = await board
+				.locator('[data-testid="board-take"][data-status="ready"] img')
 				.first()
 				.evaluate((img: HTMLImageElement) => img.src.slice(0, 24))
 			assert(previewSrc.startsWith("data:image/png"), `the preview is ${previewSrc}, not the cut-out png`)
-
-			const keyFailures = await variants.locator("[data-generate-variant-error]").count()
-			const usable = await variants.locator("[data-generate-variant]").count()
-			assert(usable > 0, "every cutout variant failed — generation or keying")
 			await shot(chrome, "24-generate-cutouts")
 
-			await variants.locator("[data-generate-variant]").first().click()
-			// Selecting a take, then "Use this take" — see bg.
-			await panel.getByTestId("generate-use-take").click()
-			const name = panel.getByTestId("generate-name")
-			await name.waitFor({ timeout: 15_000 })
-			await name.getByTestId("generate-tag").fill("cutout-object")
-			await name.getByTestId("generate-save").click()
+			await board.locator('[data-testid="board-take"][data-status="ready"]').first().click()
+			await panel.getByTestId("board-name").fill("cutout-object")
+			await panel.getByTestId("board-use").click()
+			await panel.getByTestId("board-saved-note").waitFor({ timeout: 30_000 })
+			await panel.getByTestId("board-done").click()
 
 			// Completed entry, not first sight — see bg for why.
 			const raw = await waitFor(
@@ -2275,7 +2274,6 @@ async function main(): Promise<void> {
 					: entry?.mime === "image/png" && file[25] === 6
 			assert(hasAlpha, `the stored cutout (${entry?.mime}) carries no alpha channel`)
 
-			await chrome.getByTestId("assets-view").getByText("Done").click()
 			return `asked for "${WANTED_CUTOUT}" — ${usable} cutout(s) (${keyFailures} refused), saved as @cutout-object, ${entry?.mime} with alpha, cost recorded`
 		})
 	}

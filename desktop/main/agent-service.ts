@@ -10,6 +10,8 @@
  * a CLI, sign in, or change their mind between two turns, and a backend resolved
  * once at window open would keep refusing long after the reason was fixed.
  */
+
+import { app } from "electron"
 import {
 	AgentConversation,
 	type AppWritePolicy,
@@ -30,9 +32,11 @@ import {
 	setProjectEditLane,
 	setProjectExploreLane,
 } from "../../src/core/design"
+
 import { Logger } from "../../src/shared/services/Logger"
 import { getPrefs, setPref } from "./prefs"
 import { skillService } from "./skills/skills"
+import { fakeTakeConversation, testExploreDelay } from "./test-explore"
 
 /** Sent with every chat turn, last in the system prompt. */
 export const CARET_PRECEDENCE =
@@ -118,19 +122,24 @@ export class AgentService {
 			onTurnComplete: (outcome, request) => options.onTurnComplete?.(this.editConversation, outcome, request),
 		})
 
+		// Development builds can make page takes with a stand-in instead of a
+		// model (CARET_TEST_EXPLORE), so the Experiment canvas is testable for free.
+		const testExplore = testExploreDelay(process.env, app.isPackaged)
 		this.exploreLane = new ExploreLane(
 			(onChange) =>
-				new AgentConversation({
-					projectPath: options.projectPath,
-					resolveBackend: () => this.resolveBackend(),
-					model: () => getPrefs().backendModel || undefined,
-					effort: () => getPrefs().backendEffort || undefined,
-					appWrites: () => this.appWrites(),
-					setAppWrites: (policy) => this.setAppWrites(policy),
-					systemPrompt: () => this.systemPrompt(),
-					onChange,
-				}),
-			() => this.conversation.getState().ready,
+				testExplore !== null
+					? fakeTakeConversation(options.projectPath, testExplore)
+					: new AgentConversation({
+							projectPath: options.projectPath,
+							resolveBackend: () => this.resolveBackend(),
+							model: () => getPrefs().backendModel || undefined,
+							effort: () => getPrefs().backendEffort || undefined,
+							appWrites: () => this.appWrites(),
+							setAppWrites: (policy) => this.setAppWrites(policy),
+							systemPrompt: () => this.systemPrompt(),
+							onChange,
+						}),
+			() => testExplore !== null || this.conversation.getState().ready,
 			(status) => options.onExploreStatus(status),
 		)
 

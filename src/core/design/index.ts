@@ -358,6 +358,7 @@ export {
 	type ExploreNodeStatus,
 	readExploration,
 	registerExternalRound,
+	markNodeStarted,
 	spawnRound,
 	updateNodeStatus,
 	VARIANT_COUNT,

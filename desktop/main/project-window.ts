@@ -536,7 +536,11 @@ export class ProjectWindow {
 			// The gap that made the Windows canvas failure invisible: the main
 			// process watched Vite (healthy) but nothing watched whether the
 			// renderer actually REACHED it. This is the user's side of the story.
-			this.canvas.webContents.on("did-fail-load", (_e, code, description, validatedUrl) => {
+			this.canvas.webContents.on("did-fail-load", (_e, code, description, validatedUrl, isMainFrame) => {
+				// Only the canvas page itself counts. A page preview inside it (a card,
+				// a take) is "aborted" (-3) every time it is closed or replaced, which
+				// is normal and was being reported as a blocked canvas.
+				if (!isMainFrame || code === -3) return
 				Logger.error(`[canvas] failed to load ${validatedUrl}: ${description} (${code})`)
 				emitDesignEvent("canvas_blocked", { reason: "renderer_load_failed", code })
 			})

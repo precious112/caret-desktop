@@ -45,8 +45,12 @@ export interface ExploreNode {
 	label: string
 	status: ExploreNodeStatus
 	error?: string
-	/** When this take's generation started — the card's elapsed ticker reads it. */
+	/** When this take's generation started — the card's elapsed ticker reads it. Reset when its turn actually starts. */
 	startedAt: string
+	/** The round this take was made in: the takes of one request, together. */
+	round?: string
+	/** How far this round was told to move from its parent. */
+	strength?: "subtle" | "strong"
 }
 
 export interface Exploration {
@@ -136,6 +140,18 @@ export async function readExploration(workspacePath: string): Promise<Exploratio
 	}
 }
 
+/**
+ * Every change to an exploration reads the scratch, works, and writes it back.
+ * Canvas messages are handled concurrently, so without one lock around the
+ * whole change two branches started together read the same take counter and
+ * copied into the same folders, and a take finishing during a branch's copy
+ * was written back as still working. The write itself has its own (shorter)
+ * lock on the file, which is why this one has a different key.
+ */
+function mutating<T>(workspacePath: string, work: () => Promise<T>): Promise<T> {
+	return runExclusive(`${scratchPath(workspacePath)}#change`, work)
+}
+
 async function writeExploration(workspacePath: string, exploration: Exploration): Promise<void> {
 	const target = scratchPath(workspacePath)
 	await runExclusive(target, () => writeFileAtomic(target, JSON.stringify(exploration, null, 2)))
@@ -180,7 +196,11 @@ export interface CreateExplorationOptions {
  * open — one exploration per project keeps cost and attention bounded, and two
  * concurrent picks over one scratch file would corrupt both.
  */
-export async function createExploration(workspacePath: string, opts: CreateExplorationOptions): Promise<Exploration> {
+export function createExploration(workspacePath: string, opts: CreateExplorationOptions): Promise<Exploration> {
+	return mutating(workspacePath, () => createExplorationNow(workspacePath, opts))
+}
+
+async function createExplorationNow(workspacePath: string, opts: CreateExplorationOptions): Promise<Exploration> {
 	const existing = await readExploration(workspacePath)
 	if (existing) {
 		throw new Error(
@@ -227,11 +247,11 @@ export async function createExploration(workspacePath: string, opts: CreateExplo
 	await writeExploration(workspacePath, exploration)
 
 	try {
-		await spawnRound(workspacePath, pageId, opts.instruction, { count: opts.count, label: opts.label })
+		await spawnRoundNow(workspacePath, pageId, opts.instruction, { count: opts.count, label: opts.label })
 	} catch (err) {
 		// A failed first round must not leave a half-open exploration blocking the
 		// one-per-project rule.
-		await discardExploration(workspacePath).catch(() => {})
+		await discardExplorationNow(workspacePath).catch(() => {})
 		throw err
 	}
 	return (await readExploration(workspacePath)) as Exploration
@@ -242,11 +262,20 @@ export async function createExploration(workspacePath: string, opts: CreateExplo
  * round. `fromId` is the exploration's root page or any `ready` node — you
  * branch from something you can see, never from a take still being written.
  */
-export async function spawnRound(
+export function spawnRound(
 	workspacePath: string,
 	fromId: string,
 	instruction: string,
-	opts: { count?: number; label?: string } = {},
+	opts: { count?: number; label?: string; strength?: "subtle" | "strong" } = {},
+): Promise<ExploreNode[]> {
+	return mutating(workspacePath, () => spawnRoundNow(workspacePath, fromId, instruction, opts))
+}
+
+async function spawnRoundNow(
+	workspacePath: string,
+	fromId: string,
+	instruction: string,
+	opts: { count?: number; label?: string; strength?: "subtle" | "strong" } = {},
 ): Promise<ExploreNode[]> {
 	const exploration = await readExploration(workspacePath)
 	if (!exploration) throw new Error("No exploration is open.")
@@ -273,6 +302,9 @@ export async function spawnRound(
 
 	const count = opts.count ?? VARIANT_COUNT
 	const spawned: ExploreNode[] = []
+	// A take's own title is the root's with its number, never a take of a take of a take.
+	const rootTitle = String(sourceMeta.title ?? exploration.pageId).replace(/( — take \d+)+$/, "")
+	const round = `r${exploration.nodes.reduce((max, node) => Math.max(max, Number(node.round?.slice(1)) || 0), 0) + 1}`
 	for (let i = 0; i < count; i++) {
 		const n = exploration.nextTake++
 		const id = variantPageId(exploration.pageId, n)
@@ -291,7 +323,7 @@ export async function spawnRound(
 				{
 					...sourceMeta,
 					id,
-					title: `${sourceMeta.title ?? exploration.pageId} — ${opts.label ?? `take ${n}`}`,
+					title: `${rootTitle} — ${opts.label ?? `take ${n}`}`,
 					variantOf: exploration.pageId,
 				},
 				null,
@@ -307,6 +339,8 @@ export async function spawnRound(
 			label,
 			status: "working",
 			startedAt: new Date().toISOString(),
+			round,
+			...(opts.strength ? { strength: opts.strength } : {}),
 		})
 	}
 
@@ -319,7 +353,16 @@ export async function spawnRound(
  * Registers take pages an EXTERNAL agent already wrote (the MCP path).
  * Validates each page actually has renderable source before showing a pick.
  */
-export async function registerExternalRound(
+export function registerExternalRound(
+	workspacePath: string,
+	pageId: string,
+	variantIds: string[],
+	instruction: string,
+): Promise<Exploration> {
+	return mutating(workspacePath, () => registerExternalRoundNow(workspacePath, pageId, variantIds, instruction))
+}
+
+async function registerExternalRoundNow(
 	workspacePath: string,
 	pageId: string,
 	variantIds: string[],
@@ -366,19 +409,32 @@ export async function registerExternalRound(
 	return exploration
 }
 
-export async function updateNodeStatus(
+export function updateNodeStatus(
 	workspacePath: string,
 	nodeId: string,
 	status: ExploreNodeStatus,
 	error?: string,
 ): Promise<void> {
-	const exploration = await readExploration(workspacePath)
-	if (!exploration) return
-	const node = exploration.nodes.find((n) => n.id === nodeId)
-	if (!node) return
-	node.status = status
-	node.error = error
-	await writeExploration(workspacePath, exploration)
+	return mutating(workspacePath, async () => {
+		const exploration = await readExploration(workspacePath)
+		if (!exploration) return
+		const node = exploration.nodes.find((n) => n.id === nodeId)
+		if (!node) return
+		node.status = status
+		node.error = error
+		await writeExploration(workspacePath, exploration)
+	})
+}
+
+/** A take's turn has actually started (it may have waited for a free agent): its timer starts now. */
+export function markNodeStarted(workspacePath: string, nodeId: string): Promise<void> {
+	return mutating(workspacePath, async () => {
+		const exploration = await readExploration(workspacePath)
+		const node = exploration?.nodes.find((n) => n.id === nodeId)
+		if (!exploration || !node || node.status !== "working") return
+		node.startedAt = new Date().toISOString()
+		await writeExploration(workspacePath, exploration)
+	})
 }
 
 /**
@@ -387,7 +443,11 @@ export async function updateNodeStatus(
  * take pages to the playground: they exist to be compared, and whichever way
  * the pick resolves they are cleaned up rather than left as invisible clutter.
  */
-export async function discardExploration(workspacePath: string): Promise<void> {
+export function discardExploration(workspacePath: string): Promise<void> {
+	return mutating(workspacePath, () => discardExplorationNow(workspacePath))
+}
+
+async function discardExplorationNow(workspacePath: string): Promise<void> {
 	const exploration = await readExploration(workspacePath)
 	if (exploration) {
 		for (const node of exploration.nodes) {
@@ -404,7 +464,11 @@ export async function discardExploration(workspacePath: string): Promise<void> {
  * a real identity and no `variantOf`, so it joins the canvas. Either way the
  * whole tree is cleaned up.
  */
-export async function applyLeaf(workspacePath: string, nodeId: string): Promise<void> {
+export function applyLeaf(workspacePath: string, nodeId: string): Promise<void> {
+	return mutating(workspacePath, () => applyLeafNow(workspacePath, nodeId))
+}
+
+async function applyLeafNow(workspacePath: string, nodeId: string): Promise<void> {
 	const exploration = await readExploration(workspacePath)
 	if (!exploration) throw new Error("No exploration is open.")
 	const chosen = exploration.nodes.find((n) => n.id === nodeId)

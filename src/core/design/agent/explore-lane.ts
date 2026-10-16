@@ -78,7 +78,7 @@ export class ExploreLane {
 	 * Generates one take. Resolves when its turn settles; rejects with
 	 * {@link ExploreCancelledError} on cancel, anything else on failure.
 	 */
-	async run(nodeId: string, task: AgentTask): Promise<void> {
+	async run(nodeId: string, task: AgentTask, hooks: { onStart?: () => void } = {}): Promise<void> {
 		if (!this.isReady()) throw new NoBackendError("visual-edit")
 		if (this.running.has(nodeId)) throw new Error(`Take "${nodeId}" is already generating.`)
 
@@ -95,6 +95,9 @@ export class ExploreLane {
 			if (!gotSlot) throw new ExploreCancelledError()
 			try {
 				if (entry.cancelled) throw new ExploreCancelledError()
+				// Its turn has come: anything still saying "waiting" is out of date.
+				hooks.onStart?.()
+				this.onStatus({ nodeId, phase: "working", detail: "starting" })
 				const conversation = this.makeConversation((state) => this.handleState(nodeId, state))
 				entry.conversation = conversation
 				try {

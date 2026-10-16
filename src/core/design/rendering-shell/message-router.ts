@@ -33,6 +33,7 @@ import {
 	discardExploration,
 	type Exploration,
 	type ExploreNode,
+	markNodeStarted,
 	readExploration,
 	spawnRound,
 	updateNodeStatus,
@@ -425,9 +426,15 @@ copy of "${node.parentId}" made for this take. Read its current source, then app
 		? `\nThis page is itself a chosen direction from an earlier round — keep its direction, and
 push it further as the instruction asks rather than starting over.\n`
 		: ""
+	const strength =
+		node.strength === "strong"
+			? "\nHOW FAR: strong. Keep the page's content and purpose, but the layout and structure may change as much as the instruction needs.\n"
+			: node.strength === "subtle"
+				? "\nHOW FAR: subtle. Keep the layout and structure; change only what the instruction names.\n"
+				: ""
 
 	return `${opening}
-${lineage}
+${lineage}${strength}
 ${node.angle}
 
 INSTRUCTION: ${node.instruction}
@@ -467,7 +474,9 @@ async function handleVariantRequest(payload: import("./messages").VariantRequest
 	let round: ExploreNode[]
 	try {
 		if (payload.fromId) {
-			round = await spawnRound(workspacePath, payload.fromId, payload.instruction)
+			round = await spawnRound(workspacePath, payload.fromId, payload.instruction, {
+				...(payload.strength ? { strength: payload.strength } : {}),
+			})
 			exploration = await readExploration(workspacePath)
 		} else if (payload.newPage) {
 			exploration = await createExploration(workspacePath, {
@@ -511,7 +520,7 @@ async function handleVariantRequest(payload: import("./messages").VariantRequest
 			disabledTools: ["caret_get_screenshot"],
 		}
 		try {
-			if (lane) await lane.run(node.id, task)
+			if (lane) await lane.run(node.id, task, { onStart: () => void markNodeStarted(workspacePath, node.id) })
 			else await fallback.request(task)
 			await updateNodeStatus(workspacePath, node.id, "ready")
 		} catch (err) {
@@ -546,6 +555,15 @@ async function handleVariantCancel(payload: import("./messages").VariantCancelPa
 
 async function handleVariantPick(payload: import("./messages").VariantPickPayload, workspacePath: string): Promise<void> {
 	try {
+		// A pick that can't be applied is refused before anything is stopped:
+		// cancelling every take first and then finding the pick unusable threw
+		// away work in progress for nothing.
+		if (payload.variantId) {
+			const open = await readExploration(workspacePath)
+			const chosen = open?.nodes.find((node) => node.id === payload.variantId)
+			if (!chosen) throw new Error(`"${payload.variantId}" is not one of the open takes.`)
+			if (chosen.status !== "ready") throw new Error(`"${payload.variantId}" isn't finished, so it can't be used yet.`)
+		}
 		// Outstanding takes are fully stopped BEFORE anything is deleted — a turn
 		// left running would keep editing directories that no longer exist.
 		await exploreLaneFor(workspacePath)?.cancelAll()

@@ -53,6 +53,8 @@ interface RunOptions {
 	prefs?: Record<string, unknown>
 	/** Leave the cutout tool off this profile. */
 	noCutoutTool?: boolean
+	/** Page takes made by the real AI model instead of the stand-in. */
+	realTakes?: boolean
 	prepare?(project: string): Promise<void>
 }
 
@@ -75,6 +77,8 @@ async function startRun(id: string, options: RunOptions = {}): Promise<Run> {
 		CARET_VERTEX_PROJECT: "",
 		GOOGLE_CLOUD_PROJECT: "",
 		...((options.images ?? "stand-in") === "stand-in" ? { CARET_TEST_IMAGE_SERVICE: service.url } : {}),
+		// Page takes from the stand-in, unless the case wants the real model.
+		...(options.realTakes ? {} : { CARET_TEST_EXPLORE: "1500" }),
 	}
 	const launched = await launchApp({ project, userData, logFile, env })
 	template ??= project
@@ -107,6 +111,11 @@ async function withRun(id: string, options: RunOptions, body: (run: Run) => Prom
 		return detail
 	} catch (err) {
 		await shot(run.launched.chrome, run.dir, "failure")
+		// The canvas is its own view; the main window's screenshot cannot see it.
+		for (const page of run.launched.app.context().pages()) {
+			if (page.url().startsWith("http://127.0.0.1"))
+				await page.screenshot({ path: path.join(run.dir, "failure-canvas.png") }).catch(() => {})
+		}
 		throw err
 	} finally {
 		await run.launched.close()
@@ -240,6 +249,131 @@ async function grow(run: Run, takeId: string, change: { chips?: string[]; note?:
 }
 
 const exactCalls = () => service.calls()
+
+// ── driving the Experiment canvas ────────────────────────────────────────
+
+const HOME_SOURCE = `export default function Home() {
+	return (
+		<main className="min-h-screen p-16">
+			<h1 className="text-5xl font-semibold">Tenon keyboards</h1>
+			<p className="mt-6 text-xl">Built from one piece of walnut.</p>
+		</main>
+	)
+}
+`
+
+/** A page's source without the element ids Caret's healer adds to every page. */
+const plain = (source: string) => source.replace(/ data-caret-id="[^"]*"/g, "")
+
+async function writeHomePage(project: string): Promise<void> {
+	const dir = path.join(project, ".caret", "pages", "home")
+	await fs.mkdir(dir, { recursive: true })
+	await fs.writeFile(path.join(dir, "index.tsx"), HOME_SOURCE)
+	await fs.writeFile(
+		path.join(dir, "meta.json"),
+		JSON.stringify({ id: "home", title: "Home", type: "page", states: [], tags: [] }),
+	)
+}
+
+/**
+ * The canvas view, once it is showing its page cards. Looked up afresh on every
+ * try: it reloads while the preview starts, which closes the earlier handle.
+ */
+async function canvas(run: Run): Promise<import("playwright").Page> {
+	return waitFor(
+		"the canvas with its page cards",
+		async () => {
+			for (const page of run.launched.app.context().pages()) {
+				if (!page.url().startsWith("http://127.0.0.1")) continue
+				const cards = await page
+					.locator(".caret-canvas-frame, [data-testid='explore-board']")
+					.count()
+					.catch(() => 0)
+				if (cards > 0) return page
+			}
+			return null
+		},
+		180_000,
+		async () =>
+			run.launched.app
+				.context()
+				.pages()
+				.map((p) => p.url())
+				.join(", "),
+	)
+}
+
+interface Node {
+	id: string
+	parentId: string
+	instruction: string
+	status: string
+	round?: string
+	strength?: string
+	label: string
+	error?: string
+}
+
+/** The experiment as the app stored it. */
+async function scratch(run: Run): Promise<{ pageId: string; mode: string; nodes: Node[] } | null> {
+	return JSON.parse(await fs.readFile(path.join(run.project, ".caret", ".variants.json"), "utf8").catch(() => "null"))
+}
+
+async function takesSettled(run: Run, label: string, ms = 120_000) {
+	return waitFor(
+		label,
+		async () => {
+			const open = await scratch(run)
+			return open && open.nodes.length > 0 && open.nodes.every((n) => n.status !== "working") ? open : null
+		},
+		ms,
+		async () => JSON.stringify((await scratch(run))?.nodes.map((n) => `${n.id}:${n.status}`)),
+	)
+}
+
+/** The instructions a stand-in take's page lists: its whole chain, oldest first. */
+async function chainOf(run: Run, id: string): Promise<string[]> {
+	const source = await fs.readFile(path.join(run.project, ".caret", "pages", id, "index.tsx"), "utf8")
+	const match = /const STEPS = (\[.*\])/.exec(source)
+	return match ? JSON.parse(match[1]) : []
+}
+
+/** Opens Home on the canvas and starts an experiment on it, through the focused page's Experiment button. */
+async function startExperiment(run: Run, instruction: string): Promise<import("playwright").Page> {
+	const page = await canvas(run)
+	await page.locator(".caret-canvas-frame").first().click()
+	await page.getByTestId("explore-enter-focused").click({ timeout: 30_000 })
+	await page.getByTestId("explore-instruction").fill(instruction)
+	await page.getByTestId("explore-start-page-go").click()
+	await page.getByTestId("explore-board").waitFor({ timeout: 30_000 })
+	return page
+}
+
+/**
+ * Selects a take (or the page itself) on the board and grows a round from it,
+ * returning once the app has recorded the new round (the request is handled
+ * after the click returns).
+ */
+async function growPage(
+	run: Run,
+	page: import("playwright").Page,
+	id: string,
+	change: { chips?: string[]; note?: string; strength?: "subtle" | "strong" },
+) {
+	const before = (await scratch(run))?.nodes.length ?? 0
+	const card = page.getByTestId(id === "home" ? "explore-root" : `variant-card-${id}`)
+	await card.locator(".caret-board-take").click()
+	const inspector = page.getByTestId("explore-inspector")
+	for (const chip of change.chips ?? []) await inspector.locator(`[data-chip="${chip}"]`).click()
+	await inspector.getByTestId(`explore-strength-${change.strength ?? "subtle"}`).click()
+	if (change.note) await inspector.getByTestId("explore-change-note").fill(change.note)
+	await inspector.getByTestId("explore-grow").click()
+	await waitFor(
+		"the new round to be recorded",
+		async () => (((await scratch(run))?.nodes.length ?? 0) > before ? true : null),
+		20_000,
+	)
+}
 
 // ── the cases ─────────────────────────────────────────────────────────────
 
@@ -735,6 +869,423 @@ const CASES: Case[] = [
 				assert.equal(await chrome.locator("[data-line-for]").count(), 10)
 				await shot(chrome, run.dir, "ten-branches")
 				return `${rects.length} takes in 11 branches, none overlapping, 10 lines`
+			}),
+	},
+
+	{
+		id: "e1",
+		title: "Experiment: the page is the first box; branch a take, the same take again, the page itself, and three deep",
+		run: () =>
+			withRun("e1", { prepare: writeHomePage }, async (run) => {
+				const page = await startExperiment(run, "Make it feel premium")
+				await page.getByTestId("explore-root").waitFor({ timeout: 10_000 })
+				let open = await takesSettled(run, "the first round")
+				assert.equal(open.nodes.length, 3)
+				assert(
+					open.nodes.every((n) => n.parentId === "home" && n.status === "ready"),
+					JSON.stringify(open.nodes),
+				)
+				const [v1, v2] = open.nodes.map((n) => n.id)
+				assert.deepEqual(await chainOf(run, v1), ["Make it feel premium"])
+
+				await growPage(run, page, v2, { chips: ["Warmer"] })
+				// While the branch is being made, the first round stays on the board.
+				await waitFor(
+					"the branch to start",
+					async () => ((await scratch(run))?.nodes.some((n) => n.status === "working") ? true : null),
+					10_000,
+				)
+				assert.equal(
+					await page.locator('[data-testid^="variant-card-"]').count(),
+					6,
+					"the first round disappeared while branching",
+				)
+				open = await takesSettled(run, "the warmer branch")
+				const warmer = open.nodes.filter((n) => n.parentId === v2)
+				assert.equal(warmer.length, 3)
+				assert.deepEqual(await chainOf(run, warmer[0].id), ["Make it feel premium", "warmer"])
+
+				await growPage(run, page, v2, { note: "a quieter layout", strength: "strong" })
+				open = await takesSettled(run, "the second branch from the same take")
+				const fromV2 = open.nodes.filter((n) => n.parentId === v2)
+				assert.equal(
+					fromV2.length,
+					6,
+					`the second branch replaced the first: ${open.nodes.map((n) => `${n.id}<${n.parentId} ${n.status}`).join(", ")}`,
+				)
+				assert(fromV2.slice(3).every((n) => n.strength === "strong"))
+				assert.equal(
+					await page
+						.locator(`[data-testid="variant-card-${v2}"] [data-testid="explore-kids"]`)
+						.getAttribute("data-count"),
+					"2",
+				)
+
+				await growPage(run, page, "home", { note: "a darker direction" })
+				open = await takesSettled(run, "a new direction from the page itself")
+				const fresh = open.nodes.filter((n) => n.parentId === "home")
+				assert.equal(fresh.length, 6)
+				assert.deepEqual(await chainOf(run, fresh[3].id), ["a darker direction"])
+
+				await growPage(run, page, warmer[1].id, { chips: ["More space"] })
+				open = await takesSettled(run, "the deep branch")
+				const deep = open.nodes.filter((n) => n.parentId === warmer[1].id)
+				assert.deepEqual(await chainOf(run, deep[0].id), ["Make it feel premium", "warmer", "more space"])
+
+				// Each line starts on the right edge of the exact take it grew from.
+				const lines = await page.locator("[data-line-for]").count()
+				assert.equal(
+					lines,
+					5,
+					`expected 5 lines (round one, two from ${v2}, the new direction, the deep one), saw ${lines}`,
+				)
+				const off = await page.evaluate(() => {
+					const bad: string[] = []
+					for (const g of Array.from(document.querySelectorAll("[data-line-for]"))) {
+						const path = g.querySelector("path") as SVGPathElement
+						const start = path.getPointAtLength(0)
+						const svg = path.ownerSVGElement!.getBoundingClientRect()
+						const x = svg.left + start.x
+						const y = svg.top + start.y
+						const cards = Array.from(
+							document.querySelectorAll(
+								'[data-testid^="variant-card-"] .caret-board-take, [data-testid="explore-root"] .caret-board-take',
+							),
+						)
+						const hit = cards.some((card) => {
+							const r = card.getBoundingClientRect()
+							return Math.abs(r.right - x) < 3 && y > r.top && y < r.bottom
+						})
+						if (!hit) bad.push(g.getAttribute("data-line-for") || "?")
+					}
+					return bad
+				})
+				assert.deepEqual(off, [], "lines that do not start on a take's edge")
+
+				// The path bar walks home › v2 › warmer take › deep take.
+				await page.getByTestId(`variant-card-${deep[0].id}`).locator(".caret-board-take").click()
+				const crumbs = await page
+					.getByTestId("explore-path")
+					.locator("[data-take-id]")
+					.evaluateAll((els) => els.map((el) => el.getAttribute("data-take-id")))
+				assert.deepEqual(crumbs, ["home", v2, warmer[1].id, deep[0].id])
+				await shot(run.launched.chrome, run.dir, "chrome")
+				await page.screenshot({ path: path.join(run.dir, "experiment-board.png") })
+				return `${open.nodes.length} takes in 5 rounds; every take's page carries its own chain of instructions`
+			}),
+	},
+	{
+		id: "e2",
+		title: "Experiment: two branches at once, queued takes, cancelling one, a failing take, stop all",
+		run: () =>
+			withRun("e2", { prepare: writeHomePage }, async (run) => {
+				const page = await startExperiment(run, "Try a bolder hero")
+				let open = await takesSettled(run, "the first round")
+				const [v1, , v3] = open.nodes.map((n) => n.id)
+				// Two branches from two takes, one right after the other.
+				await growPage(run, page, v1, { note: "warmer" })
+				await growPage(run, page, v3, { note: "darker" })
+				// Six takes, three agents: three wait, and the board says so.
+				await waitFor(
+					"a queued take to say it is waiting",
+					async () =>
+						(await page.locator('[data-testid^="variant-card-"]').filter({ hasText: "queued" }).count()) > 0
+							? true
+							: null,
+					15_000,
+				)
+				open = await takesSettled(run, "both branches")
+				const ids = open.nodes.map((n) => n.id)
+				assert.equal(new Set(ids).size, ids.length, "two branches shared a take id")
+				assert.equal(open.nodes.filter((n) => n.parentId === v1).length, 3)
+				assert.equal(open.nodes.filter((n) => n.parentId === v3).length, 3)
+				for (const id of ids) {
+					const chain = await chainOf(run, id)
+					assert(chain.length >= 1, `${id} has no page of its own`)
+				}
+
+				// Cancel one take while it is being made.
+				await growPage(run, page, v1, { note: "much slower [[slow]]" })
+				const slow = await waitFor(
+					"the slow round",
+					async () => {
+						const now = await scratch(run)
+						const round = now?.nodes.filter((n) => n.instruction.includes("[[slow]]")) ?? []
+						return round.length === 3 ? round : null
+					},
+					10_000,
+				)
+				await page.getByTestId(`explore-cancel-${slow[0].id}`).click()
+				// A failing take shows its reason; the others carry on.
+				await growPage(run, page, v3, { note: "break this [[fail]]" })
+				open = await takesSettled(run, "the slow and failing rounds", 60_000)
+				assert.equal(open.nodes.find((n) => n.id === slow[0].id)!.status, "cancelled")
+				assert(slow.slice(1).every((n) => open.nodes.find((x) => x.id === n.id)!.status === "ready"))
+				const failing = open.nodes.filter((n) => n.instruction.includes("[[fail]]"))
+				assert(
+					failing.every((n) => n.status === "failed"),
+					JSON.stringify(failing),
+				)
+				await page.getByTestId(`variant-card-${failing[0].id}`).locator(".caret-board-take").click()
+				assert((await page.getByTestId("explore-inspector-status").innerText()).length > 3)
+
+				// Stop all.
+				await growPage(run, page, v1, { note: "stop me [[slow]]" })
+				await page.getByTestId("explore-stop-all").click({ timeout: 10_000 })
+				open = await takesSettled(run, "stopped", 30_000)
+				assert(open.nodes.filter((n) => n.instruction === "stop me [[slow]]").every((n) => n.status === "cancelled"))
+				return `two branches at once with unique takes; queued takes said so; cancel, failure and stop all each stayed on their own takes`
+			}),
+	},
+	{
+		id: "e3",
+		title: "Experiment: use a take three levels deep; every take folder goes; one undo brings the page back",
+		run: () =>
+			withRun("e3", { prepare: writeHomePage }, async (run) => {
+				const page = await startExperiment(run, "Make it feel premium")
+				let open = await takesSettled(run, "the first round")
+				await growPage(run, page, open.nodes[0].id, { note: "warmer" })
+				open = await takesSettled(run, "a branch")
+				const child = open.nodes[3].id
+				await growPage(run, page, child, { note: "more space" })
+				open = await takesSettled(run, "a deep branch")
+				const chosen = open.nodes[6].id
+				const chosenSource = await fs.readFile(path.join(run.project, ".caret", "pages", chosen, "index.tsx"), "utf8")
+				// Something still running: using a take asks first.
+				await growPage(run, page, open.nodes[1].id, { note: "keep going [[slow]]" })
+				page.once("dialog", (dialog) => void dialog.accept())
+				await page.getByTestId(`variant-card-${chosen}`).locator(".caret-board-take").hover()
+				await page.getByTestId(`variant-use-${chosen}`).click()
+				await waitFor("the experiment to close", async () => ((await scratch(run)) === null ? true : null), 30_000)
+				const home = await fs.readFile(path.join(run.project, ".caret", "pages", "home", "index.tsx"), "utf8")
+				assert(home.includes("more space") && home.includes('"warmer"'), "Home is not the chosen take")
+				const left = (await fs.readdir(path.join(run.project, ".caret", "pages"))).filter((d) => d.includes("--v"))
+				assert.deepEqual(left, [], "take folders were left behind")
+				const meta = JSON.parse(await fs.readFile(path.join(run.project, ".caret", "pages", "home", "meta.json"), "utf8"))
+				assert.equal(meta.id, "home")
+				assert.equal(meta.variantOf, undefined)
+				void chosenSource
+				// One undo step brings the original back: ⌘Z on the page, as a person does it.
+				let keysSeen = ""
+				await waitFor(
+					"the undo to restore Home",
+					async () => {
+						const now = plain(
+							await fs.readFile(path.join(run.project, ".caret", "pages", "home", "index.tsx"), "utf8"),
+						)
+						if (now === HOME_SOURCE) return true
+						const view = run.launched.app
+							.context()
+							.pages()
+							.find((p) => p.url().startsWith("http://127.0.0.1"))
+						const frame = view?.frames().find((f) => f.url().includes("mode=focused"))
+						if (!view || !frame) {
+							// Back on the grid: open Home first.
+							await view
+								?.locator(".caret-canvas-frame")
+								.first()
+								.click({ timeout: 2_000 })
+								.catch(() => {})
+							return null
+						}
+						await frame
+							.evaluate(() => {
+								const w = window as unknown as { __keys?: string[] }
+								if (w.__keys) return
+								w.__keys = []
+								window.addEventListener(
+									"keydown",
+									(e) => w.__keys!.push(`${e.metaKey ? "meta+" : ""}${e.key}`),
+									true,
+								)
+							})
+							.catch(() => {})
+						// Through Electron's own input, as a person's click and key arrive:
+						// a click on the page, then ⌘Z.
+						await run.launched.app.evaluate(async ({ BrowserWindow }) => {
+							for (const win of BrowserWindow.getAllWindows()) {
+								for (const child of (win.contentView?.children ?? []) as Array<{
+									webContents?: Electron.WebContents
+								}>) {
+									const wc = child.webContents
+									if (!wc?.getURL().startsWith("http://127.0.0.1")) continue
+									win.focus()
+									wc.focus()
+									const box = await wc.executeJavaScript(
+										"(() => { const r = document.querySelector('.caret-focused-iframe').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()",
+									)
+									wc.sendInputEvent({
+										type: "mouseDown",
+										x: Math.round(box.x),
+										y: Math.round(box.y),
+										button: "left",
+										clickCount: 1,
+									})
+									wc.sendInputEvent({
+										type: "mouseUp",
+										x: Math.round(box.x),
+										y: Math.round(box.y),
+										button: "left",
+										clickCount: 1,
+									})
+									await new Promise((resolve) => setTimeout(resolve, 200))
+									wc.sendInputEvent({ type: "keyDown", keyCode: "z", modifiers: ["meta"] })
+									wc.sendInputEvent({ type: "keyUp", keyCode: "z", modifiers: ["meta"] })
+								}
+							}
+						})
+						keysSeen = String(
+							await frame
+								.evaluate(() => (window as unknown as { __keys?: string[] }).__keys?.join(","))
+								.catch(() => "?"),
+						)
+						if (process.env.BOARDS_UNDO_DIRECT) {
+							await view
+								.evaluate(() =>
+									window.postMessage({ source: "caret-vite", type: "design-undo", payload: {} }, "*"),
+								)
+								.catch(() => {})
+						}
+						await new Promise((resolve) => setTimeout(resolve, 1500))
+						return null
+					},
+					45_000,
+					async () => {
+						const view = run.launched.app
+							.context()
+							.pages()
+							.find((p) => p.url().startsWith("http://127.0.0.1"))
+						const frames = view?.frames().map((f) => f.url().replace("http://127.0.0.1:5173", "")) ?? []
+						const active = await view
+							?.evaluate(
+								() =>
+									document.activeElement?.tagName +
+									" " +
+									(document.activeElement as HTMLIFrameElement | null)?.src,
+							)
+							.catch(() => "?")
+						return `keys the page saw: ${keysSeen || "none"}; frames: ${frames.join(" | ")}; focus: ${active}`
+					},
+				)
+				return "a take three levels deep became Home with Home's identity; every take folder went; one undo restored the original"
+			}),
+	},
+	{
+		id: "e4",
+		title: "Experiment: leave and come back to the same board; keep the original throws it all away",
+		run: () =>
+			withRun("e4", { prepare: writeHomePage }, async (run) => {
+				const page = await startExperiment(run, "Make it feel premium")
+				let open = await takesSettled(run, "the first round")
+				await growPage(run, page, open.nodes[0].id, { note: "warmer" })
+				open = await takesSettled(run, "a branch")
+				await page.getByTestId("explore-back").click()
+				const pill = page.getByTestId("explore-open-pill")
+				await pill.waitFor({ timeout: 15_000 })
+				// The top bar says an experiment is open.
+				await run.launched.chrome
+					.getByTestId("top-bar")
+					.getByText(/Exploring/)
+					.waitFor({ timeout: 10_000 })
+				await pill.click()
+				await page.getByTestId("explore-board").waitFor({ timeout: 15_000 })
+				assert.equal(await page.locator('[data-testid^="variant-card-"]').count(), 6, "the board came back different")
+				assert.equal(await page.locator("[data-line-for]").count(), 2)
+				page.once("dialog", (dialog) => void dialog.accept())
+				await page.getByTestId("variant-keep-original").click()
+				await waitFor(
+					"the experiment to be thrown away",
+					async () => ((await scratch(run)) === null ? true : null),
+					20_000,
+				)
+				const left = (await fs.readdir(path.join(run.project, ".caret", "pages"))).filter((d) => d.includes("--v"))
+				assert.deepEqual(left, [])
+				assert.equal(
+					plain(await fs.readFile(path.join(run.project, ".caret", "pages", "home", "index.tsx"), "utf8")),
+					HOME_SOURCE,
+				)
+				return "the board reopened exactly as left (6 takes, 2 lines); keeping the original left Home untouched and nothing behind"
+			}),
+	},
+	{
+		id: "e5",
+		title: "Experiment: something new — the first box is the page-to-be; using a take adds it to the canvas",
+		run: () =>
+			withRun("e5", { prepare: writeHomePage }, async (run) => {
+				const page = await canvas(run)
+				await page.getByTestId("explore-enter").click()
+				await page.getByTestId("explore-new-name").fill("Team")
+				await page.getByTestId("explore-new-instruction").fill("A page introducing the four people behind Tenon")
+				await page.getByTestId("explore-start-new-go").click()
+				await page.getByTestId("explore-board").waitFor({ timeout: 30_000 })
+				const root = page.getByTestId("explore-root")
+				assert((await root.innerText()).includes("not made yet"))
+				assert.equal(await root.locator("iframe").count(), 0, "the page-to-be has no page to show yet")
+				let open = await takesSettled(run, "the first round")
+				await growPage(run, page, "home" === open.pageId ? "home" : open.nodes[0].id, { note: "warmer" })
+				open = await takesSettled(run, "a branch")
+				const chosen = open.nodes[4].id
+				await page.getByTestId(`variant-card-${chosen}`).locator(".caret-board-take").hover()
+				await page.getByTestId(`variant-use-${chosen}`).click()
+				await waitFor("the new page", async () => ((await scratch(run)) === null ? true : null), 30_000)
+				const meta = JSON.parse(await fs.readFile(path.join(run.project, ".caret", "pages", "team", "meta.json"), "utf8"))
+				assert.equal(meta.id, "team")
+				assert.equal(meta.title, "Team")
+				assert.equal(meta.variantOf, undefined)
+				return "a new page started as an empty first box, branched, and joined the canvas as Team"
+			}),
+	},
+	{
+		id: "e6",
+		title: "Experiment: full size, with the arrows moving between one round's takes",
+		run: () =>
+			withRun("e6", { prepare: writeHomePage }, async (run) => {
+				const page = await startExperiment(run, "Make it feel premium")
+				const open = await takesSettled(run, "the first round")
+				const [v1, v2] = open.nodes.map((n) => n.id)
+				await page.getByTestId(`variant-card-${v1}`).locator(".caret-board-take").hover()
+				await page.getByTestId(`explore-preview-${v1}`).click()
+				const full = page.getByTestId("explore-expanded")
+				await full.waitFor({ timeout: 10_000 })
+				const width = await full
+					.locator("iframe")
+					.evaluate((frame) => (frame as HTMLIFrameElement).getBoundingClientRect().width)
+				assert.equal(Math.round(width), 1440)
+				assert((await full.locator("iframe").getAttribute("src"))!.includes(v1))
+				await page.keyboard.press("ArrowRight")
+				await waitFor(
+					"the next take",
+					async () => ((await full.locator("iframe").getAttribute("src"))?.includes(v2) ? true : null),
+					5_000,
+				)
+				await page.keyboard.press("Escape")
+				await page.getByTestId("explore-board").waitFor({ timeout: 5_000 })
+				return "full size at 1440px, ← → within the round, Esc back to the board"
+			}),
+	},
+	{
+		id: "m3",
+		title: "Experiment with a real AI model: a round, a branch from one take, and using it",
+		needsModel: true,
+		run: () =>
+			withRun("m3", { prepare: writeHomePage, model: true, realTakes: true }, async (run) => {
+				const page = await startExperiment(run, "Make the headline larger and bolder")
+				let open = await takesSettled(run, "the real first round", 600_000)
+				const ready = open.nodes.filter((n) => n.status === "ready")
+				assert(ready.length > 0, `no take finished: ${JSON.stringify(open.nodes)}`)
+				await growPage(run, page, ready[0].id, { note: "make the background a warm off-white" })
+				open = await takesSettled(run, "the real branch", 600_000)
+				const branch = open.nodes.filter((n) => n.parentId === ready[0].id && n.status === "ready")
+				assert(branch.length > 0, "no take of the branch finished")
+				const chosen = branch[0].id
+				const source = await fs.readFile(path.join(run.project, ".caret", "pages", chosen, "index.tsx"), "utf8")
+				assert.notEqual(source, HOME_SOURCE, "the branch take is unchanged")
+				await page.getByTestId(`variant-card-${chosen}`).locator(".caret-board-take").hover()
+				await page.getByTestId(`variant-use-${chosen}`).click()
+				await waitFor("the pick", async () => ((await scratch(run)) === null ? true : null), 60_000)
+				const home = await fs.readFile(path.join(run.project, ".caret", "pages", "home", "index.tsx"), "utf8")
+				assert.equal(home, source)
+				return `${ready.length} real takes, a real branch of ${branch.length}, and Home is now the chosen take`
 			}),
 	},
 	{
