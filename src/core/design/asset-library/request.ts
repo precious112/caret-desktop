@@ -134,6 +134,9 @@ const TREATMENTS = [
 	"Shot straight on, the subject centred and filling most of the frame.",
 	"Shot from a low three-quarter angle, close to the subject.",
 	"Shot slightly from above, the subject a little off-centre in the frame.",
+	// A round is four takes. With three treatments the fourth repeated the first
+	// camera sentence word for word, so one take in four was a near-duplicate.
+	"Shot from further back, the subject smaller with more of its setting around it.",
 ]
 
 /** The user's clarifying answers, as sentences a model reads in order. */
@@ -256,6 +259,36 @@ export function composeAssetRequest(
 		aspect: input.aspect,
 		transparent: cutout,
 	}
+}
+
+/**
+ * The request in the person's own words, with nothing of Caret's added: the
+ * "Use my words" setting, for people who know how to prompt.
+ *
+ * Two things can still be added, each for a stated reason. The technical
+ * lines a cutout or a 3D source needs are not style, they are what makes the
+ * pipeline work at all: without a white background the cutout is refused,
+ * without a lone object the 3D build fails. And the foundation's colours and
+ * light, only when the person leaves "keep my foundation's look" on.
+ */
+export function composeExactRequest(
+	request: AssetRequest,
+	input: { palette: GeneratorPalette; aspect: string; keepFoundationLook: boolean },
+): RecipeRequest & { lane: "raster" } {
+	const cutout = request.kind === "image" && request.transparent === true
+	const singleObject = request.kind === "object3d"
+	const technical: string[] = []
+	if (cutout) {
+		technical.push(
+			"The whole subject is visible in frame.",
+			"The background is pure flat white (#ffffff) filling every edge of the frame.",
+		)
+	} else if (singleObject) {
+		technical.push("A single object alone in the frame, the whole object visible, nothing else in the picture.")
+	}
+	const look = input.keepFoundationLook && !cutout ? foundationWords(input.palette) : ""
+	const prompt = [request.text.trim(), technical.join(" "), look].filter(Boolean).join("\n\n")
+	return { lane: "raster", prompt, avoid: [], aspect: input.aspect, transparent: cutout }
 }
 
 /** Ratios each kind is worth composing for. The first is the default. */

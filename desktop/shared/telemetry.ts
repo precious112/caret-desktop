@@ -58,6 +58,25 @@ export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 	"generate:model3d": { event: "generate_step", props: () => ({ stage: "render", lane: "model3d" }) },
 	"generate:model3dAccept": { event: "generate_accepted", props: () => ({ lane: "model3d" }) },
 	"generate:discard": { event: "generate_abandoned" },
+	// The take board (the image kind). The start's prompt help is a fixed choice
+	// of three, read from the argument's own mode field; the words never travel.
+	"generate:boardStart": {
+		event: "generate_step",
+		props: (args) => ({
+			stage: "variants",
+			lane: "image",
+			prompt_help: enumArg((args[1] as { mode?: unknown } | undefined)?.mode, ["polish", "ask", "exact"]),
+		}),
+	},
+	"generate:boardBranch": {
+		event: "generate_step",
+		props: (args) => ({
+			stage: "refine",
+			lane: "image",
+			strength: enumArg((args[2] as { strength?: unknown } | undefined)?.strength, ["subtle", "strong"]),
+		}),
+	},
+	"generate:boardSave": { event: "generate_accepted", props: () => ({ lane: "image" }) },
 
 	// Setup and sync.
 	"agent:selectBackend": {

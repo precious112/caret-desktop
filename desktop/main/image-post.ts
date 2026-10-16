@@ -209,3 +209,21 @@ async function encodeWebp(png: Buffer, width: number, height: number): Promise<B
 		window?.destroy()
 	}
 }
+
+/**
+ * A small copy of a take for the board, as a data URL.
+ *
+ * The board shows every take ever made in a sitting, and sending each one at
+ * full size (a megabyte or two as base64) on every board update would move
+ * tens of megabytes to the screen per change. A cutout keeps its transparency
+ * (PNG); everything else is a JPEG. Full size is asked for separately.
+ */
+export function previewDataUrl(input: Buffer, mime: string, maxWidth = 720): string {
+	const image = nativeImage.createFromBuffer(input)
+	const { width } = image.getSize()
+	if (!width) return `data:${mime};base64,${input.toString("base64")}`
+	const small = width > maxWidth ? image.resize({ width: maxWidth, quality: "good" }) : image
+	return mime === "image/png"
+		? `data:image/png;base64,${small.toPNG().toString("base64")}`
+		: `data:image/jpeg;base64,${small.toJPEG(85).toString("base64")}`
+}

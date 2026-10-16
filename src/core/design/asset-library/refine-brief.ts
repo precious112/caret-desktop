@@ -39,19 +39,74 @@ import type { AssetRequest } from "./request"
 /** What the rebuild returns: the brief, ready for the editable prompt box. */
 export interface RefinedBrief {
 	prompt: string
+	/**
+	 * Phrases of the brief a person may want to swap, each with alternatives.
+	 * Shown dashed in the brief; clicking one offers the alternatives in place.
+	 * Only phrases that appear word for word in the prompt are kept.
+	 */
+	phrases?: BriefPhrase[]
+}
+
+export interface BriefPhrase {
+	text: string
+	alternatives: string[]
 }
 
 const REFINE_SCHEMA = {
 	type: "object",
 	additionalProperties: false,
-	required: ["prompt"],
+	required: ["prompt", "phrases"],
 	properties: {
 		prompt: {
 			type: "string",
 			description: "The rebuilt brief, ready to be used as the generation prompt. Plain prose, no headings.",
 		},
+		phrases: {
+			type: "array",
+			description:
+				"Two to four short phrases copied word for word from the prompt that Caret chose and the user did not say (the light, the camera position, the setting, the composition), each with three alternatives that would fit the same sentence.",
+			items: {
+				type: "object",
+				additionalProperties: false,
+				required: ["text", "alternatives"],
+				properties: {
+					text: { type: "string" },
+					alternatives: { type: "array", items: { type: "string" } },
+				},
+			},
+		},
 	},
 } as const
+
+/**
+ * The phrases worth offering: present word for word in the brief, each with at
+ * least one real alternative, at most four, never overlapping each other, and
+ * never a phrase the person said themselves (their words are not up for swap).
+ */
+export function usablePhrases(prompt: string, said: string, phrases: unknown): BriefPhrase[] {
+	if (!Array.isArray(phrases)) return []
+	const taken: Array<[number, number]> = []
+	const out: BriefPhrase[] = []
+	const ownWords = said.toLowerCase()
+	for (const raw of phrases) {
+		if (out.length >= 4) break
+		const text = typeof raw?.text === "string" ? raw.text.trim() : ""
+		if (text.length < 3) continue
+		const at = prompt.indexOf(text)
+		if (at < 0) continue
+		if (ownWords.includes(text.toLowerCase())) continue
+		if (taken.some(([start, end]) => at < end && at + text.length > start)) continue
+		const alternatives = (Array.isArray(raw.alternatives) ? raw.alternatives : [])
+			.filter((alt: unknown): alt is string => typeof alt === "string")
+			.map((alt: string) => alt.trim())
+			.filter((alt: string) => alt && alt !== text)
+			.slice(0, 4)
+		if (alternatives.length === 0) continue
+		taken.push([at, at + text.length])
+		out.push({ text, alternatives })
+	}
+	return out
+}
 
 /**
  * The craft each kind's brief is written with.
@@ -178,6 +233,10 @@ export async function refineBrief(input: {
 		"OUTPUT: one paragraph of plain prose the user will read and edit - no headings, no bullet points, no",
 		"meta-talk about prompts. As long as it needs to be to carry everything; never shortened by dropping",
 		"information.",
+		"",
+		"ALSO: list two to four phrases from your brief that YOU chose where the user was silent (the light, the",
+		"camera position, the setting, the composition), copied word for word, each with three alternatives that",
+		"would read naturally in the same place. Never list words the user said.",
 	].join("\n")
 
 	try {
@@ -191,7 +250,8 @@ export async function refineBrief(input: {
 		})
 		const rebuilt = result.value?.prompt?.trim()
 		if (!rebuilt) return null
-		return { prompt: rebuilt }
+		const phrases = usablePhrases(rebuilt, request.text, (result.value as { phrases?: unknown }).phrases)
+		return { prompt: rebuilt, ...(phrases.length > 0 ? { phrases } : {}) }
 	} catch {
 		return null
 	}

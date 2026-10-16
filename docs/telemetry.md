@@ -62,7 +62,7 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 
 | Event | Properties |
 |---|---|
-| `generate_step` | `stage`: clarify / brief / variants / refine / render; `lane`: image / recipe / mark / shader / model3d; `ok`; `duration_s` |
+| `generate_step` | `stage`: clarify / brief / variants / refine / render; `lane`: image / recipe / mark / shader / model3d; for the image board, `prompt_help`: polish / ask / exact (first takes) or `strength`: subtle / strong (a change); `ok`; `duration_s` |
 | `generate_accepted` | `lane`; `ok`; `duration_s` |
 | `generate_abandoned` | `ok`; `duration_s` |
 

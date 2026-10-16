@@ -106,11 +106,8 @@ async function found(id: CodingToolId): Promise<string | boolean> {
 
 function run(program: string, args: string[]): Promise<{ ok: boolean; output: string }> {
 	return new Promise((resolve) => {
-		execFile(
-			program,
-			args,
-			{ env: toolEnv(), timeout: 60_000, shell: process.platform === "win32" },
-			(err, stdout, stderr) => resolve({ ok: !err, output: `${stdout}${stderr}`.trim() || String(err ?? "") }),
+		execFile(program, args, { env: toolEnv(), timeout: 60_000, shell: process.platform === "win32" }, (err, stdout, stderr) =>
+			resolve({ ok: !err, output: `${stdout}${stderr}`.trim() || String(err ?? "") }),
 		)
 	})
 }

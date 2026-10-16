@@ -40,12 +40,20 @@ import {
 	writeFoundationTokens,
 } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
-import type { AssetRequestWire, ComposerImage, IpcRequestChannel, IpcRequests } from "../shared/ipc"
+import type {
+	AssetRequestWire,
+	BoardStartWire,
+	ComposerImage,
+	IpcRequestChannel,
+	IpcRequests,
+	TakeChangeWire,
+} from "../shared/ipc"
 import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps } from "../shared/telemetry"
 import { buildAgentClientConfigs } from "./agent-configs"
 import { capture, captureError, scrubForTelemetry, setTelemetryEnabled } from "./analytics"
 import { acceptMark, authorMark, discardMark, holdMark } from "./authored-marks"
 import { acceptShader, authorShader, discardShader, holdShader, refineHeldShader, type ShaderOutcome } from "./authored-shaders"
+import { listCodingTools, setUpCodingTool } from "./coding-tools"
 import { resolveNotification } from "./electron-host"
 import { acceptModel3d, discardModel3d, generateModel3d } from "./generate-3d"
 import {
@@ -59,15 +67,16 @@ import {
 	refineAssetBrief,
 	refineRequestTake,
 	requestTakes,
+	takeBoardDeps,
 } from "./generate-assets"
 import { answerInterviewPrompt, currentPrompt } from "./interview"
-import { listCodingTools, setUpCodingTool } from "./coding-tools"
 import { libraryHub } from "./libraries/libraries"
 import { refreshMenu } from "./menu"
 import { forgetRecentProject, getPrefs, setPref, setPrefs } from "./prefs"
 import { regenerateRulesFiles } from "./rules/generate"
 import { clearSecret, type SecretName, secretStatus, setSecret } from "./secrets"
 import { skillService } from "./skills/skills"
+import { boardSnapshot, branchTake, cancelTakes, closeBoard, saveTake, startBoard, takePicture } from "./take-board"
 import { type LaneTask, listTaskModels, setTaskModel, taskModel } from "./task-models"
 import {
 	abandonWizard,
@@ -489,6 +498,29 @@ export function registerIpcHandlers(windows: WindowManager): void {
 		requestTakes(projectPath, request, aspect),
 	)
 
+	// The take board behind the image kind: every take of a sitting as a tree.
+	// Each change to it is pushed to the project's window as it happens.
+	const boardDeps = takeBoardDeps((projectPath, board) =>
+		windows.get(projectPath)?.sendToChrome("generate:board", projectPath, board),
+	)
+	handle("generate:boardStart", (_event, projectPath: string, start: BoardStartWire) =>
+		startBoard(boardDeps, projectPath, start),
+	)
+	handle("generate:boardBranch", (_event, projectPath: string, takeId: string, change: TakeChangeWire) =>
+		branchTake(boardDeps, projectPath, takeId, change),
+	)
+	handle("generate:boardCancel", (_event, projectPath: string, takeIds?: string[]) =>
+		cancelTakes(boardDeps, projectPath, takeIds),
+	)
+	handle("generate:boardSave", async (_event, projectPath: string, takeId: string, tag: string) => {
+		const result = await saveTake(boardDeps, projectPath, takeId, tag)
+		if (result.ok) await regenerateRulesFiles(projectPath).catch(() => {})
+		return result
+	})
+	handle("generate:boardPicture", (_event, projectPath: string, takeId: string) => takePicture(projectPath, takeId))
+	handle("generate:boardGet", (_event, projectPath: string) => boardSnapshot(projectPath))
+	handle("generate:boardClose", (_event, projectPath: string) => closeBoard(projectPath))
+
 	handle(
 		"generate:acceptTake",
 		async (_event, projectPath: string, request: AssetRequest, aspect: string, variant: number, tag: string) => {
@@ -643,6 +675,7 @@ export function registerIpcHandlers(windows: WindowManager): void {
 	// the picker is the moment they stop being candidates.
 	handle("generate:discard", (_event, projectPath: string) => {
 		discardPending(projectPath)
+		closeBoard(projectPath)
 		discardMark(projectPath)
 		discardModel3d(projectPath)
 		discardShader(projectPath)

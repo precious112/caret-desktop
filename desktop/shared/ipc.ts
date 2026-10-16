@@ -663,6 +663,87 @@ export interface TaskModelWire {
 	recommended?: boolean
 }
 
+/**
+ * How much help the prompt gets before images are made.
+ * - polish: Caret rewrites the words into a full brief and generates straight away.
+ * - ask: the person answered Caret's questions and edited the brief themselves.
+ * - exact: the person's words, sent as typed.
+ */
+export type PromptModeWire = "polish" | "ask" | "exact"
+
+/** Starting a take board: the first round of takes. */
+export interface BoardStartWire {
+	request: AssetRequestWire
+	/** The shape every take on the board is made in, chosen before anything is made. */
+	aspect: string
+	mode: PromptModeWire
+	/** "ask": the brief as the person left it after reading and editing it. */
+	brief?: string
+	/** "exact": still add the foundation's colours and light (default true). */
+	keepFoundationLook?: boolean
+}
+
+/** A change grown from one take: the side panel's chips, words and strength. */
+export interface TakeChangeWire {
+	chips: string[]
+	note: string
+	strength: "subtle" | "strong"
+}
+
+export type BoardTakeStatusWire = "waiting" | "working" | "ready" | "failed" | "cancelled"
+
+/** One take on the board. The picture itself is a small preview; full size is asked for separately. */
+export interface BoardTakeWire {
+	id: string
+	branchId: string
+	/** Position within its branch, from 0. */
+	index: number
+	status: BoardTakeStatusWire
+	/** A small preview (data URL) once ready. */
+	preview?: string
+	width: number
+	height: number
+	error?: string
+	retryable?: boolean
+	/** The asset name it was saved as, once used. */
+	savedAs?: string
+}
+
+/** A set of takes made together: the first takes, or a change grown from one take. */
+export interface BoardBranchWire {
+	id: string
+	/** The take this branch grew from; null for the first takes. */
+	parentTakeId: string | null
+	/** "First takes", or the change as the person said it. */
+	label: string
+	strength?: "subtle" | "strong"
+	/** Which words the takes were made from. */
+	source: "yours" | "brief" | "exact"
+	takeIds: string[]
+}
+
+export interface BoardWire {
+	id: string
+	/** Increases with every change, so a late update never replaces a newer one. */
+	version: number
+	kind: GenerationKindWire
+	aspect: string
+	surface: string
+	transparent: boolean
+	mode: PromptModeWire
+	yourWords: string
+	/** The brief the takes were made from, when Caret wrote or the person edited one. */
+	brief?: string
+	/** Why the brief is missing, when "Polish it" could not write one. */
+	briefNote?: string
+	/** True while Caret is writing the brief, before the first takes start. */
+	briefing: boolean
+	/** Set while something must be ready before anything is spent (the cutout tool), saying what. */
+	preparing?: string
+	branches: BoardBranchWire[]
+	takes: BoardTakeWire[]
+}
+
 /** One generated option, ready to be looked at and picked. */
 export interface GeneratedVariantWire {
 	variant: number
@@ -849,9 +930,29 @@ export interface IpcRequests {
 	 * user reads, edits and owns it before anything generates. Null means
 	 * "skip the step and use the words as typed" — never a blocked user.
 	 */
-	"generate:refineBrief": (projectPath: string, request: AssetRequestWire) => { prompt: string } | null
+	"generate:refineBrief": (
+		projectPath: string,
+		request: AssetRequestWire,
+	) => { prompt: string; phrases?: Array<{ text: string; alternatives: string[] }> } | null
 	/** Three takes of the thing the user asked for. Same subject, different treatment. */
 	"generate:takes": (projectPath: string, request: AssetRequestWire, aspect: string) => GeneratedVariantWire[]
+	/** Starts a take board: the first takes, reported through `generate:board` as each lands. */
+	"generate:boardStart": (projectPath: string, start: BoardStartWire) => BoardWire
+	/** Grows a branch from one take. Refused, with a reason, for a take that isn't ready. */
+	"generate:boardBranch": (
+		projectPath: string,
+		takeId: string,
+		change: TakeChangeWire,
+	) => { ok: true; board: BoardWire } | { ok: false; error: string }
+	/** Cancels the named takes, or every take still waiting or being made. */
+	"generate:boardCancel": (projectPath: string, takeIds?: string[]) => BoardWire | null
+	/** Saves one take to the asset library. The board stays open. */
+	"generate:boardSave": (projectPath: string, takeId: string, tag: string) => WriteResult & { tag?: string }
+	/** One take at full size, for the full-size view. */
+	"generate:boardPicture": (projectPath: string, takeId: string) => string | null
+	"generate:boardGet": (projectPath: string) => BoardWire | null
+	/** Cancels everything still running and forgets the board. */
+	"generate:boardClose": (projectPath: string) => void
 	/** Commits the take the user pointed at, with their own words kept in provenance. */
 	"generate:acceptTake": (
 		projectPath: string,
@@ -1052,6 +1153,8 @@ export interface IpcEvents {
 	"import:progress": (projectPath: string, progress: ImportProgressWire) => void
 	/** A long-running generation job (mark loop, 3D pipeline) moved a step. */
 	"generate:progress": (projectPath: string, update: GenerateProgressWire) => void
+	/** A take board changed: a brief written, a take started, landed, failed, saved. */
+	"generate:board": (projectPath: string, board: BoardWire) => void
 	log: (line: string) => void
 }
 

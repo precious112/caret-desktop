@@ -64,6 +64,13 @@ const REQUEST_CHANNELS: Record<IpcRequestChannel, boolean> = {
 	"generate:clarify": true,
 	"generate:refineBrief": true,
 	"generate:takes": true,
+	"generate:boardStart": true,
+	"generate:boardBranch": true,
+	"generate:boardCancel": true,
+	"generate:boardSave": true,
+	"generate:boardPicture": true,
+	"generate:boardGet": true,
+	"generate:boardClose": true,
 	"generate:acceptTake": true,
 	"generate:refineTake": true,
 	"generate:recipes": true,
@@ -144,6 +151,7 @@ const EVENT_CHANNELS: Record<IpcEventChannel, boolean> = {
 	"import:progress": true,
 	"agent:state": true,
 	"generate:progress": true,
+	"generate:board": true,
 	log: true,
 }
 
