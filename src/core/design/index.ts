@@ -41,6 +41,7 @@ export type { TranscriptEntry, TranscriptState } from "./agent/transcript"
 // Imported from the lane's own modules rather than through the asset-library
 // barrel, which stays free of node-only code so the generators remain portable.
 export { probeVision, solidPng, type VisionVerdict } from "./agent/vision"
+export { type AppProfile, detectAppProfile } from "./app-profile"
 export {
 	ASPECTS,
 	ASSET_RECIPES,
@@ -97,13 +98,14 @@ export {
 } from "./asset-library/raster/gemini"
 export { applyMatte, matteInputTensor } from "./asset-library/raster/matte-math"
 export { looksComplete, MATTE_MODEL, MATTE_MODEL_MB, type ModelState, progressOf } from "./asset-library/raster/matte-model"
-export { type RefinedBrief, refineBrief } from "./asset-library/refine-brief"
+export { type BriefPhrase, type RefinedBrief, refineBrief, usablePhrases } from "./asset-library/refine-brief"
 export {
 	type AssetRequest,
 	type ClarifyQuestion,
 	type ClarifyResult,
 	clarifyRequest,
 	composeAssetRequest,
+	composeExactRequest,
 	type GenerationKind,
 	recipeForRequest,
 	SHARED_AVOID,
@@ -158,31 +160,24 @@ export {
 } from "./assets"
 export { CARET_ID_RULES, INLINE_EDITING_RULES } from "./authoring/design-rules"
 export {
-	CATALOG,
 	CATALOG_INSTALL_DIR,
-	type CatalogComponent,
-	type CatalogLibrary,
-	type CatalogTier,
-	catalogImportPath,
-	type EditableGrade,
-	findCatalogComponent,
-	findCatalogLibrary,
-	parseCatalogImport,
-} from "./catalog/catalog"
-export {
 	type CatalogLock,
 	type CatalogLockEntry,
-	type InstallResult,
-	installCatalogComponent,
 	isInstalled,
 	readCatalogLock,
 	rebindHexClasses,
 } from "./catalog/install"
 export {
+	type ComponentRef,
+	type InstallOutcome,
+	installComponentRef,
+	parseComponentRef,
+} from "./catalog/registry-install"
+export {
 	type CatalogImportRef,
 	catalogFindings,
 	planSupply,
-	SIGNATURE_BUDGET_PER_PAGE,
+	registryRefFor,
 	type SupplyPlan,
 	scanCatalogImports,
 } from "./catalog/supply"
@@ -254,42 +249,19 @@ export {
 export { type FontOption, type FontSearchResult, searchGoogleFonts } from "./google-fonts"
 export { type DesignHost, type NotifyLevel, nullDesignHost } from "./host"
 export {
-	buildFoundation,
-	COLLABORATIVE_QUESTION_CAP,
-	COVERAGE_AREAS,
-	type CommittedFoundation,
-	type ConductorInput,
-	clearWizardScratch,
-	coveredAreas,
-	type Decisions,
+	AREA_ORDER,
+	type AreaAnswer,
+	type AreaId,
+	type AreaQuestion,
 	type FinalizedFoundation,
 	type FoundationProposal,
 	finalizeProposal,
-	IncompleteInterviewError,
-	nextWizardTurn,
+	type InterviewMode,
+	InterviewSession,
 	normalizeHex,
 	ProposalError,
-	QUESTION_CAP,
-	questionCapFor,
-	tracksCoverage,
-	readWizardScratch,
 	type SpecimenParams,
-	type StepId,
-	type StoredQA,
-	settledValues,
-	tagsFromDescription,
-	validateQuestion,
-	type WidgetKind,
-	type WizardAnswer,
-	type WizardMode,
-	type WizardOption,
-	type WizardQuestion,
-	type WizardScratch,
-	type WizardTurn,
-	WizardTurnError,
-	writeWizardScratch,
 } from "./interview"
-export { type AppProfile, detectAppProfile } from "./app-profile"
 export { listPages, readPageMeta, validatePageMeta, writePageMeta } from "./page-meta"
 export {
 	addPromotedRule,
@@ -327,8 +299,6 @@ export {
 	unregisterProjectServices,
 } from "./services"
 export { DesignSession, type DesignSessionOptions } from "./session"
-export { computeDrift, type DriftEntry, type DriftReport } from "./sync/drift"
-export { type MappingEntry, pruneManifest, readManifest, recordMappings, type SyncManifest } from "./sync/mapping-manifest"
 export {
 	ImportCancelledError,
 	type ImportProgress,
@@ -339,6 +309,8 @@ export {
 	surveyAppScreens,
 	surveyScreensWithModel,
 } from "./sync/app-import"
+export { computeDrift, type DriftEntry, type DriftReport } from "./sync/drift"
+export { type MappingEntry, pruneManifest, readManifest, recordMappings, type SyncManifest } from "./sync/mapping-manifest"
 export { startReverseSyncProposal } from "./sync/reverse-sync"
 export { createSyncWatcher, runSyncInteractive } from "./sync/SyncWatcher"
 export { discardSyncPlan, runSyncApply } from "./sync/sync-backend"
@@ -386,6 +358,7 @@ export {
 	type ExploreNodeStatus,
 	readExploration,
 	registerExternalRound,
+	markNodeStarted,
 	spawnRound,
 	updateNodeStatus,
 	VARIANT_COUNT,

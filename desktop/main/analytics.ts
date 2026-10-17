@@ -14,9 +14,9 @@
  */
 
 import { randomUUID } from "crypto"
+import { app } from "electron"
 import * as fsSync from "fs"
 import * as os from "os"
-import { app } from "electron"
 import { PostHog, type PostHogOptions } from "posthog-node"
 
 import { fetch } from "../../src/shared/net"

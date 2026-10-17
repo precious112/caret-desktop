@@ -29,8 +29,9 @@ export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 	// Foundation interview — the onboarding funnel.
 	"wizard:start": {
 		event: "wizard_started",
-		props: (args) => ({ mode: enumArg(args[2], ["ai-led", "collaborative", "from-app"]) }),
+		props: (args) => ({ mode: enumArg(args[2], ["collaborative", "from-app"]) }),
 	},
+	"wizard:openingAnswer": { event: "wizard_step", props: () => ({ action: "opening" }) },
 	"wizard:answer": { event: "wizard_step", props: () => ({ action: "answer" }) },
 	"wizard:back": { event: "wizard_step", props: () => ({ action: "back" }) },
 	"wizard:retry": { event: "wizard_step", props: () => ({ action: "retry" }) },
@@ -57,6 +58,25 @@ export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 	"generate:model3d": { event: "generate_step", props: () => ({ stage: "render", lane: "model3d" }) },
 	"generate:model3dAccept": { event: "generate_accepted", props: () => ({ lane: "model3d" }) },
 	"generate:discard": { event: "generate_abandoned" },
+	// The take board (the image kind). The start's prompt help is a fixed choice
+	// of three, read from the argument's own mode field; the words never travel.
+	"generate:boardStart": {
+		event: "generate_step",
+		props: (args) => ({
+			stage: "variants",
+			lane: "image",
+			prompt_help: enumArg((args[1] as { mode?: unknown } | undefined)?.mode, ["polish", "ask", "exact"]),
+		}),
+	},
+	"generate:boardBranch": {
+		event: "generate_step",
+		props: (args) => ({
+			stage: "refine",
+			lane: "image",
+			strength: enumArg((args[2] as { strength?: unknown } | undefined)?.strength, ["subtle", "strong"]),
+		}),
+	},
+	"generate:boardSave": { event: "generate_accepted", props: () => ({ lane: "image" }) },
 
 	// Setup and sync.
 	"agent:selectBackend": {
@@ -70,7 +90,7 @@ export const CHANNEL_EVENTS: Record<string, ChannelEvent> = {
 /** The only event names the renderer may submit over `analytics:event`. */
 export const RENDERER_EVENTS: ReadonlySet<string> = new Set(["surface_switched", "renderer_exception", "setup_route_chosen"])
 
-const SURFACES = ["canvas", "foundation", "agent", "assets"] as const
+const SURFACES = ["canvas", "foundation", "agent", "assets", "skills", "libraries"] as const
 const SETUP_ROUTES = ["from-app", "ai-new-look", "ai-describe", "manual"] as const
 
 /**
@@ -144,7 +164,7 @@ const SANITIZED = /^(?:<[a-zA-Z]+>(?:\/[^\s'"]*)?|(?:out|node_modules|app\.asar)
  * app/file.tsx" after its space split it. Two or more segments, not one of the
  * kept code locations, not after a scheme or a token.
  */
-const LEFTOVER_PATH = /(?<![\w<>/.:-])(?!(?:out|node_modules|app\.asar)\/)[\w.\-]+(?:\/[\w.\-]+)+/g
+const LEFTOVER_PATH = /(?<![\w<>/.:-])(?!(?:out|node_modules|app\.asar)\/)[\w.-]+(?:\/[\w.-]+)+/g
 
 /** A placeholder followed by words and then more path — one path broken by spaces. */
 const PATH_CONTINUATION = /(<path>|<[a-zA-Z]+>\/…)(?:(?:\s+[^\s"'()<>/\\]+)*\s+[^\s"'()<>]*[/\\][^\s"'()<>]*)+/g

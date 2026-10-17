@@ -7,7 +7,7 @@
  * work below it.
  */
 
-import { Blocks, ChevronDown, FlaskConical, Images, MessageSquare, Palette, RefreshCw } from "lucide-react"
+import { Blocks, BookOpen, ChevronDown, FlaskConical, Images, Library, MessageSquare, Palette, RefreshCw } from "lucide-react"
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react"
 
 import type { ProjectState, ProjectSummary } from "../../../shared/ipc"
@@ -94,6 +94,20 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
 					icon={<Images size={14} />}
 					label="Assets"
 					onClick={() => onSurfaceChange(surface === "assets" ? "canvas" : "assets")}
+				/>
+
+				<TopBarButton
+					active={surface === "skills"}
+					icon={<BookOpen size={14} />}
+					label="Skills"
+					onClick={() => onSurfaceChange(surface === "skills" ? "canvas" : "skills")}
+				/>
+
+				<TopBarButton
+					active={surface === "libraries"}
+					icon={<Library size={14} />}
+					label="Libraries"
+					onClick={() => onSurfaceChange(surface === "libraries" ? "canvas" : "libraries")}
 				/>
 
 				<TopBarButton active={chatOpen} icon={<MessageSquare size={14} />} label="Chat" onClick={onToggleChat} />

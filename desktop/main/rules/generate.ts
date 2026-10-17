@@ -27,13 +27,29 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import { Logger } from "../../../src/shared/services/Logger"
-import { buildGuide } from "./context"
+import { buildCore, buildDesignLayer } from "./context"
 
 const BEGIN = "<!-- BEGIN CARET DESIGN LAYER (generated — edits here are overwritten) -->"
 const END = "<!-- END CARET DESIGN LAYER -->"
 
-/** Files Caret keeps in sync, relative to the project root. */
+/** Files that carry the core in a marked block, relative to the project root. */
 const RULES_TARGETS = ["AGENTS.md", "CLAUDE.md", path.join(".cursor", "rules", "caret-design-layer.mdc")]
+
+/**
+ * Files that carry the design layer's rules, wholly Caret's. `.caret/AGENTS.md`
+ * is what the core tells every agent to read; the Claude and Cursor copies are
+ * scoped to `.caret/**`, so those tools load them on their own when the work
+ * reaches the design layer.
+ */
+export const DESIGN_LAYER_RULES = path.join(".caret", "AGENTS.md")
+const DESIGN_LAYER_TARGETS: Array<{ file: string; header: string }> = [
+	{ file: DESIGN_LAYER_RULES, header: "" },
+	{ file: path.join(".claude", "rules", "caret-design-layer.md"), header: '---\npaths:\n  - ".caret/**"\n---\n\n' },
+	{
+		file: path.join(".cursor", "rules", "caret-design-layer-detail.mdc"),
+		header: "---\ndescription: Caret design layer authoring rules\nglobs: .caret/**\nalwaysApply: false\n---\n\n",
+	},
+]
 
 /**
  * Rewrites every rules file from the current foundation.
@@ -43,8 +59,8 @@ const RULES_TARGETS = ["AGENTS.md", "CLAUDE.md", path.join(".cursor", "rules", "
  * degrade one delivery channel, not break the token save that triggered it.
  */
 export async function regenerateRulesFiles(projectPath: string): Promise<void> {
-	const body = await buildGuide(projectPath)
-	const block = `${BEGIN}\n\n${body}\n${END}`
+	const [core, designLayer] = await Promise.all([buildCore(projectPath), buildDesignLayer(projectPath)])
+	const block = `${BEGIN}\n\n${core}\n${END}`
 
 	await Promise.all(
 		RULES_TARGETS.map(async (relative) => {
@@ -58,11 +74,26 @@ export async function regenerateRulesFiles(projectPath: string): Promise<void> {
 		}),
 	)
 
-	Logger.info(`[rules] regenerated ${RULES_TARGETS.length} rules file(s) for ${path.basename(projectPath)}`)
+	await Promise.all(
+		DESIGN_LAYER_TARGETS.map(async ({ file, header }) => {
+			const target = path.join(projectPath, file)
+			try {
+				await fs.mkdir(path.dirname(target), { recursive: true })
+				await fs.writeFile(target, `${header}${designLayer}`, "utf-8")
+			} catch (err) {
+				Logger.warn(`[rules] could not write ${file}: ${err}`)
+			}
+		}),
+	)
+
+	Logger.info(
+		`[rules] regenerated ${RULES_TARGETS.length + DESIGN_LAYER_TARGETS.length} rules file(s) for ${path.basename(projectPath)}`,
+	)
 }
 
 /** Removes Caret's block from every rules file, leaving the user's content intact. */
 export async function removeRulesFiles(projectPath: string): Promise<void> {
+	await Promise.all(DESIGN_LAYER_TARGETS.map(({ file }) => fs.rm(path.join(projectPath, file), { force: true })))
 	await Promise.all(
 		RULES_TARGETS.map(async (relative) => {
 			const target = path.join(projectPath, relative)

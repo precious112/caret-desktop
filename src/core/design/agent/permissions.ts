@@ -38,6 +38,12 @@ export interface PermissionContext {
 	 * script in its plans should not need a Caret release to get it.
 	 */
 	extraReadOnlyCommands?: readonly string[]
+	/**
+	 * Whether this session has read the design layer's rules (`.caret/AGENTS.md`,
+	 * or any file in `.caret/`, which brings them along). False refuses
+	 * design-layer writes until it has; absent means not tracked (allowed).
+	 */
+	rulesRead?: boolean
 }
 
 export type PermissionRuling =
@@ -49,8 +55,21 @@ export type PermissionRuling =
 /** Actions that change files. Everything else is asked about or allowed by config. */
 const EDIT_ACTIONS = new Set(["edit", "write", "patch", "multiedit"])
 
+/** Caret's own tools that write design files: gated on the rules being read, like an edit. */
+const DESIGN_WRITE_TOOLS = new Set(["caret_create_page", "caret_write_page", "caret_write_design_file"])
+
+/**
+ * The refusal that makes the rules impossible to skip. It rides the denial as
+ * feedback, the turn continues, and the agent reads and retries.
+ */
+export const READ_RULES_FIRST = "Read .caret/AGENTS.md first (the design layer's rules), then retry this change."
+
 export function rulePermission(request: PermissionRequest, context: PermissionContext): PermissionRuling {
 	if (EDIT_ACTIONS.has(request.action)) return ruleEdit(request, context)
+
+	if (DESIGN_WRITE_TOOLS.has(request.action) && context.rulesRead === false) {
+		return { kind: "auto", decision: "deny", reason: READ_RULES_FIRST }
+	}
 
 	// Caret's own MCP tools, as the bundled backend's chat agent sees them. Only
 	// the mutating ones are gated (the spawn config names them — see
@@ -125,6 +144,10 @@ function ruleEdit(request: PermissionRequest, context: PermissionContext): Permi
 			decision: "deny",
 			reason: `writing outside this project is never allowed (${escaping.join(", ")})`,
 		}
+	}
+
+	if (classified.some((c) => c === "design") && context.rulesRead === false) {
+		return { kind: "auto", decision: "deny", reason: READ_RULES_FIRST }
 	}
 
 	if (classified.every((c) => c === "design")) {

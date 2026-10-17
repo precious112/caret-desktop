@@ -13,6 +13,21 @@ function rangeAt(ranges: DynamicRange[], line: number): DynamicRange | undefined
 }
 
 describe("precomputePage — caret-id injection", () => {
+	// Field-found: a tab-indented page came back with every id written into the
+	// wrong place ("It investi data-caret-id=..."), breaking the page. The
+	// parser it used measured positions on a copy with tabs turned into spaces.
+	it("puts every id inside its own tag on a page indented with tabs", () => {
+		const source =
+			'export default function A() {\n\treturn (\n\t\t<main className="p-16">\n\t\t\t<h1 className="text-5xl">Argus</h1>\n\t\t\t<p className="mt-6">It investigates.</p>\n\t\t</main>\n\t)\n}\n'
+		const result = precomputePage(source, "/tmp/tabs.tsx")
+		result.modified.should.be.true()
+		const out = result.correctedSource!
+		out.should.match(/<h1 data-caret-id="h1-1" className="text-5xl">Argus<\/h1>/)
+		out.should.match(/<p data-caret-id="p-1" className="mt-6">It investigates\.<\/p>/)
+		// The healed page still parses, and only ids were added.
+		out.replace(/ data-caret-id="[^"]+"/g, "").should.equal(source)
+	})
+
 	it("should add data-caret-id to visible elements missing it", () => {
 		const source = `export default function Page() {
   return (

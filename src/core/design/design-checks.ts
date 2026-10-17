@@ -54,8 +54,8 @@ export const BUILTIN_CHECKS: Record<string, string> = {
 	"image-upscaled": "an image stretched past its pixels reads soft on every real screen",
 	"placeholder-box": "an empty grey rectangle where an asset belongs is the exact failure the asset library exists to end",
 	"missing-states": "a page that declares only its happy path has not been designed, only sketched",
-	"restraint-budget": "one signature move per page — a second showpiece component is how premium libraries become slop",
-	"catalog-unknown": "an import that looks like a catalog path but names nothing in the catalog will never resolve",
+	"catalog-unknown":
+		"an import from components/catalog/ that is not installed and that no known registry supplies will never resolve",
 	"page-error": "a page that fails to compile or crashes on load shows an error card, not a design",
 	"tailwind-setup": "Tailwind is loaded once by the shell — a second import or a config file breaks the build or misleads it",
 }

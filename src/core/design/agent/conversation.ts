@@ -10,7 +10,7 @@
  * which is the only shape in which chat history is worth keeping at all.
  */
 import { readFile } from "fs/promises"
-import { join } from "path"
+import { isAbsolute, join, relative, sep } from "path"
 
 import { Logger } from "@/shared/services/Logger"
 import { expandReferences, readAssetIndex } from "../assets"
@@ -260,6 +260,25 @@ re-reading what you already read, or asking for confirmation is a failure; if so
 the plan turns out to be wrong once you open the file, say so and stop rather than improvising.`
 
 /** A prompt's first line, sized for a list row. */
+/**
+ * Did this tool call read the design layer's rules? Reading `.caret/AGENTS.md`
+ * does, and so does reading any other file under `.caret/`: OpenCode's read tool
+ * attaches the AGENTS.md of the folder it reads from. Caret's `get_guide` hands
+ * over the same text.
+ */
+export function readsTheRules(event: Extract<BackendEvent, { type: "tool-end" }>, projectPath: string): boolean {
+	if (!event.ok) return false
+	if (event.name === "caret_get_guide") return true
+	if (!event.readPath) return false
+	const absolute = isAbsolute(event.readPath) ? event.readPath : join(projectPath, event.readPath)
+	const relativePath = relative(projectPath, absolute).split(sep).join("/")
+	if (!relativePath.startsWith("..")) return relativePath === ".caret" || relativePath.startsWith(".caret/")
+	// The backend may report the real path where the project path is a symlink
+	// (macOS /var → /private/var): match the folder by name instead.
+	const forward = absolute.split(sep).join("/")
+	return forward.includes("/.caret/") || forward.endsWith("/.caret")
+}
+
 function firstLine(text: string): string {
 	const line = text.trim().split("\n")[0] ?? ""
 	return line.length > 60 ? `${line.slice(0, 57)}…` : line
@@ -277,6 +296,8 @@ export class AgentConversation {
 	private plan: SettledPlan | null = null
 	private backendId: BackendId | null = null
 	private stopRequested = false
+	/** Sessions that have read the design layer's rules; design writes wait for it. */
+	private readonly rulesReadIn = new Set<string>()
 	private backendName: string | null = null
 	private providerName: string | null = null
 	private blocked: string | null = null
@@ -491,6 +512,7 @@ export class AgentConversation {
 					}
 					if (event.type === "tool-start" || event.type === "tool-end") closingText = ""
 					if (event.type === "error") ok = false
+					if (event.type === "tool-end" && readsTheRules(event, this.deps.projectPath)) this.rulesReadIn.add(session.id)
 
 					applyEvent(this.transcript, event)
 
@@ -689,10 +711,12 @@ export class AgentConversation {
 
 	async abort(): Promise<void> {
 		this.stopRequested = true
+		Logger.info(`[agent] Stop pressed (streaming: ${this.streaming}, session: ${this.session ? "open" : "none"})`)
 		emitDesignEvent("agent_turn_aborted", { kind: this.activity?.kind ?? "chat" })
 		await this.session?.abort()
 		this.streaming = false
 		this.push(true)
+		Logger.info("[agent] Stop done: the chat is free")
 	}
 
 	/**
@@ -894,6 +918,7 @@ export class AgentConversation {
 				mode: session.mode,
 				appWrites: this.deps.appWrites(),
 				extraReadOnlyCommands: await this.userAllowlist(),
+				rulesRead: this.rulesReadIn.has(session.id),
 			},
 		)
 

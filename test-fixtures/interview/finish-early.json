@@ -1,0 +1,290 @@
+{
+  "format": 2,
+  "calls": [
+    {
+      "tag": "interview:opening",
+      "area": null,
+      "systemPrompt": "You start a design interview inside Caret, a design tool. From the user's description, state what it clearly implies about the topics below, as lines the user can confirm.\n\n- One statement per topic, and only for topics the description clearly implies. Leave the rest out: Caret asks about them.\n- Fonts, colours, sizes and spacing are not on this list: those always get their own question.\n- Each statement is shown already agreed; the user presses \"Not quite\" on any that is wrong. So every statement must be true on its own, and all must be true together.\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- `question` is one short sentence introducing the screen, like \"Before the questions, here's what I took from your description.\"\n\nTopics and the shape of each value:\n- surface (light or dark): {\"surface\": \"light\" or \"dark\"}\n- neutral (the greys): {\"neutral\": \"cool\", \"true\", \"warm\" or \"slight-tint\"}\n- semantics (success/warning/error colours): {\"success\": \"#rrggbb\", \"warning\": \"#rrggbb\", \"error\": \"#rrggbb\", \"info\": \"#rrggbb\"}\n- radius (corner rounding): {\"radiusCharacter\": \"sharp\", \"soft\", \"round\" or \"pill\"}\n- depth (shadows and depth): {\"elevation\": \"flat\", \"subtle\" or \"pronounced\"}",
+      "prompt": "Their product, in their words:\n\"\"\"\nArgus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs.\n\"\"\"\n\nWrite the opening screen.",
+      "templateHash": "a9243010650a088a",
+      "reply": {
+        "question": "Before the questions, here's what I took from your description.",
+        "statements": [
+          {
+            "area": "surface",
+            "value": {
+              "surface": "dark"
+            },
+            "text": "Screens are dark: near-black backgrounds with light text, the way most developer and server tools look."
+          },
+          {
+            "area": "depth",
+            "value": {
+              "elevation": "subtle"
+            },
+            "text": "Panels sit mostly flat on the page, with only a faint shadow when something floats above it, like a menu."
+          }
+        ]
+      },
+      "emulated": false
+    },
+    {
+      "tag": "interview:area",
+      "area": "display-type",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about the heading typeface.\n\nHow it is shown: shown as type specimens. They can also search all of Google Fonts, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nThe heading typeface is used for page titles and section headings. Offer real Google Fonts families that suit this product. Each option's label is the family name exactly as Google Fonts spells it.",
+      "prompt": "Their product, in their words:\n\"\"\"\nArgus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs.\n\"\"\"\n\nDecided so far:\n- light or dark: Dark (confirmed on the opening screen)\n- shadows and depth: Subtle (confirmed on the opening screen)\n\nAvoid (overused AI defaults they did not ask for): Fraunces, Playfair, Playfair Display, Instrument Serif, Georgia, GT Sectra, Newsreader, JetBrains Mono, Inter, Roboto, Arial, Geist, Space Grotesk, Open Sans, Syne, Plus Jakarta Sans\n\nWrite the question about the heading typeface.",
+      "templateHash": "4f0a2f51fdbf524e",
+      "reply": {
+        "question": "Pick the font for your page titles and section headings. All four are free on Google Fonts and look clearly different from each other.",
+        "why": "IBM Plex Sans is made for developer tooling and is free and open-source like Argus. Titles stay clean and neutral on your dark background, so the plain-language root-cause explanation stays the focus.",
+        "options": [
+          {
+            "value": {
+              "family": "IBM Plex Sans"
+            },
+            "label": "IBM Plex Sans",
+            "reason": "Built for developer tools and open-source like Argus. Titles read clean and neutral on a dark screen, keeping the root-cause explanation the focus."
+          },
+          {
+            "value": {
+              "family": "Sora"
+            },
+            "label": "Sora",
+            "reason": "Geometric and slightly futuristic, so headings echo the AI investigator. The wide shapes take more room, so long section titles wrap sooner."
+          },
+          {
+            "value": {
+              "family": "Archivo"
+            },
+            "label": "Archivo",
+            "reason": "Tight and dense. Fits many section headings for containers, processes and metrics on one dark screen without shouting."
+          },
+          {
+            "value": {
+              "family": "Manrope"
+            },
+            "label": "Manrope",
+            "reason": "Rounded and friendly, making the landing page feel approachable instead of machine-room serious. Still plain and easy to read at title size."
+          }
+        ],
+        "recommended": 0
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:area",
+      "area": "body-type",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about the body typeface.\n\nHow it is shown: shown as type specimens. They can also search all of Google Fonts, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nThe body typeface is used for paragraphs, labels and long reading. It must stay comfortable at 14 to 16px and sit well next to the heading typeface. Offer real Google Fonts families; each label is the family name exactly as Google Fonts spells it.",
+      "prompt": "Their product, in their words:\n\"\"\"\nArgus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs.\n\"\"\"\n\nDecided so far:\n- light or dark: Dark (confirmed on the opening screen)\n- the heading typeface: IBM Plex Sans (they picked it)\n- shadows and depth: Subtle (confirmed on the opening screen)\n\nAvoid (overused AI defaults they did not ask for): Fraunces, Playfair, Playfair Display, Instrument Serif, Georgia, GT Sectra, Newsreader, JetBrains Mono, Inter, Roboto, Arial, Geist, Space Grotesk, Open Sans, Syne, Plus Jakarta Sans\n\nWrite the question about the body typeface.",
+      "templateHash": "4e6e955af0feb95d",
+      "reply": {
+        "question": "Which font should carry your paragraphs, labels and long explanations? It has to stay easy to read at 14–16px on a dark screen and feel like a sibling to your IBM Plex Sans headings.",
+        "why": "You said the page should explain a likely root cause in plain language and send people to GitHub and docs. Reading is most of what visitors do here, so the body font has to stay calm and clear at small sizes on dark.",
+        "options": [
+          {
+            "value": {
+              "family": "Source Sans 3"
+            },
+            "label": "Source Sans 3",
+            "reason": "Made by Adobe for its own docs and given away free, like your MIT project. Its plain, slightly narrow letters match IBM Plex Sans, so small paragraphs look like the same family as your headings."
+          },
+          {
+            "value": {
+              "family": "Public Sans"
+            },
+            "label": "Public Sans",
+            "reason": "A free, neutral face built for dense screens of text. Its letters are rounder and wider than Plex, so text at 14–16px feels slightly bigger and quieter next to your headings."
+          },
+          {
+            "value": {
+              "family": "Atkinson Hyperlegible"
+            },
+            "label": "Atkinson Hyperlegible",
+            "reason": "Shaped so every letter is easy to tell apart, which matters in error logs and metric names. It looks rounder and lighter than your headings, so it reads as a clearly different voice."
+          }
+        ],
+        "recommended": 0
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:area",
+      "area": "type-scale",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about type size and weight.\n\nHow it is shown: shown as a slider from quiet to bold, with a live preview. They can also type their own size and step, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nEach option is a body text size in px (12 to 20) and the step between heading sizes (a ratio from 1.05 to 1.5). Offer 3 to 5 options from quiet to bold, in that order. Each label names both numbers, like \"Balanced: 16px body, headings ×1.2\".",
+      "prompt": "Their product, in their words:\n\"\"\"\nArgus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs.\n\"\"\"\n\nDecided so far:\n- light or dark: Dark (confirmed on the opening screen)\n- the heading typeface: IBM Plex Sans (they picked it)\n- the body typeface: Source Sans 3 (they picked it)\n- shadows and depth: Subtle (confirmed on the opening screen)\n\nWrite the question about type size and weight.",
+      "templateHash": "17d44754bd0902ff",
+      "reply": {
+        "question": "Pick a body text size and how much bigger headings get. Bigger numbers read easier; smaller numbers fit more on screen. The live preview shows how it looks.",
+        "why": "Argus shows dense things — metrics, containers, logs, root-cause write-ups — on dark screens, so a mid-size body with modest heading jumps keeps data readable without lots of scrolling.",
+        "options": [
+          {
+            "value": {
+              "baseSize": 13,
+              "scaleRatio": 1.15
+            },
+            "label": "Dense: 13px body, headings ×1.15",
+            "reason": "Fits the most metrics, containers and log lines on one dark screen. Headings stay close to body text, so structure comes from weight, not big jumps."
+          },
+          {
+            "value": {
+              "baseSize": 15,
+              "scaleRatio": 1.25
+            },
+            "label": "Compact: 15px body, headings ×1.25",
+            "reason": "Easy to read root-cause write-ups and docs while still packing in metrics and container rows. Headings stand out clearly without shouting."
+          },
+          {
+            "value": {
+              "baseSize": 16,
+              "scaleRatio": 1.3
+            },
+            "label": "Balanced: 16px body, headings ×1.3",
+            "reason": "Comfortable default for the docs and GitHub links people land on. Lists and tables get longer, so you scroll a bit more on dashboards."
+          },
+          {
+            "value": {
+              "baseSize": 18,
+              "scaleRatio": 1.45
+            },
+            "label": "Bold: 18px body, headings ×1.45",
+            "reason": "Big, calm text for the landing page and docs, with strong heading steps. Fewer metrics and log lines per screen, so you scroll more while watching servers."
+          }
+        ],
+        "recommended": 1
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:area",
+      "area": "brand-color",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about the brand colour.\n\nHow it is shown: shown as colour swatches with a preview. They can also pick or type their own colour, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nThe brand colour goes on primary buttons and links. Offer colours that come from this product and its world. Each label names the colour and its hex.",
+      "prompt": "Their product, in their words:\n\"\"\"\nArgus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs.\n\"\"\"\n\nDecided so far:\n- light or dark: Dark (confirmed on the opening screen)\n- the heading typeface: IBM Plex Sans (they picked it)\n- the body typeface: Source Sans 3 (they picked it)\n- type size and weight: 15px body, headings ×1.25 (they picked it)\n- shadows and depth: Subtle (confirmed on the opening screen)\n\nAvoid (overused AI defaults they did not ask for): #F4F1EA, #EDE7D8, #F7F1E4, #D97757, #D9622B, #6366f1, #a855f7, #ec4899, #4f46e5, #16d5e6, #2563eb, #3b82f6\n\nWrite the question about the brand colour.",
+      "templateHash": "aedc6fb9cd0b8694",
+      "reply": {
+        "question": "Pick the colour for Argus primary buttons and links. It sits on dark screens, so each swatch shows how it looks. You can also type your own colour, or skip.",
+        "why": "Buttons on your site send people to GitHub and the docs, so this colour is the one they will click most. Colours come from the monitoring world: terminals, healthy green, and alert signals.",
+        "options": [
+          {
+            "value": {
+              "hex": "#4ade80"
+            },
+            "label": "Terminal green (#4ade80)",
+            "reason": "The classic terminal colour. Reads as healthy and up, which matches a tool that watches your servers and tells you things are fine."
+          },
+          {
+            "value": {
+              "hex": "#f5b942"
+            },
+            "label": "Alert amber (#f5b942)",
+            "reason": "The colour of a warning light. Fits the moment Argus finds something wrong and explains the likely root cause."
+          },
+          {
+            "value": {
+              "hex": "#2dd4bf"
+            },
+            "label": "Signal teal (#2dd4bf)",
+            "reason": "Calm and technical, like a live graph readout. Stays neutral when there is nothing wrong and nothing to report."
+          }
+        ],
+        "recommended": 0
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:area",
+      "area": "secondary-color",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about a supporting colour.\n\nHow it is shown: shown as colour swatches with a preview. They can also pick or type their own colour, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nA supporting colour for secondary buttons, charts and highlights, used less than the brand. It must look clearly different from the brand colour. Caret adds a None option itself, so don't offer one.",
+      "prompt": "Their product, in their words:\n\"\"\"\nArgus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs.\n\"\"\"\n\nDecided so far:\n- light or dark: Dark (confirmed on the opening screen)\n- the heading typeface: IBM Plex Sans (they picked it)\n- the body typeface: Source Sans 3 (they picked it)\n- type size and weight: 15px body, headings ×1.25 (they picked it)\n- the brand colour: #28a4f0 (they typed it)\n- shadows and depth: Subtle (confirmed on the opening screen)\n\nAvoid (overused AI defaults they did not ask for): #F4F1EA, #EDE7D8, #F7F1E4, #D97757, #D9622B, #6366f1, #a855f7, #ec4899, #4f46e5, #16d5e6, #2563eb, #3b82f6\n\nWrite the question about a supporting colour.",
+      "templateHash": "890bb8465c6f3c4f",
+      "reply": {
+        "question": "Pick one supporting colour to sit beside your brand blue #28a4f0 — used for secondary buttons, chart lines and small highlights on your dark pages. It has to read as clearly different from the brand.",
+        "why": "You chose a dark UI and one strong blue. A single second colour stops secondary buttons and charts from all turning the same blue, while staying quieter than the brand.",
+        "options": [
+          {
+            "value": {
+              "hex": "#3ec98a"
+            },
+            "label": "Green #3ec98a",
+            "reason": "Stands out from #28a4f0 on dark screens and is easy to tell apart in chart lines and highlights. Green also fits a monitoring tool, where it usually means things are healthy."
+          },
+          {
+            "value": {
+              "hex": "#e8b13a"
+            },
+            "label": "Amber #e8b13a",
+            "reason": "Warm gold that separates clearly from #28a4f0, so secondary buttons and highlights pop on your dark pages. One catch: in monitoring tools amber often reads as a warning."
+          }
+        ],
+        "recommended": 0
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:fill",
+      "area": null,
+      "systemPrompt": "You help finish a design interview inside Caret, a design tool. The user pressed \"Just finish it\": choose a value for each remaining topic yourself.\n\n- Choose what fits their product and agrees with everything already decided.\n- Never choose anything on an Avoid line.\n- Supporting and accent colours may be none.\n\nTopics and the shape of each value:\n- surface (light or dark): {\"surface\": \"light\" or \"dark\"}\n- display-type (the heading typeface): {\"family\": \"Google Fonts family name\"}\n- body-type (the body typeface): {\"family\": \"Google Fonts family name\"}\n- type-scale (type size and weight): {\"baseSize\": 12 to 20, \"scaleRatio\": 1.05 to 1.5}\n- brand-color (the brand colour): {\"hex\": \"#rrggbb\"}\n- secondary-color (a supporting colour): {\"hex\": \"#rrggbb\"} or {\"none\": true}\n- accent-color (an accent colour): {\"hex\": \"#rrggbb\"} or {\"none\": true}\n- neutral (the greys): {\"neutral\": \"cool\", \"true\", \"warm\" or \"slight-tint\"}\n- semantics (success/warning/error colours): {\"success\": \"#rrggbb\", \"warning\": \"#rrggbb\", \"error\": \"#rrggbb\", \"info\": \"#rrggbb\"}\n- spacing (density and spacing): {\"spacingUnit\": 4 or 8}\n- radius (corner rounding): {\"radiusCharacter\": \"sharp\", \"soft\", \"round\" or \"pill\"}\n- depth (shadows and depth): {\"elevation\": \"flat\", \"subtle\" or \"pronounced\"}",
+      "prompt": "Their product, in their words:\n\"\"\"\nArgus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs.\n\"\"\"\n\nDecided so far:\n- light or dark: Dark (confirmed on the opening screen)\n- the heading typeface: IBM Plex Sans (they picked it)\n- the body typeface: Source Sans 3 (they picked it)\n- type size and weight: 15px body, headings ×1.25 (they picked it)\n- the brand colour: #28a4f0 (they typed it)\n- shadows and depth: Subtle (confirmed on the opening screen)\n\nChoose a value for: a supporting colour, an accent colour, the greys, success/warning/error colours, density and spacing, corner rounding.\n\nAvoid (overused AI defaults they did not ask for): #F4F1EA, #EDE7D8, #F7F1E4, #D97757, #D9622B, #6366f1, #a855f7, #ec4899, #4f46e5, #16d5e6, #2563eb, #3b82f6",
+      "templateHash": "05c617e2931cde07",
+      "reply": {
+        "values": {
+          "secondary-color": {
+            "hex": "#14b8a6"
+          },
+          "accent-color": {
+            "hex": "#fbbf24"
+          },
+          "neutral": {
+            "neutral": "cool"
+          },
+          "semantics": {
+            "success": "#34d399",
+            "warning": "#f59e0b",
+            "error": "#f87171",
+            "info": "#38bdf8"
+          },
+          "spacing": {
+            "spacingUnit": 4
+          },
+          "radius": {
+            "radiusCharacter": "soft"
+          }
+        }
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:prose",
+      "area": null,
+      "systemPrompt": "You write the summary at the end of a design interview inside Caret, a design tool. Every value is already decided and final.\n\n- summary: 2 or 3 sentences to the user about how their foundation fits their product.\n- rule: one sentence on how colour is used (for example, where the brand colour appears and where it never does).\n- reasons: one sentence per topic on why that choice fits, grounded in what they said and chose.\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Never change, add or suggest a value. Never name a colour or font that is not in the list you are given.",
+      "prompt": "Their product, in their words:\n\"\"\"\nArgus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs.\n\"\"\"\n\nThe decided foundation:\n- surface (light or dark): Dark\n- display-type (the heading typeface): IBM Plex Sans. Shown with the reason: Built for developer tools and open-source like Argus. Titles read clean and neutral on a dark screen, keeping the root-cause explanation the focus.\n- body-type (the body typeface): Source Sans 3. Shown with the reason: Made by Adobe for its own docs and given away free, like your MIT project. Its plain, slightly narrow letters match IBM Plex Sans, so small paragraphs look like the same family as your headings.\n- type-scale (type size and weight): 15px body, headings ×1.25. Shown with the reason: Easy to read root-cause write-ups and docs while still packing in metrics and container rows. Headings stand out clearly without shouting.\n- brand-color (the brand colour): #28a4f0\n- secondary-color (a supporting colour): #14b8a6. Shown with the reason: Filled in when you pressed Just finish it.\n- accent-color (an accent colour): #fbbf24. Shown with the reason: Filled in when you pressed Just finish it.\n- neutral (the greys): Cool. Shown with the reason: Filled in when you pressed Just finish it.\n- semantics (success/warning/error colours): #34d399, #f59e0b, #f87171. Shown with the reason: Filled in when you pressed Just finish it.\n- spacing (density and spacing): Tight, 4px base. Shown with the reason: Filled in when you pressed Just finish it.\n- radius (corner rounding): Soft, 8px. Shown with the reason: Filled in when you pressed Just finish it.\n- depth (shadows and depth): Subtle",
+      "templateHash": "5ab61ed6b7978717",
+      "reply": {
+        "summary": "Your foundation is built for a dark screen, because Argus runs in terminals and dashboards where engineers already stare at dark UI all day. The softer IBM Plex Sans headings and Source Sans 3 body text keep long root-cause explanations easy to read, while the tight 4px spacing and 8px rounded corners let dense metric and container rows stay packed without feeling cramped. Subtle shadows keep panels layered but calm, so the plain-language root cause is the thing that stands out.",
+        "rule": "#28a4f0 is your brand colour, used on the GitHub and docs buttons, links and active nav, while #14b8a6 supports secondary actions like filters and #fbbf24 marks the AI investigator; greys carry all the plain structure and the status colours only ever appear on real metric states.",
+        "reasons": {
+          "surface": "Dark suits an open-source monitoring tool that people run on their own servers, and it keeps long log and metric views easy on the eyes.",
+          "display-type": "IBM Plex Sans is made for developer tools and open-source, so your headings read clean and neutral on dark and leave the root-cause explanation as the focus.",
+          "body-type": "Source Sans 3 comes from Adobe's own free docs and is given away under an open licence like your MIT project, and its plain letters sit well beside IBM Plex Sans.",
+          "type-scale": "15px body with headings at ×1.25 keeps root-cause write-ups and docs readable while still fitting many metric and container rows on screen.",
+          "brand-color": "#28a4f0 gives the GitHub and docs links, the main buttons and active states one clear identity colour, so visitors always know where to click next.",
+          "secondary-color": "#14b8a6 marks supporting actions like filters and toggles, so they read as related to the brand without competing with it.",
+          "accent-color": "#fbbf24 draws the eye to the AI investigator, matching how Argus highlights the moment it finds a likely root cause.",
+          "neutral": "Cool greys match the dark, technical feel of a server tool and give all the plain text, borders and panels a calm, even base.",
+          "semantics": "#34d399, #f59e0b and #f87171 map to healthy, warning and failing metrics, so anyone scanning a dashboard reads status in a glance.",
+          "spacing": "Tight 4px spacing packs in metric values and container rows, which suits monitoring screens where people compare many numbers at once.",
+          "radius": "Soft 8px corners keep panels, cards and buttons feeling modern and friendly without looking playful.",
+          "depth": "Subtle shadows separate panels and popovers from the dark background while keeping the interface flat and calm."
+        }
+      },
+      "emulated": true
+    }
+  ],
+  "recorded": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "at": "2026-10-15T14:42:31.237Z",
+    "gitSha": "be2d3803"
+  },
+  "script": "finish-early",
+  "mode": "collaborative",
+  "description": "Argus is an open-source monitoring tool for servers and applications, with an AI investigator built in. You run it on your own infrastructure with one Docker command, then add its SDK to your apps. It watches metrics, containers and processes, and when something looks wrong it investigates: it correlates metrics, logs and events and explains the likely root cause in plain language. Free and MIT licensed; your data never leaves your servers. The landing page should send people to the GitHub repo and the docs."
+}

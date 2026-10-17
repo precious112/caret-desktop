@@ -33,12 +33,14 @@ import {
 	findAssetRecipe,
 	findGenerator,
 	GENERATION_QUESTIONS,
+	type GeminiConfig,
 	GeminiImages,
 	type GenerationAnswers,
 	getBackend,
 	lanesWithRaster,
 	NO_RASTER_REASON,
 	narrowForAnswers,
+	progressOf,
 	proposeTag,
 	type RefinedBrief,
 	readAssetIndex,
@@ -49,9 +51,13 @@ import {
 } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
 import type { GeneratedVariantWire, GenerationQuestionWire, RecipeCardWire, WriteResult } from "../shared/ipc"
-import { cutOutPhotograph, postProcessPhotograph } from "./image-post"
+import { ANCHOR_PREAMBLE } from "./anchor-preamble"
+import { cutOutPhotograph, postProcessPhotograph, previewDataUrl } from "./image-post"
+import { ensureMatteModel, matteState, onMatteState } from "./matte"
 import { getPrefs } from "./prefs"
 import { getSecret } from "./secrets"
+import type { BoardDeps } from "./take-board"
+import { testImageService } from "./test-image-service"
 
 /**
  * The raster lane's credentials, keychain first.
@@ -61,7 +67,11 @@ import { getSecret } from "./secrets"
  * than cached, so entering a key makes the lane work without a restart — the
  * alternative is a settings field that appears to do nothing.
  */
-export function rasterConfig() {
+export function rasterConfig(): GeminiConfig | null {
+	// Development builds only: the test image service stands in for Google, so
+	// the whole pipeline runs in the real app without spending anything.
+	const testService = testImageService()
+	if (testService) return { backend: "api-key", apiKey: "test-image-service", model: "flash-image", endpoint: testService }
 	const prefs = getPrefs()
 	return resolveRasterConfig({
 		apiKey: getSecret("geminiApiKey"),
@@ -227,24 +237,6 @@ export async function recipeVariants(
  * collapsing them into "generation failed" would throw away three good images
  * to report one bad one.
  */
-/**
- * What the style anchor is allowed to contribute.
- *
- * Written as a hard split because the failure it fixes was total: the previous
- * wording ("this must look shot in the same session") produced a second copy of
- * the reference photograph, and every framing decision the user had just made
- * in the clarify questions was silently discarded. The description has to be
- * named as the authority on content, in the same breath as the reference is
- * named as the authority on light.
- */
-export const ANCHOR_PREAMBLE = [
-	"The attached image is a COLOUR AND LIGHT REFERENCE ONLY — an earlier photograph from the same campaign.",
-	"Take from it exactly three things: the quality and direction of the light, the colour grade, and the black level.",
-	"Take NOTHING else from it. Its composition, camera distance, crop, subject size, subject position and camera angle are not yours to copy.",
-	"Everything about what is photographed and how it is framed comes only from the description below, and where the two disagree the description wins.",
-	"This is a different photograph from the same shoot, not another version of the reference.",
-].join(" ")
-
 async function generateRasterVariants(
 	projectPath: string,
 	recipe: AssetRecipe,
@@ -263,6 +255,21 @@ async function generateRasterVariants(
 	prunePending()
 	const client = new GeminiImages(config)
 	const composed = composeVariants({ recipe, tokens, aspect, answers, count: RASTER_VARIANT_COUNT })
+
+	// A cutout needs the cutout tool; without it every take would be paid for
+	// and then fail. Wait for it first, and spend nothing if it can't be had.
+	if (composed.some((variant) => variant.request.lane === "raster" && variant.request.transparent)) {
+		const ready = await cutoutToolReady()
+		if (!ready.ok)
+			return composed.map((variant) => ({
+				variant: variant.variant,
+				preview: "",
+				width: 0,
+				height: 0,
+				surface,
+				error: ready.reason,
+			}))
+	}
 
 	// Only what THIS round stored. The map can still hold a previous round's
 	// entry under the same key (same recipe, same aspect, a variant that failed
@@ -795,4 +802,48 @@ export async function refineAssetBrief(projectPath: string, request: AssetReques
 		tokens,
 		model: prefs.backendModel || undefined,
 	})
+}
+
+/**
+ * What the take board needs from the app. `send` delivers each board change to
+ * the project's window.
+ */
+export function takeBoardDeps(send: BoardDeps["emit"]): BoardDeps {
+	return {
+		config: rasterConfig,
+		tokens: (projectPath) => readFoundationTokens(projectPath),
+		styleAnchor: resolveStyleAnchor,
+		cutOut: cutOutPhotograph,
+		cutoutReady: cutoutToolReady,
+		postProcess: (bytes, width, height, options) => postProcessPhotograph(bytes, width, height, options),
+		preview: async (bytes, mime) => previewDataUrl(bytes, mime),
+		polish: (projectPath, request) => refineAssetBrief(projectPath, request),
+		emit: send,
+	}
+}
+
+/**
+ * Waits for the cutout tool (downloaded once per machine) before anything is
+ * spent on a picture that needs cutting out, reporting the download's progress.
+ */
+export async function cutoutToolReady(
+	onProgress: (label: string) => void = () => {},
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+	if (matteState().status === "ready") return { ok: true }
+	const off = onMatteState((state) => {
+		if (state.status === "downloading") onProgress(progressOf(state.received, state.total).label)
+	})
+	try {
+		const state = await ensureMatteModel()
+		if (state.status === "ready") return { ok: true }
+		return {
+			ok: false,
+			reason:
+				state.status === "failed"
+					? `The cutout tool could not be downloaded (${state.reason}), so nothing was made. It retries the next time Caret opens.`
+					: "The cutout tool isn't on this machine (it was switched off), so pictures with no background can't be made.",
+		}
+	} finally {
+		off()
+	}
 }

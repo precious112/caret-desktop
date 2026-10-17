@@ -31,7 +31,10 @@
 		"src/**/*",
 		"../shared/**/*",
 		"../../src/core/design/authoring/shader-runner.ts",
-		"../../src/core/design/asset-library/shader/preamble.ts"
+		"../../src/core/design/asset-library/shader/preamble.ts",
+		"../../src/core/design/interview/areas.ts",
+		"../../src/core/design/interview/state.ts",
+		"../../src/core/design/interview/answers.ts"
 	],
 	"exclude": [
 		"node_modules"

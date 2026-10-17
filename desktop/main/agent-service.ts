@@ -10,6 +10,8 @@
  * a CLI, sign in, or change their mind between two turns, and a backend resolved
  * once at window open would keep refusing long after the reason was fixed.
  */
+
+import { app } from "electron"
 import {
 	AgentConversation,
 	type AppWritePolicy,
@@ -30,9 +32,15 @@ import {
 	setProjectEditLane,
 	setProjectExploreLane,
 } from "../../src/core/design"
+
 import { Logger } from "../../src/shared/services/Logger"
 import { getPrefs, setPref } from "./prefs"
-import { buildGuide } from "./rules/context"
+import { skillService } from "./skills/skills"
+import { fakeTakeConversation, testExploreDelay } from "./test-explore"
+
+/** Sent with every chat turn, last in the system prompt. */
+export const CARET_PRECEDENCE =
+	"Caret's rules (AGENTS.md and .caret/AGENTS.md) win over any built-in advice about how things look and about placeholders."
 
 export interface AgentServiceOptions {
 	projectPath: string
@@ -114,19 +122,24 @@ export class AgentService {
 			onTurnComplete: (outcome, request) => options.onTurnComplete?.(this.editConversation, outcome, request),
 		})
 
+		// Development builds can make page takes with a stand-in instead of a
+		// model (CARET_TEST_EXPLORE), so the Experiment canvas is testable for free.
+		const testExplore = testExploreDelay(process.env, app.isPackaged)
 		this.exploreLane = new ExploreLane(
 			(onChange) =>
-				new AgentConversation({
-					projectPath: options.projectPath,
-					resolveBackend: () => this.resolveBackend(),
-					model: () => getPrefs().backendModel || undefined,
-					effort: () => getPrefs().backendEffort || undefined,
-					appWrites: () => this.appWrites(),
-					setAppWrites: (policy) => this.setAppWrites(policy),
-					systemPrompt: () => this.systemPrompt(),
-					onChange,
-				}),
-			() => this.conversation.getState().ready,
+				testExplore !== null
+					? fakeTakeConversation(options.projectPath, testExplore)
+					: new AgentConversation({
+							projectPath: options.projectPath,
+							resolveBackend: () => this.resolveBackend(),
+							model: () => getPrefs().backendModel || undefined,
+							effort: () => getPrefs().backendEffort || undefined,
+							appWrites: () => this.appWrites(),
+							setAppWrites: (policy) => this.setAppWrites(policy),
+							systemPrompt: () => this.systemPrompt(),
+							onChange,
+						}),
+			() => testExplore !== null || this.conversation.getState().ready,
 			(status) => options.onExploreStatus(status),
 		)
 
@@ -262,23 +275,23 @@ export class AgentService {
 	}
 
 	/**
-	 * Foundations, authoring rules and the asset index, straight into the system
-	 * prompt.
+	 * The chat's own system text: one line.
 	 *
-	 * This is the capability BYO-agent could never have. The generated rules files
-	 * still exist for external agents, but an agent Caret owns is not asked to
-	 * *choose* to read them — the one failure mode that made pull-only context
-	 * useless in the first place.
-	 *
-	 * Rebuilt per turn rather than cached: a token change between two turns has to
-	 * reach the next one, and the build is a handful of small file reads.
+	 * The rules reach the agent through the files every coding agent loads: the
+	 * core in AGENTS.md (which the backend puts in its system prompt on its own)
+	 * and the design layer's detail in `.caret/AGENTS.md` (read before any
+	 * design-layer write; the permission ruling refuses one until it has been).
+	 * Sending the guide again here was a second full copy every turn. What stays
+	 * is the precedence line: the backend's built-in prompt carries its own
+	 * advice about looks and placeholders, and Caret's text sits last, where a
+	 * conflict is decided.
 	 */
 	private async systemPrompt(): Promise<string | undefined> {
-		try {
-			return await buildGuide(this.options.projectPath, "embedded")
-		} catch (err) {
-			Logger.warn(`[agent] could not build the system prompt: ${err}`)
-			return undefined
-		}
+		// The project's design skill, when it has one, read fresh every turn so a
+		// switch takes effect on the next message.
+		const skill = await skillService()
+			.chatInstructions(this.options.projectPath)
+			.catch(() => null)
+		return skill ? `${CARET_PRECEDENCE}\n\n${skill}` : CARET_PRECEDENCE
 	}
 }

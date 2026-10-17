@@ -160,6 +160,8 @@ export async function authorMark(request: MarkRequest): Promise<MarkResult> {
 			mode: "read-only",
 			model: model || undefined,
 			title: "caret mark",
+			// It replies with SVG; it needs no tools and no coding-agent prompt.
+			lean: true,
 			systemPrompt: SYSTEM_PROMPT,
 		})
 

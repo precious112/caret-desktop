@@ -162,6 +162,13 @@ if (isolatedPageId && mode === "focused") {
   document.body.style.background = "#ffffff"
   document.body.style.overflow = "auto"
 
+  // The selection lock (lib/param-panel.ts) must see each pointer event (and Escape) before
+  // react-grab does, so these listeners are added before react-grab loads:
+  // listeners on one target in one phase run in the order they were added.
+  for (const type of ["pointermove", "mousemove", "pointerdown", "mousedown", "pointerup", "mouseup", "click", "auxclick", "contextmenu", "keydown"]) {
+    window.addEventListener(type, (e) => (window as any).__CARET_POINTER_GATE__?.(e), { capture: true })
+  }
+
   import("react-grab").then(() => {
     flog("react-grab loaded")
     return import("./lib/caret-grab-plugin")
@@ -299,7 +306,33 @@ if (isolatedPageId && mode === "focused") {
 
         const rg = (window as any).__REACT_GRAB__
         bridge.send({ type: "log", payload: { message: "[focused] React Grab available: " + !!rg } })
-        if (rg) rg.activate()
+        // Off when the page opens: while it is on, react-grab freezes the page's
+        // animations and holds back its React updates, so every entrance
+        // fade-in stayed invisible. The user turns it on from its toolbar.
+
+        // And off while the preview swaps in an update. A hot swap rendered with
+        // react-grab's freeze on sent Motion's AnimatePresence into an endless
+        // re-render ("Too many re-renders") and the page showed its error
+        // screen: after a canvas text edit (which re-arms react-grab just
+        // before the swap) and after any file change made while selecting.
+        // Back on once the swap has drawn, if it was on before.
+        let reArmAfterSwap = false
+        const beforeSwap = () => {
+          const grab = (window as any).__REACT_GRAB__
+          if (grab?.isActive?.()) {
+            reArmAfterSwap = true
+            grab.deactivate()
+          }
+        }
+        const afterSwap = () => {
+          if (!reArmAfterSwap) return
+          reArmAfterSwap = false
+          requestAnimationFrame(() => requestAnimationFrame(() => (window as any).__REACT_GRAB__?.activate?.()))
+        }
+        if (import.meta.hot) {
+          import.meta.hot.on("vite:beforeUpdate", beforeSwap)
+          import.meta.hot.on("vite:afterUpdate", afterSwap)
+        }
 
         const msgHandler = (e: MessageEvent) => {
           if (e.data?.type === "set-state") {
@@ -311,7 +344,11 @@ if (isolatedPageId && mode === "focused") {
         return () => {
           if (rg) rg.deactivate()
           ;(window as any).__CARET_FOCUSED_PAGE__ = null
-          if (import.meta.hot) import.meta.hot.off("vite:afterUpdate", hmrHandler)
+          if (import.meta.hot) {
+            import.meta.hot.off("vite:afterUpdate", hmrHandler)
+            import.meta.hot.off("vite:beforeUpdate", beforeSwap)
+            import.meta.hot.off("vite:afterUpdate", afterSwap)
+          }
           window.removeEventListener("message", msgHandler)
         }
       }, [])

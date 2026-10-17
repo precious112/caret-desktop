@@ -11,7 +11,17 @@
  * filesystem and spawns processes, and a renderer that can `import` it is a
  * renderer that can be made to run it. Keeping the wire types structural means
  * the boundary is enforced by what is importable, not by remembering not to.
+ *
+ * One exception: the AI interview's types are imported, type-only, from the
+ * core interview files built to be shared with the screen (`areas.ts`,
+ * `state.ts`, `answers.ts`, plus `widgets.ts` for the proposal type). Those
+ * touch no files and start no processes, and a test holds them to that. A
+ * hand-kept copy of these types is how the screen and the engine came to
+ * disagree about what had been answered.
  */
+import type { AreaQuestion } from "../../src/core/design/interview/answers"
+import type { AreaAnswer, InterviewMode, InterviewState, OpeningStatement, Verdict } from "../../src/core/design/interview/state"
+import type { FoundationProposal } from "../../src/core/design/interview/widgets"
 
 /** Mirrors `FoundationTokens` in the design core. */
 export interface FoundationTokensWire {
@@ -227,129 +237,38 @@ export interface AssetOptionWire {
 }
 
 /**
- * The AI-run token wizard — the Foundation surface's default door.
+ * The AI interview, as the screen receives it.
  *
- * The model composes every question from a fixed widget vocabulary; these are
- * the wire mirrors of those shapes. The renderer's job is to have a real,
- * well-made component for each `kind`, including the escape hatches ("other"):
- * a colour picker + hex field + eyedropper on colour questions, Google Fonts
- * search on font questions, free text where the model allows it.
+ * The types come straight from the design core's interview files (the ones
+ * the screen is allowed to load), so the engine and the screen can never
+ * disagree about their shape. Every phase carries `state`: the one reading of
+ * the answers that the Covering list, So far and the preview all show.
  */
-export interface WizardSpecWire {
-	displayFamily?: string
-	bodyFamily?: string
-	surface?: "light" | "dark"
-	accent?: string
-	neutral?: string
-	radius?: number
-	spacingUnit?: number
-	baseSize?: number
-	shadow?: string
-}
+export type InterviewModeWire = InterviewMode
 
-export type WizardKindWire = "options" | "color" | "font" | "scale" | "chips" | "text" | "boolean" | "assumptions"
-
-export interface WizardOptionWire {
-	id: string
-	label: string
-	reason?: string
-	hex?: string
-	spec?: WizardSpecWire
-}
-
-export type WizardModeWire = "ai-led" | "collaborative" | "from-app"
-
-export interface WizardQuestionWire {
-	id: string
-	kind: WizardKindWire
-	question: string
-	why?: string
-	options?: WizardOptionWire[]
-	recommendedId?: string
-	/** Collaborative mode: the coverage areas this question settles. */
-	covers?: string[]
-	other?: "color" | "font" | "text"
-	leftLabel?: string
-	rightLabel?: string
-	steps?: Array<{ label: string; spec?: WizardSpecWire }>
-	defaultStep?: number
-	placeholder?: string
-	multiline?: boolean
-}
-
-export interface WizardAnswerWire {
-	questionId: string
-	question: string
-	kind: WizardKindWire
-	value: string
-	label?: string
-	wasOther?: boolean
-	/** Typed payload written by the widget at capture — see core `AnswerData`. */
-	data?: { hex?: string; family?: string; px?: number; ratio?: number; none?: boolean }
-	skipped?: boolean
-}
-
-export interface WizardQAWire {
-	question: WizardQuestionWire
-	answer: WizardAnswerWire
-}
-
-export interface FoundationProposalWire {
-	displayFamily: string
-	displayFallback?: string
-	bodyFamily: string
-	bodyFallback?: string
-	scaleRatio: number
-	baseSize: number
-	brand: string
-	secondary?: string
-	accent?: string
-	neutral: "warm" | "cool" | "true" | "slight-tint"
-	surface: "light" | "dark"
-	semantic?: { success?: string; warning?: string; error?: string; info?: string }
-	spacingUnit: number
-	radiusCharacter: "sharp" | "soft" | "round" | "pill"
-	elevationCharacter?: "flat" | "subtle" | "pronounced"
-	displayWeight?: number
-	bodyWeight?: number
-	rule: string
-	vibeTags?: string[]
-	summary: string
-	decisions?: Array<{ area: string; choice: string; reason: string }>
-}
-
-/** Collaborative mode's checklist, for the coverage rail. */
-export interface WizardCoverageWire {
-	done: Array<{ id: string; label: string }>
-	missing: Array<{ id: string; label: string }>
-}
-
-export type WizardStateWire =
+export type InterviewWire =
 	| { phase: "needs-backend"; detail: string }
-	| { phase: "describe"; description: string }
+	| { phase: "opening"; mode: InterviewMode; question: string; statements: OpeningStatement[]; state: InterviewState }
 	| {
 			phase: "question"
-			mode: WizardModeWire
-			description: string
-			current: WizardQuestionWire
-			/** Questions answered so far, and the hard cap — for "question 3". */
-			asked: number
-			cap: number
-			history: WizardQAWire[]
-			/** Present only in collaborative mode. */
-			coverage?: WizardCoverageWire
+			mode: InterviewMode
+			question: AreaQuestion
+			/** The answer given before, when the user came back with Back. */
+			previous?: AreaAnswer
+			state: InterviewState
+			canBack: boolean
 	  }
 	| {
 			phase: "finish"
-			mode: WizardModeWire
-			description: string
-			proposal: FoundationProposalWire
+			mode: InterviewMode
+			proposal: FoundationProposal
 			name: string
 			rule: string
 			summary: string
-			history: WizardQAWire[]
+			state: InterviewState
+			finishedEarly: boolean
 	  }
-	| { phase: "error"; description: string; message: string; canFinish: boolean }
+	| { phase: "error"; mode: InterviewMode; stage: string; message: string; canFinish: boolean; state: InterviewState }
 
 /**
  * The coding backend Caret drives, as the renderer sees it.
@@ -532,6 +451,44 @@ export interface GeneratedProvenanceWire {
 	}
 }
 
+/** One hand-picked design skill's card and row. */
+export interface SkillWire {
+	id: string
+	name: string
+	by: string
+	does: string
+	licence: string
+	installed: boolean
+	/** Whether this project uses it (one skill per project). */
+	chosen: boolean
+}
+
+/** One coding tool's row in the Backend tab's "Your coding tools". */
+export interface CodingToolWire {
+	id: "claude" | "codex" | "cursor" | "opencode"
+	name: string
+	found: boolean
+	/** Connected to Caret. */
+	setUp: boolean
+	/** The project folder where it reads the chosen design skill. */
+	skillsFolder: string
+}
+
+/** One component or reference library's row. */
+export interface LibraryWire {
+	id: string
+	name: string
+	gives: string
+	kind: "components" | "inspiration"
+	access: "none" | "free-token" | "sign-in" | "key"
+	site?: string
+	/** Installed for every project. */
+	installed: boolean
+	/** Installed and switched on in this project. */
+	enabled: boolean
+	state: "ready" | "connecting" | "sign-in" | "key" | "resting" | "failed" | "off"
+}
+
 export interface SecretStatusWire {
 	/** False when the OS offers no keychain — storing is refused, not downgraded. */
 	available: boolean
@@ -704,6 +661,87 @@ export interface TaskModelWire {
 	free?: boolean
 	/** In the named-recommended set for this task. */
 	recommended?: boolean
+}
+
+/**
+ * How much help the prompt gets before images are made.
+ * - polish: Caret rewrites the words into a full brief and generates straight away.
+ * - ask: the person answered Caret's questions and edited the brief themselves.
+ * - exact: the person's words, sent as typed.
+ */
+export type PromptModeWire = "polish" | "ask" | "exact"
+
+/** Starting a take board: the first round of takes. */
+export interface BoardStartWire {
+	request: AssetRequestWire
+	/** The shape every take on the board is made in, chosen before anything is made. */
+	aspect: string
+	mode: PromptModeWire
+	/** "ask": the brief as the person left it after reading and editing it. */
+	brief?: string
+	/** "exact": still add the foundation's colours and light (default true). */
+	keepFoundationLook?: boolean
+}
+
+/** A change grown from one take: the side panel's chips, words and strength. */
+export interface TakeChangeWire {
+	chips: string[]
+	note: string
+	strength: "subtle" | "strong"
+}
+
+export type BoardTakeStatusWire = "waiting" | "working" | "ready" | "failed" | "cancelled"
+
+/** One take on the board. The picture itself is a small preview; full size is asked for separately. */
+export interface BoardTakeWire {
+	id: string
+	branchId: string
+	/** Position within its branch, from 0. */
+	index: number
+	status: BoardTakeStatusWire
+	/** A small preview (data URL) once ready. */
+	preview?: string
+	width: number
+	height: number
+	error?: string
+	retryable?: boolean
+	/** The asset name it was saved as, once used. */
+	savedAs?: string
+}
+
+/** A set of takes made together: the first takes, or a change grown from one take. */
+export interface BoardBranchWire {
+	id: string
+	/** The take this branch grew from; null for the first takes. */
+	parentTakeId: string | null
+	/** "First takes", or the change as the person said it. */
+	label: string
+	strength?: "subtle" | "strong"
+	/** Which words the takes were made from. */
+	source: "yours" | "brief" | "exact"
+	takeIds: string[]
+}
+
+export interface BoardWire {
+	id: string
+	/** Increases with every change, so a late update never replaces a newer one. */
+	version: number
+	kind: GenerationKindWire
+	aspect: string
+	surface: string
+	transparent: boolean
+	mode: PromptModeWire
+	yourWords: string
+	/** The brief the takes were made from, when Caret wrote or the person edited one. */
+	brief?: string
+	/** Why the brief is missing, when "Polish it" could not write one. */
+	briefNote?: string
+	/** True while Caret is writing the brief, before the first takes start. */
+	briefing: boolean
+	/** Set while something must be ready before anything is spent (the cutout tool), saying what. */
+	preparing?: string
+	branches: BoardBranchWire[]
+	takes: BoardTakeWire[]
 }
 
 /** One generated option, ready to be looked at and picked. */
@@ -892,9 +930,29 @@ export interface IpcRequests {
 	 * user reads, edits and owns it before anything generates. Null means
 	 * "skip the step and use the words as typed" — never a blocked user.
 	 */
-	"generate:refineBrief": (projectPath: string, request: AssetRequestWire) => { prompt: string } | null
+	"generate:refineBrief": (
+		projectPath: string,
+		request: AssetRequestWire,
+	) => { prompt: string; phrases?: Array<{ text: string; alternatives: string[] }> } | null
 	/** Three takes of the thing the user asked for. Same subject, different treatment. */
 	"generate:takes": (projectPath: string, request: AssetRequestWire, aspect: string) => GeneratedVariantWire[]
+	/** Starts a take board: the first takes, reported through `generate:board` as each lands. */
+	"generate:boardStart": (projectPath: string, start: BoardStartWire) => BoardWire
+	/** Grows a branch from one take. Refused, with a reason, for a take that isn't ready. */
+	"generate:boardBranch": (
+		projectPath: string,
+		takeId: string,
+		change: TakeChangeWire,
+	) => { ok: true; board: BoardWire } | { ok: false; error: string }
+	/** Cancels the named takes, or every take still waiting or being made. */
+	"generate:boardCancel": (projectPath: string, takeIds?: string[]) => BoardWire | null
+	/** Saves one take to the asset library. The board stays open. */
+	"generate:boardSave": (projectPath: string, takeId: string, tag: string) => WriteResult & { tag?: string }
+	/** One take at full size, for the full-size view. */
+	"generate:boardPicture": (projectPath: string, takeId: string) => string | null
+	"generate:boardGet": (projectPath: string) => BoardWire | null
+	/** Cancels everything still running and forgets the board. */
+	"generate:boardClose": (projectPath: string) => void
 	/** Commits the take the user pointed at, with their own words kept in provenance. */
 	"generate:acceptTake": (
 		projectPath: string,
@@ -954,6 +1012,22 @@ export interface IpcRequests {
 	 * the composer only clears the draft it actually spent.
 	 */
 	"agent:setMode": (projectPath: string, mode: "read-only" | "write", steering?: string) => { executed: boolean }
+	"skills:list": (projectPath: string | null) => SkillWire[]
+	"skills:install": (id: string) => WriteResult
+	/** Removes a skill from Caret, and from this project when it was the project's skill. */
+	"skills:remove": (projectPath: string | null, id: string) => void
+	/** One skill per project; null for none. */
+	"skills:choose": (projectPath: string, id: string | null) => WriteResult
+	"codingTools:list": () => CodingToolWire[]
+	/** Connects a coding tool to Caret; a file Caret won't edit comes back with what to paste. */
+	"codingTools:setUp": (id: string) => { ok: boolean; error?: string; snippet?: string }
+	"libraries:list": (projectPath: string | null) => LibraryWire[]
+	"libraries:install": (id: string) => void
+	"libraries:remove": (id: string) => void
+	/** On or off in one project. */
+	"libraries:set": (projectPath: string, id: string, on: boolean) => void
+	"libraries:setKey": (projectPath: string | null, id: string, key: string) => WriteResult
+	"libraries:signIn": (projectPath: string, id: string) => WriteResult
 	/** The plan card's Discard. Sync plans also clear their pending record. */
 	"agent:discardPlan": (projectPath: string) => void
 	"agent:reset": (projectPath: string) => void
@@ -1034,14 +1108,16 @@ export interface IpcRequests {
 	 * call, so the renderer asking for one is what keeps a re-render from
 	 * spending the user's quota.
 	 */
-	"wizard:resume": (projectPath: string) => WizardStateWire | null
-	"wizard:start": (projectPath: string, description: string, mode: WizardModeWire) => WizardStateWire
-	"wizard:answer": (projectPath: string, answer: WizardAnswerWire) => WizardStateWire
+	"wizard:resume": (projectPath: string) => InterviewWire | null
+	"wizard:start": (projectPath: string, description: string, mode: InterviewModeWire) => InterviewWire
+	/** The opening screen's verdicts: each line agreed, or "Not quite" with what is true instead. */
+	"wizard:openingAnswer": (projectPath: string, verdicts: Verdict[]) => InterviewWire
+	"wizard:answer": (projectPath: string, answer: AreaAnswer) => InterviewWire
 	/** "Just finish" — the model constructs from whatever has been answered. */
-	"wizard:finishNow": (projectPath: string) => WizardStateWire
+	"wizard:finishNow": (projectPath: string) => InterviewWire
 	/** Re-runs a failed turn without recording a new answer. */
-	"wizard:retry": (projectPath: string) => WizardStateWire
-	"wizard:back": (projectPath: string) => WizardStateWire
+	"wizard:retry": (projectPath: string) => InterviewWire
+	"wizard:back": (projectPath: string) => InterviewWire
 	"wizard:commit": (projectPath: string) => { name: string; rule: string }
 	"wizard:abandon": (projectPath: string) => void
 	/** The app's screens not yet in the design layer (code → design). */
@@ -1063,14 +1139,22 @@ export interface IpcEvents {
 	"wizard:progress": (progress: { projectPath: string; attempt: number; max: number }) => void
 	/** The asset index changed — by the UI, an agent, or a file dropped in Finder. */
 	"assets:changed": (projectPath: string) => void
+	/** Installed skills or a project's skill changed; null means every project. */
+	"skills:changed": (projectPath: string | null) => void
+	/** Installed libraries or a project's switches changed; null means every project. */
+	"libraries:changed": (projectPath: string | null) => void
 	/** An exploration opened or resolved — the Canvas button badges while one is open. */
 	"explore:open-changed": (projectPath: string, open: boolean) => void
+	/** The canvas's property sidebar opened or closed (an element was selected or let go). */
+	"canvas:inspector-changed": (projectPath: string, open: boolean) => void
 	/** The chat moved on: a token streamed, a permission was raised, a turn ended. */
 	"agent:state": (projectPath: string, state: AgentStateWire) => void
 	/** An app import (code → design) moved: a screen started, landed or failed. */
 	"import:progress": (projectPath: string, progress: ImportProgressWire) => void
 	/** A long-running generation job (mark loop, 3D pipeline) moved a step. */
 	"generate:progress": (projectPath: string, update: GenerateProgressWire) => void
+	/** A take board changed: a brief written, a take started, landed, failed, saved. */
+	"generate:board": (projectPath: string, board: BoardWire) => void
 	log: (line: string) => void
 }
 

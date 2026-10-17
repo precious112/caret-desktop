@@ -13,6 +13,10 @@
  * nothing is ever decided behind Caret's back; the `plan` agent on read-only
  * sessions is a second line, not the boundary.
  */
+import * as fsp from "fs/promises"
+import * as os from "os"
+import * as path from "path"
+
 import { Logger } from "@/shared/services/Logger"
 import {
 	type AvailabilityReport,
@@ -21,15 +25,18 @@ import {
 	type BackendSession,
 	type BackendSessionSummary,
 	type CodingBackend,
+	isProviderRefusal,
 	type ModelGroup,
 	type OauthChallenge,
 	type PermissionDecision,
 	type ProviderDoor,
+	ProviderRefusalError,
 	type SendInput,
 	type StartSessionOptions,
 	StructuredOutputError,
 	type StructuredRequest,
 	type StructuredResult,
+	type ToolCallRecord,
 } from "../backend"
 import { EventQueue } from "../stream-utils"
 import { resolveOpencodeBinary } from "./binary"
@@ -53,6 +60,24 @@ import { STRUCTURED_OUTPUT_TOOL } from "./protocol"
 import { ensureOpencodeServer, type RunningServer, stopOpencodeServer } from "./server"
 
 /**
+ * The agent every one-off answer runs as (interview turns, asset briefs,
+ * image checks). Its own short prompt
+ * REPLACES OpenCode's built-in coding-agent prompt, and it may use nothing
+ * until a call switches a tool on. Measured on the same one-line request:
+ * about 8,000 input tokens as the default agent, under 500 as this one — the
+ * request's own instructions are no longer buried under a coding agent's.
+ */
+export const ANSWER_AGENT = "caret-answer"
+
+/** Models whose native structured answer failed where the worded one worked, this session. */
+const NO_NATIVE_ANSWER = new Set<string>()
+
+const ANSWER_PROMPT = `You are answering one request from Caret, a design tool, as an automated step. Everything you need is in the request. Reply exactly in the format it asks for. You cannot ask anyone anything and nobody will reply to a question: when something is unclear, make the most reasonable choice.`
+
+/** Reading the project: what the from-app interview, the import survey and the planner may do. */
+export const READ_TOOLS: Record<string, boolean> = { read: true, glob: true, grep: true, list: true }
+
+/**
  * Passed inline via `OPENCODE_CONFIG_CONTENT`.
  *
  * Caret never writes `~/.config/opencode/*`. The user's own config and
@@ -68,6 +93,23 @@ const CARET_SERVER_CONFIG: OpencodeConfig = {
 		bash: "ask",
 		webfetch: "ask",
 		external_directory: "ask",
+		// OpenCode's own way to ask the user something, which Caret never shows:
+		// a session that calls it waits forever (field report: an interview turn
+		// stuck twelve minutes on it). Caret asks its own questions.
+		question: "deny",
+		// Caret sets the mode of every turn itself; a model must not switch it.
+		plan_enter: "deny",
+		plan_exit: "deny",
+	},
+	agent: {
+		[ANSWER_AGENT]: {
+			mode: "primary",
+			hidden: true,
+			description: "Answers one request from Caret, in the format it asks for.",
+			prompt: ANSWER_PROMPT,
+			// Nothing but the answer itself; a call opts into the tools it needs.
+			permission: { "*": "deny", StructuredOutput: "allow" },
+		},
 	},
 	logLevel: "WARN",
 }
@@ -261,15 +303,37 @@ export class OpencodeBackend implements CodingBackend {
 	 * post-validation just became load-bearing.
 	 */
 	async structured<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
+		// A schema-constrained answer forces the model's tool choice to the
+		// answer itself, so it never calls the tools it was handed (measured: a
+		// designer step made zero library calls and invented its references). The pinned server also cannot read such a session's
+		// messages back (400 on its stored format). A call that needs tools asks
+		// in words and parses the answer instead.
+		const model = req.model ?? "(default)"
+		if (req.allowTools || NO_NATIVE_ANSWER.has(model)) {
+			return { ...(await this.promptForJson<T>(req, false)), emulated: true }
+		}
 		try {
-			return { value: await this.promptForJson<T>(req, true), emulated: false }
+			return { ...(await this.promptForJson<T>(req, true)), emulated: false }
 		} catch (err) {
+			// A refusal is the provider's answer to any request; asking again in
+			// another format only doubles the wait.
+			if (req.signal?.aborted || err instanceof ProviderRefusalError) throw err
 			Logger.warn(`[backend] native structured output failed, emulating: ${err}`)
-			return { value: await this.promptForJson<T>(req, false), emulated: true }
+			const emulated = await this.promptForJson<T>(req, false)
+			// Native failed and words worked: the model cannot take a forced answer
+			// tool (deepseek in thinking mode refuses every one), so stop paying a
+			// doomed request on each call. A transient failure costs one call's
+			// native path for the session, which emulation covers anyway.
+			NO_NATIVE_ANSWER.add(model)
+			return { ...emulated, emulated: true }
 		}
 	}
 
-	private async promptForJson<T>(req: StructuredRequest, native: boolean): Promise<T> {
+	private async promptForJson<T>(
+		original: StructuredRequest,
+		native: boolean,
+	): Promise<{ value: T; toolCalls: ToolCallRecord[] }> {
+		const req = original.scratch ? { ...original, workingDirectory: await answerDirectory() } : original
 		const server = await this.server()
 		const created = await request<OpencodeSession>(server, "/session", {
 			method: "POST",
@@ -277,6 +341,13 @@ export class OpencodeBackend implements CodingBackend {
 			body: { title: "Caret — structured" },
 		})
 
+		const abortSession = () => {
+			void request(server, `/session/${created.id}/abort`, {
+				method: "POST",
+				query: { directory: req.workingDirectory },
+			}).catch(() => {})
+		}
+		req.signal?.addEventListener("abort", abortSession, { once: true })
 		try {
 			const response = await request<OpencodePromptResponse>(server, `/session/${created.id}/message`, {
 				method: "POST",
@@ -287,28 +358,36 @@ export class OpencodeBackend implements CodingBackend {
 					...(modelRef(req.model, req.effort) ?? {}),
 					...(native ? { format: { type: "json_schema", schema: req.schema } } : {}),
 					// The model is answering a question, not doing work. Every tool it
-					// could reach for here is a way to spend minutes and get it wrong.
-					tools: { bash: false, edit: false, write: false, webfetch: false },
+					// could reach for here is a way to spend minutes and get it wrong —
+					// unless the caller hands it specific ones.
+					...answerSetup(req),
 				},
+				signal: req.signal,
 			})
 
+			// The answer is the LAST step's message; tool calls made on the way
+			// there live in earlier messages of the same session, so read them all.
+			const toolCalls = await this.sessionToolCalls(server, created.id, req.workingDirectory, response.parts)
 			if (response.info.error) {
-				throw new StructuredOutputError(response.info.error.data?.message ?? response.info.error.name)
+				const message = response.info.error.data?.message ?? response.info.error.name
+				if (isProviderRefusal(message)) throw new ProviderRefusalError(message)
+				throw new StructuredOutputError(message)
 			}
 
 			if (native) {
 				const part = response.parts.find((p) => p.type === "tool" && p.tool === STRUCTURED_OUTPUT_TOOL)
 				const value = part && "state" in part ? (part.state as OpencodeToolState).input : undefined
 				if (!value) throw new StructuredOutputError("it returned no structured answer at all")
-				return value as T
+				return { value: value as T, toolCalls }
 			}
 
 			const text = response.parts
 				.filter((p): p is Extract<OpencodePart, { type: "text" }> => p.type === "text")
 				.map((p) => p.text)
 				.join("")
-			return parseJsonAnswer<T>(text)
+			return { value: parseJsonAnswer<T>(text), toolCalls }
 		} finally {
+			req.signal?.removeEventListener("abort", abortSession)
 			await request(server, `/session/${created.id}`, {
 				method: "DELETE",
 				query: { directory: req.workingDirectory },
@@ -540,6 +619,24 @@ export class OpencodeBackend implements CodingBackend {
 		})
 	}
 
+	private async sessionToolCalls(
+		server: RunningServer,
+		sessionId: string,
+		directory: string,
+		fallback: OpencodePart[],
+	): Promise<ToolCallRecord[]> {
+		try {
+			const messages = await request<Array<{ info: { role?: string }; parts: OpencodePart[] }>>(
+				server,
+				`/session/${sessionId}/message`,
+				{ query: { directory } },
+			)
+			return toolCallsOf(messages.filter((m) => m.info.role === "assistant").flatMap((m) => m.parts))
+		} catch {
+			return toolCallsOf(fallback)
+		}
+	}
+
 	/**
 	 * Ask a model one trivial question, and report what it says if it refuses.
 	 *
@@ -567,7 +664,7 @@ export class OpencodeBackend implements CodingBackend {
 					body: {
 						parts: [{ type: "text", text: "Reply with the single word: ok" }],
 						model: { providerID: model.slice(0, slash), modelID: model.slice(slash + 1) },
-						tools: { bash: false, edit: false, write: false, webfetch: false },
+						agent: ANSWER_AGENT,
 					},
 				},
 			)
@@ -686,8 +783,58 @@ export class OpencodeBackend implements CodingBackend {
 			...CARET_SERVER_CONFIG,
 			...serverConfigExtra,
 			permission: { ...CARET_SERVER_CONFIG.permission, ...serverConfigExtra.permission },
+			agent: { ...CARET_SERVER_CONFIG.agent, ...serverConfigExtra.agent },
 		})
 	}
+}
+
+/** Tool switches merged in order, the later key winning and also coming later. */
+export function mergeTools(...layers: Array<Record<string, boolean> | undefined>): Record<string, boolean> {
+	const merged: Record<string, boolean> = {}
+	for (const layer of layers) {
+		for (const [key, value] of Object.entries(layer ?? {})) {
+			// Re-insert so the later layer's key also comes later.
+			delete merged[key]
+			merged[key] = value
+		}
+	}
+	return merged
+}
+
+/**
+ * Which agent answers and with which tools. Every answer is Caret's lean agent
+ * (its agent denies all tools; a call opts back into reads or names the tools
+ * it needs).
+ */
+export function answerSetup(req: StructuredRequest): { agent?: string; tools: Record<string, boolean> } {
+	const reads = req.reads ? READ_TOOLS : undefined
+	return { agent: ANSWER_AGENT, tools: mergeTools(reads, req.tools) }
+}
+
+let scratchDirectory: Promise<string> | null = null
+
+/**
+ * Where answers that need nothing from a project run: no AGENTS.md, no MCP
+ * servers. Resolved through symlinks (macOS /var → /private/var), because the
+ * server treats a path that resolves elsewhere as outside the project.
+ */
+export function answerDirectory(): Promise<string> {
+	scratchDirectory ??= (async () => {
+		const dir = path.join(os.tmpdir(), "caret-answers")
+		await fsp.mkdir(dir, { recursive: true })
+		return fsp.realpath(dir)
+	})()
+	return scratchDirectory
+}
+
+function toolCallsOf(parts: OpencodePart[]): ToolCallRecord[] {
+	return parts
+		.filter((p) => p.type === "tool" && p.tool !== STRUCTURED_OUTPUT_TOOL)
+		.map((p) => {
+			const state = ("state" in p ? p.state : {}) as { status?: string; error?: unknown }
+			const tool = String((p as { tool?: string }).tool ?? "")
+			return state.status === "error" ? { tool, ok: false, error: String(state.error ?? "") } : { tool, ok: true }
+		})
 }
 
 /**
@@ -877,13 +1024,12 @@ class OpencodeSessionHandle implements BackendSession {
 					...(this.options.systemPrompt ? { system: this.options.systemPrompt } : {}),
 					...(modelRef(this.options.model, this.options.effort) ?? {}),
 					// Same per-prompt `tools` map the structured path uses on /message:
-					// false removes the tool from this turn entirely.
-					...(input.disabledTools?.length
-						? { tools: Object.fromEntries(input.disabledTools.map((tool) => [tool, false])) }
-						: {}),
+					// false removes the tool from this turn entirely. A lean session uses
+					// no tools at all (its agent denies everything).
+					tools: mergeTools(Object.fromEntries((input.disabledTools ?? []).map((tool) => [tool, false]))),
 					// The Plan agent is a second line of defence, never the boundary:
 					// upstream subagents have been reported not to inherit it.
-					...(this.options.mode === "read-only" ? { agent: "plan" } : {}),
+					...(this.options.lean ? { agent: ANSWER_AGENT } : this.options.mode === "read-only" ? { agent: "plan" } : {}),
 				},
 			})
 
@@ -1125,12 +1271,18 @@ export class EventMapper {
 				if (tool.state.status === "completed") {
 					for (const path of filePathsOf(tool.tool, tool.state)) yield { type: "file-changed", path }
 				}
+				const input = tool.state.input ?? {}
+				const read =
+					tool.tool === "read" && tool.state.status === "completed"
+						? (input.filePath ?? input.file_path ?? input.path)
+						: undefined
 				yield {
 					type: "tool-end",
 					callId: tool.callID,
 					name: tool.tool,
 					ok: tool.state.status === "completed",
 					summary: tool.state.status === "error" ? tool.state.error : tool.state.title,
+					...(typeof read === "string" ? { readPath: read } : {}),
 				}
 			}
 			return

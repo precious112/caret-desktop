@@ -14,14 +14,16 @@ import { AssetViewer } from "./views/AssetViewer"
 import { BackendPanel } from "./views/BackendPanel"
 import { CHAT_SIDEBAR_WIDTH, ChatSidebar } from "./views/ChatSidebar"
 import { FoundationView } from "./views/FoundationView"
+import { LibrariesView } from "./views/LibrariesView"
 import { NotificationStack } from "./views/NotificationStack"
 import { ProjectPicker } from "./views/ProjectPicker"
 import { AssetsBeforeSetup, CanvasSetup, FIRST_PAGE_SEED, setupStepOf } from "./views/Setup"
+import { SkillsView } from "./views/SkillsView"
 import { TelemetryNotice } from "./views/TelemetryNotice"
 import { TopBar } from "./views/TopBar"
 
 /** Which full-window surface is covering the canvas, if any. */
-export type Surface = "canvas" | "foundation" | "agent" | "assets"
+export type Surface = "canvas" | "foundation" | "agent" | "assets" | "skills" | "libraries"
 
 export function App() {
 	const [project, setProject] = useState<ProjectState | null>(null)
@@ -66,6 +68,27 @@ export function App() {
 	// Main pushes project state whenever Vite comes up, an agent connects, or
 	// tokens change — the renderer never polls for it.
 	useEffect(() => on("project:stateChanged", (next) => setProject(next)), [])
+
+	// Selecting an element on the canvas opens a property sidebar beside the
+	// page. The chat closes while it is open, so the page doesn't get narrower
+	// twice, and comes back when it closes if it was open before.
+	const chatOpenRef = useRef(chatOpen)
+	chatOpenRef.current = chatOpen
+	const chatClosedForInspector = useRef(false)
+	useEffect(
+		() =>
+			on("canvas:inspector-changed", (projectPath, open) => {
+				if (projectPath !== project?.path) return
+				if (open && chatOpenRef.current) {
+					chatClosedForInspector.current = true
+					setChatOpen(false)
+				} else if (!open && chatClosedForInspector.current) {
+					chatClosedForInspector.current = false
+					setChatOpen(true)
+				}
+			}),
+		[project?.path],
+	)
 
 	useEffect(
 		() =>
@@ -237,7 +260,11 @@ export function App() {
 				exploreOpen={exploreOpen}
 				onSetupClick={() => (setupStepOf(project) === 1 || project.app ? requestSurface("foundation") : openFirstPage())}
 				onSurfaceChange={requestSurface}
-				onToggleChat={() => setChatOpen((open) => !open)}
+				onToggleChat={() => {
+					// Opened or closed by hand: the sidebar no longer decides.
+					chatClosedForInspector.current = false
+					setChatOpen((open) => !open)
+				}}
 				project={project}
 				ref={topBarRef}
 				surface={surface}
@@ -265,6 +292,20 @@ export function App() {
 						/>
 					)}
 					{surface === "agent" && <BackendPanel onClose={() => requestSurface("canvas")} project={project} />}
+					{surface === "skills" && (
+						<SkillsView
+							onClose={() => requestSurface("canvas")}
+							onOpenCodingTools={() => requestSurface("agent")}
+							project={project}
+						/>
+					)}
+					{surface === "libraries" && (
+						<LibrariesView
+							onClose={() => requestSurface("canvas")}
+							onOpenCodingTools={() => requestSurface("agent")}
+							project={project}
+						/>
+					)}
 					{surface === "assets" &&
 						(!project.hasFoundation && !assetsLookAround ? (
 							<AssetsBeforeSetup
@@ -279,11 +320,15 @@ export function App() {
 
 				{chatOpen && (
 					<ChatSidebar
-						seed={chatSeed}
-						onClose={() => setChatOpen(false)}
+						onClose={() => {
+							chatClosedForInspector.current = false
+							setChatOpen(false)
+						}}
 						onOpenBackendSetup={() => requestSurface("agent")}
+						onOpenSkills={() => requestSurface("skills")}
 						onViewAsset={setViewerTag}
 						project={project}
+						seed={chatSeed}
 					/>
 				)}
 			</div>

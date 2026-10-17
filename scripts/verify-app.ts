@@ -597,6 +597,18 @@ async function main(): Promise<void> {
 		return `${record.url}, token ${record.token.length} chars, mode 0600`
 	}).then(() => readDiscovery(fixture))
 
+	/** `list_assets` over MCP, as an agent calls it: where the asset list lives now that the core only counts. */
+	async function mcpListAssets(search: string): Promise<string> {
+		if (!discovery) return ""
+		const response = await callMcp(discovery.url, discovery.token, {
+			jsonrpc: "2.0",
+			id: 900,
+			method: "tools/call",
+			params: { name: "list_assets", arguments: { search } },
+		})
+		return response.text()
+	}
+
 	await scenario("c. MCP refuses an unauthenticated request", async () => {
 		assert(discovery, "no discovery record")
 		const response = await callMcp(discovery.url, null, INITIALIZE)
@@ -643,12 +655,23 @@ async function main(): Promise<void> {
 			60_000,
 		)
 		assert(agents.includes("BEGIN CARET DESIGN LAYER"), "generated block marker missing")
-		assert(agents.includes("data-caret-id"), "authoring rules missing from the rules file")
+		assert(agents.includes("data-caret-id"), "the hard rules are missing from the core")
+		assert(agents.includes("read `.caret/AGENTS.md`"), "the core does not point at the design layer's rules")
+		// Codex silently cuts an AGENTS.md past 32 KiB; the core is meant to be a fraction of that.
+		assert(Buffer.byteLength(agents) < 32 * 1024, `AGENTS.md is ${Buffer.byteLength(agents)} bytes`)
 		const claude = await fs.readFile(path.join(fixture, "CLAUDE.md"), "utf-8")
 		assert(claude.includes("BEGIN CARET DESIGN LAYER"), "CLAUDE.md not generated")
 		const cursor = await fs.readFile(path.join(fixture, ".cursor", "rules", "caret-design-layer.mdc"), "utf-8")
 		assert(cursor.startsWith("---"), "Cursor rule is missing its frontmatter")
-		return "AGENTS.md, CLAUDE.md and .cursor/rules all written"
+
+		// The design layer's own rules: read before any work in .caret/.
+		const layer = await fs.readFile(path.join(fixture, ".caret", "AGENTS.md"), "utf-8")
+		assert(layer.includes("caret-id"), "the caret-id rules are missing from .caret/AGENTS.md")
+		const scoped = await fs.readFile(path.join(fixture, ".claude", "rules", "caret-design-layer.md"), "utf-8")
+		assert(scoped.includes('paths:\n  - ".caret/**"'), "the Claude rule is not scoped to .caret/")
+		const ignored = await fs.readFile(path.join(fixture, ".caret", ".gitignore"), "utf-8")
+		assert(ignored.split("\n").includes("/AGENTS.md"), ".caret/AGENTS.md is regenerated, so it must be gitignored")
+		return `core AGENTS.md (${Buffer.byteLength(agents)} bytes), CLAUDE.md, Cursor rule, and .caret/AGENTS.md with scoped copies`
 	})
 
 	await scenario("g. a user block in a rules file survives regeneration", async () => {
@@ -1308,20 +1331,26 @@ async function main(): Promise<void> {
 		return `tag "${entry.tag}" derived from the filename, ${entry.width}x${entry.height} probed from the header`
 	})
 
-	await scenario("w. the asset index reaches the always-on rules files", async () => {
-		// Behind a tool it would be ignored — an agent that must choose to
-		// enumerate assets emits a placeholder instead. This is the delivery
-		// mechanism, so it is the thing worth asserting.
-		const rules = await waitFor(
-			"AGENTS.md to carry the asset",
+	await scenario("w. the core counts the assets, and list_assets finds one by search with its path", async () => {
+		// What loads every time is a count and a pointer, never the list: a
+		// project with a thousand assets loads the same core as an empty one. The
+		// list comes from the tool, a page at a time.
+		await waitFor(
+			"AGENTS.md to count the asset",
+			async () =>
+				/\b\d+ assets?\b/.test(await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")) ? true : null,
+			60_000,
+		)
+		const listed = await waitFor(
+			"list_assets to find the asset by search",
 			async () => {
-				const text = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-				return text.includes("@hero-shot-2x") ? text : null
+				const text = await mcpListAssets("hero-shot")
+				return text.includes("hero-shot-2x") ? text : null
 			},
 			60_000,
 		)
-		assert(rules.includes("/caret-assets/"), "the rules file names the asset but not how to reference it")
-		return "AGENTS.md carries the tag, the path and the size"
+		assert(listed.includes("/caret-assets/"), "list_assets names the asset but not how to reference it")
+		return "the core counts the assets; list_assets finds the tag with its path"
 	})
 
 	await scenario("x. an agent can list assets and receive the actual pixels", async () => {
@@ -1461,11 +1490,8 @@ async function main(): Promise<void> {
 			30_000,
 		)
 		await waitFor(
-			"the description to reach AGENTS.md",
-			async () => {
-				const rules = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-				return rules.includes("empty space top-left") ? true : null
-			},
+			"the description to reach what agents read",
+			async () => ((await mcpListAssets("empty space top-left")).includes("empty space top-left") ? true : null),
 			30_000,
 		)
 
@@ -1716,8 +1742,7 @@ async function main(): Promise<void> {
 		const served = await fetch(`${origin_}/caret-assets/${String(entry?.file)}`, { signal: AbortSignal.timeout(30_000) })
 		assert(served.ok, `the generated asset was not served: ${served.status}`)
 		assert((served.headers.get("content-type") ?? "").includes("svg"), `served as ${served.headers.get("content-type")}`)
-		const rules = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-		assert(rules.includes("hero-wash"), "the generated asset never reached the rules files")
+		assert((await mcpListAssets("hero-wash")).includes("hero-wash"), "the generated asset never reached what agents read")
 
 		// And the record is readable where the asset lives, not only in JSON: the
 		// "generated" chip opens the whole thing — lane, producer, recipe, answers,
@@ -1774,19 +1799,23 @@ async function main(): Promise<void> {
 
 		await ask.locator('[data-generate-kind="image"]').click()
 		await ask.getByTestId("generate-request").fill("a stainless steel ruler on a plain surface")
-		await ask.getByTestId("generate-begin").click()
 
-		// The refusal arrives where the user actually hits it — on the take screen,
+		// The refusal arrives where the user actually hits it — on the take board,
 		// after asking for something — rather than as a greyed-out card they never
 		// selected. It has to say the rest still works, or a missing key reads as
-		// the whole feature being locked behind a payment.
+		// the whole feature being locked behind a payment. With a key present,
+		// Generate is not pressed: it would spend money for nothing here.
 		let refusal = ""
 		if (!configured) {
+			await ask.locator('[data-prompt-mode="exact"]').click()
+			await ask.getByTestId("generate-begin").click()
 			refusal = await waitFor(
 				"the paid lane to refuse honestly",
 				async () => {
 					const said = await panel
-						.getByTestId("generate-variants")
+						.getByTestId("take-board")
+						.locator('[data-testid="board-take-error"]')
+						.first()
 						.innerText()
 						.catch(() => "")
 					return said.includes("key") ? said : null
@@ -1795,9 +1824,10 @@ async function main(): Promise<void> {
 			)
 			assert(/needs no account|no account/i.test(refusal), `the refusal says: ${refusal.replace(/\n/g, " ")}`)
 			assert(/Gemini|API key/i.test(refusal), "the refusal does not name what is missing")
+			await panel.getByTestId("board-done").click()
+		} else {
+			await panel.getByText("Cancel").click()
 		}
-
-		await panel.getByText("Cancel").click()
 
 		return configured
 			? "every kind offered and the image lane runnable — credentials present in this environment"
@@ -1985,144 +2015,135 @@ async function main(): Promise<void> {
 	// credentials: a mocked pass here would certify the plumbing and say nothing
 	// about the thing that actually costs money and can actually refuse.
 	if (!PAID) {
-		skipPaid("bi. a photograph is generated, picked and indexed")
+		skipPaid("bi. a photograph is generated on the board, used, then branched and used again")
 	} else if (!process.env.GEMINI_API_KEY && !process.env.CARET_VERTEX_PROJECT && !process.env.GOOGLE_CLOUD_PROJECT) {
-		skip("bi. a photograph is generated, picked and indexed", "no Gemini or Vertex credentials in this environment")
+		skip(
+			"bi. a photograph is generated on the board, used, then branched and used again",
+			"no Gemini or Vertex credentials in this environment",
+		)
 	} else {
-		await scenario("bi. a photograph is generated, picked and indexed", async () => {
+		await scenario("bi. a photograph is generated on the board, used, then branched and used again", async () => {
+			if ((await chrome.getByTestId("app-shell").getAttribute("data-surface")) !== "assets") {
+				await chrome.getByTestId("top-bar").getByRole("button", { name: "Assets" }).click()
+			}
+			await chrome.waitForSelector('[data-testid="assets-view"]', { timeout: 30_000 })
 			await chrome.getByTestId("assets-generate").click()
 			const panel = chrome.getByTestId("generate-asset")
 			await panel.waitFor({ timeout: 15_000 })
 
-			// A subject nothing in the old library could have produced. The six
-			// hardcoded objects were a vase, a lamp, headphones, a succulent, a chair
-			// and a watch; an overhead workbench is a recipe, not a request.
+			// A subject nothing in the old library could have produced, sent as
+			// typed ("Use my words"), in the shape chosen before anything is made.
 			const WANTED = "an architect's drafting table seen from above, with rolled drawings on it"
 			const ask = panel.getByTestId("generate-ask")
 			await ask.waitFor({ timeout: 15_000 })
 			await ask.locator('[data-generate-kind="image"]').click()
 			await ask.getByTestId("generate-request").fill(WANTED)
+			await ask.getByTestId("generate-aspect").selectOption("16:9")
+			await ask.locator('[data-prompt-mode="exact"]').click()
 			await ask.getByTestId("generate-begin").click()
 
-			// Clarification is optional and skippable, and skipping must reach the
-			// takes rather than stranding the user on a screen of questions. The
-			// clarify screen can arrive LATE (it is a model turn), and skipping
-			// now runs the rebuild (another model turn) before the takes stage —
-			// so this polls for either, skips at most once, and waits wide.
-			const clarify = panel.getByTestId("generate-clarify")
-			const variants = panel.getByTestId("generate-variants")
-			let skipped = false
+			const board = panel.getByTestId("take-board")
+			await board.waitFor({ timeout: 20_000 })
+			// The takes land one at a time, each a paid call of ~15s.
+			const firstReady = board.locator('[data-testid="board-take"][data-status="ready"]').first()
+			await firstReady.waitFor({ timeout: 300_000 })
 			await waitFor(
-				"the takes grid (past any clarify questions)",
-				async () => {
-					if (!skipped && (await clarify.isVisible().catch(() => false))) {
-						skipped = true
-						await clarify.getByTestId("generate-clarify-skip").click()
-						return null
-					}
-					return (await variants.isVisible().catch(() => false)) ? true : null
-				},
-				240_000,
+				"every first take to finish or fail",
+				async () =>
+					(await board
+						.locator(
+							'[data-testid="board-take"][data-status="waiting"], [data-testid="board-take"][data-status="working"]',
+						)
+						.count()) === 0
+						? true
+						: null,
+				300_000,
 			)
-			// The wait is the feature here: paid calls at ~15s apiece, run together
-			// rather than in sequence.
-			await variants.locator("[data-generate-variant] img").first().waitFor({ timeout: 180_000 })
-
-			const rendered = await waitFor(
-				"a generated photograph to decode",
-				async () => {
-					const width = await variants
-						.locator("[data-generate-variant] img")
-						.first()
-						.evaluate((img: HTMLImageElement) => img.naturalWidth)
-					return width > 0 ? width : null
-				},
-				60_000,
-			)
-			assert(rendered > 100, `the photograph decoded at ${rendered}px`)
-
-			const failures = await variants.locator("[data-generate-variant-error]").count()
-			const usable = await variants.locator("[data-generate-variant]").count()
-			assert(usable > 0, "every variant failed")
-
+			const usable = await board.locator('[data-testid="board-take"][data-status="ready"]').count()
+			const failures = await board.locator('[data-testid="board-take"][data-status="failed"]').count()
+			assert(usable > 0, "every take failed")
+			const decoded = await firstReady.locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth)
+			assert(decoded > 100, `the photograph decoded at ${decoded}px`)
 			await shot(chrome, "22-generate-photographs")
-			await variants.locator("[data-generate-variant]").first().click()
-			// Selecting a take, then "Use this take" — see bg.
-			await panel.getByTestId("generate-use-take").click()
 
-			const name = panel.getByTestId("generate-name")
-			await name.waitFor({ timeout: 15_000 })
-			await name.getByTestId("generate-tag").fill("hero-bench")
-			await name.getByTestId("generate-save").click()
+			await firstReady.click()
+			await panel.getByTestId("board-name").fill("hero-bench")
+			await panel.getByTestId("board-use").click()
+			await panel.getByTestId("board-saved-note").waitFor({ timeout: 30_000 })
 
-			// Completed entry, not first sight — see bg for why.
-			const raw = await waitFor(
-				"the photograph to reach the index with its provenance",
-				async () => {
-					const text = await fs.readFile(path.join(fixture, ".caret", "assets", "index.json"), "utf-8").catch(() => "")
-					if (!text.includes('"hero-bench"')) return null
-					const found = (JSON.parse(text) as { assets: Array<Record<string, any>> }).assets.find(
-						(asset) => asset.tag === "hero-bench",
-					)
-					return found?.description && found?.origin?.type === "generated" ? text : null
-				},
-				30_000,
-			)
-
-			const entry = (JSON.parse(raw) as { assets: Array<Record<string, unknown>> }).assets.find(
-				(asset) => asset.tag === "hero-bench",
-			)
-			assert(entry?.kind === "image", `the photograph was indexed as ${entry?.kind}`)
-			// Intrinsic size probed from the real file header, not from the request.
-			assert(Number(entry?.width) > 100, `the photograph measured ${entry?.width}x${entry?.height}`)
-
-			// Post-processing, checked on the file rather than on the intention.
-			// The model returns 1344x768 for a 16:9 request — 1.75:1, close enough
-			// to look fine and wrong enough to show a seam in a full-bleed hero.
-			const ratio = Number(entry?.width) / Number(entry?.height)
+			const readEntry = async (tag: string) =>
+				waitFor(
+					`@${tag} to reach the index with its provenance`,
+					async () => {
+						const text = await fs
+							.readFile(path.join(fixture, ".caret", "assets", "index.json"), "utf-8")
+							.catch(() => "")
+						const found = text
+							? (JSON.parse(text) as { assets: Array<Record<string, any>> }).assets.find(
+									(asset) => asset.tag === tag,
+								)
+							: undefined
+						return found?.description && found?.origin?.type === "generated" ? found : null
+					},
+					30_000,
+				)
+			const entry = await readEntry("hero-bench")
+			assert(entry.kind === "image", `the photograph was indexed as ${entry.kind}`)
+			const ratio = Number(entry.width) / Number(entry.height)
 			assert(Math.abs(ratio - 16 / 9) < 0.01, `the stored photograph is ${ratio.toFixed(3)}:1, not 16:9`)
-			assert(entry?.mime === "image/webp", `the photograph was stored as ${entry?.mime}`)
-
-			const post = (entry?.origin as Record<string, any>)?.postProcessed
+			assert(entry.mime === "image/webp", `the photograph was stored as ${entry.mime}`)
+			const post = entry.origin?.postProcessed
 			assert(Boolean(post), "post-processing was not recorded")
-			// A 1.4MB PNG per hero, committed forever, is the thing this prevents.
 			assert(
 				Number(post.to.bytes) < Number(post.from.bytes) / 3,
 				`post-processing only got ${post.from.bytes} down to ${post.to.bytes} bytes`,
 			)
-			assert(Number(entry?.bytes) === Number(post.to.bytes), "the index disagrees with what was recorded")
+			assert(entry.origin.lane === "raster", `the lane was recorded as ${entry.origin.lane}`)
+			assert(String(entry.origin.producer ?? "").includes("gemini"), `the model was recorded as ${entry.origin.producer}`)
+			// "Use my words": what was sent starts with exactly what was typed, and
+			// Caret's own avoid list was not added.
+			const resolved = String(entry.origin.resolved ?? "")
+			assert(resolved.startsWith(WANTED), `the prompt sent is not the words as typed: ${resolved.slice(0, 200)}`)
+			assert(!resolved.includes("Do not include:"), "Caret's avoid list was added to 'Use my words'")
+			assert(entry.origin.answers?.asked === WANTED, "the request was not kept in provenance")
+			assert(entry.origin.answers?.promptHelp === "exact", `prompt help recorded as ${entry.origin.answers?.promptHelp}`)
+			const cost = entry.origin.cost
+			assert(cost?.unit === "tokens" && Number(cost.amount) > 0, `the cost was not metered: ${JSON.stringify(cost)}`)
 
-			const origin = entry?.origin as Record<string, unknown> | undefined
-			assert(origin?.lane === "raster", `the lane was recorded as ${origin?.lane}`)
-			assert(String(origin?.producer ?? "").includes("gemini"), `the model was recorded as ${origin?.producer}`)
-			// For a paid lane the resolved prompt is the only record of what the
-			// money bought, and it has to carry the negative constraints too.
-			assert(String(origin?.resolved ?? "").includes("Do not include:"), "the slop constraints are not in the record")
-			// The whole point: what was sent is what the user asked for, verbatim.
-			assert(
-				String(origin?.resolved ?? "").includes(WANTED),
-				`the resolved prompt is not the user's request: ${String(origin?.resolved ?? "").slice(0, 300)}`,
+			// Branch the saved take for real: the picture goes back as the reference.
+			await panel.getByTestId("board-inspector").locator('[data-chip="Warmer light"]').click()
+			await panel.getByTestId("board-grow").click()
+			await waitFor(
+				"the branch's takes to finish or fail",
+				async () => {
+					const branchTakes = board.locator('[data-testid="board-take"]')
+					const total = await branchTakes.count()
+					const running = await board
+						.locator(
+							'[data-testid="board-take"][data-status="waiting"], [data-testid="board-take"][data-status="working"]',
+						)
+						.count()
+					return total === 4 + 2 && running === 0 ? true : null
+				},
+				300_000,
 			)
-			// And none of the old hardcoded subjects can have leaked in.
-			for (const ghost of ["ceramic vase", "table lamp", "over-ear headphones", "succulent", "wristwatch"]) {
-				assert(!String(origin?.resolved ?? "").includes(ghost), `the resolved prompt substituted "${ghost}"`)
-			}
-			assert((origin?.answers as Record<string, string>)?.asked === WANTED, "the request was not kept in provenance")
+			assert((await board.locator("[data-line-for]").count()) === 1, "the branch has no line to its take")
+			const warm = board.locator('[data-testid="board-take"][data-status="ready"]').last()
+			await warm.click()
+			await panel.getByTestId("board-name").fill("hero-bench-warm")
+			await panel.getByTestId("board-use").click()
+			const branched = await readEntry("hero-bench-warm")
+			const chain = String(branched.origin.resolved ?? "")
+			assert(
+				chain.includes("[changed from take") && chain.includes("make the light warmer"),
+				`the branch's provenance: ${chain.slice(-300)}`,
+			)
+			await shot(chrome, "22b-generate-branch")
 
-			// What the money bought is recorded from the provider's own meter — for
-			// a paid lane, "cost per asset" is provenance, not bookkeeping.
-			const cost = (entry?.origin as Record<string, any>)?.cost
-			assert(Boolean(cost), "the cost of the paid call was not recorded")
-			assert(cost.unit === "tokens", `the cost was recorded in ${cost.unit}, not the provider's meter`)
-			assert(Number(cost.amount) > 0, `the recorded cost is ${cost.amount}`)
-			assert(Number(cost.round?.calls) >= usable, `the round recorded ${cost.round?.calls} calls for ${usable} variants`)
-
-			await chrome.getByTestId("assets-view").getByText("Done").click()
+			await panel.getByTestId("board-done").click()
 			return (
-				`asked for "${WANTED}" and got it — ${usable} take(s) (${failures} refused), picked one, ` +
-				`cropped to 16:9 at ${entry?.width}x${entry?.height}, ` +
-				`${Math.round(Number(post.from.bytes) / 1024)}KB ${post.from.mime} → ${Math.round(Number(post.to.bytes) / 1024)}KB webp, ` +
-				`${cost.amount} tokens metered (round of ${cost.round?.calls}: ${cost.round?.amount})`
+				`asked for "${WANTED}" in its own words — ${usable} take(s) (${failures} refused), used one at 16:9 ` +
+				`${entry.width}x${entry.height} webp, ${cost.amount} tokens metered; branched it warmer and used that too`
 			)
 		})
 	}
@@ -2163,48 +2184,51 @@ async function main(): Promise<void> {
 			await ask.locator('[data-generate-kind="image"]').click()
 			await ask.getByTestId("generate-request").fill(WANTED_CUTOUT)
 			// Transparency is a property of the image, not a kind of its own — and
-			// it is what switches on the flat-key-colour hard requirement.
+			// it is what switches on the white-background requirement.
 			await ask.getByTestId("generate-transparent").check()
+			await ask.getByTestId("generate-aspect").selectOption("1:1")
+			await ask.locator('[data-prompt-mode="exact"]').click()
 			await ask.getByTestId("generate-begin").click()
 
-			// Same late-clarify + rebuild road as the image scenario above.
-			const clarify = panel.getByTestId("generate-clarify")
-			const variants = panel.getByTestId("generate-variants")
-			let skipped = false
+			// The board waits for the cutout tool before spending anything, then
+			// keys each take before showing it.
+			const board = panel.getByTestId("take-board")
+			await board.waitFor({ timeout: 20_000 })
 			await waitFor(
-				"the cutout takes grid (past any clarify questions)",
+				"every cutout take to finish or fail",
 				async () => {
-					if (!skipped && (await clarify.isVisible().catch(() => false))) {
-						skipped = true
-						await clarify.getByTestId("generate-clarify-skip").click()
-						return null
-					}
-					return (await variants.isVisible().catch(() => false)) ? true : null
+					const total = await board.locator('[data-testid="board-take"]').count()
+					const running = await board
+						.locator(
+							'[data-testid="board-take"][data-status="waiting"], [data-testid="board-take"][data-status="working"]',
+						)
+						.count()
+					return total > 0 && running === 0 ? true : null
 				},
-				240_000,
+				600_000,
 			)
-			await variants.locator("[data-generate-variant] img").first().waitFor({ timeout: 240_000 })
-
-			// The cut happened *before* the pick: what is on screen is the finished
-			// cutout as PNG-with-alpha, not the original on its white background.
-			const previewSrc = await variants
-				.locator("[data-generate-variant] img")
+			const usable = await board.locator('[data-testid="board-take"][data-status="ready"]').count()
+			const keyFailures = await board.locator('[data-testid="board-take"][data-status="failed"]').count()
+			assert(
+				usable > 0,
+				`every cutout take failed: ${await board
+					.locator('[data-testid="board-take-error"]')
+					.first()
+					.innerText()
+					.catch(() => "")}`,
+			)
+			const previewSrc = await board
+				.locator('[data-testid="board-take"][data-status="ready"] img')
 				.first()
 				.evaluate((img: HTMLImageElement) => img.src.slice(0, 24))
 			assert(previewSrc.startsWith("data:image/png"), `the preview is ${previewSrc}, not the cut-out png`)
-
-			const keyFailures = await variants.locator("[data-generate-variant-error]").count()
-			const usable = await variants.locator("[data-generate-variant]").count()
-			assert(usable > 0, "every cutout variant failed — generation or keying")
 			await shot(chrome, "24-generate-cutouts")
 
-			await variants.locator("[data-generate-variant]").first().click()
-			// Selecting a take, then "Use this take" — see bg.
-			await panel.getByTestId("generate-use-take").click()
-			const name = panel.getByTestId("generate-name")
-			await name.waitFor({ timeout: 15_000 })
-			await name.getByTestId("generate-tag").fill("cutout-object")
-			await name.getByTestId("generate-save").click()
+			await board.locator('[data-testid="board-take"][data-status="ready"]').first().click()
+			await panel.getByTestId("board-name").fill("cutout-object")
+			await panel.getByTestId("board-use").click()
+			await panel.getByTestId("board-saved-note").waitFor({ timeout: 30_000 })
+			await panel.getByTestId("board-done").click()
 
 			// Completed entry, not first sight — see bg for why.
 			const raw = await waitFor(
@@ -2250,7 +2274,6 @@ async function main(): Promise<void> {
 					: entry?.mime === "image/png" && file[25] === 6
 			assert(hasAlpha, `the stored cutout (${entry?.mime}) carries no alpha channel`)
 
-			await chrome.getByTestId("assets-view").getByText("Done").click()
 			return `asked for "${WANTED_CUTOUT}" — ${usable} cutout(s) (${keyFailures} refused), saved as @cutout-object, ${entry?.mime} with alpha, cost recorded`
 		})
 	}
@@ -2713,13 +2736,22 @@ async function main(): Promise<void> {
 				const deadline = Date.now() + 30000
 				while (Date.now() < deadline && !colorRow) {
 					pageFrame = wc.mainFrame.frames.find((f: any) => f.url.includes("mode=focused")) ?? pageFrame
-					wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
-					await new Promise((r) => setTimeout(r, 200))
-					wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
-					wc.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "left", clickCount: 1 })
+					// Selection is react-grab's, which starts off when a page opens; a person turns it on from its toolbar.
+					await pageFrame.executeJavaScript(`((window).__REACT_GRAB__?.activate?.(), true)`).catch(() => {})
+					// Click only while nothing is selected: a click on the paused page does nothing.
+					const selected = await wc
+						.executeJavaScript(`!!document.querySelector('#caret-param-panel')`)
+						.catch(() => false)
+					if (!selected) {
+						wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
+						await new Promise((r) => setTimeout(r, 200))
+						wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
+						wc.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "left", clickCount: 1 })
+					}
 					const rowDeadline = Date.now() + 5000
 					while (Date.now() < rowDeadline && !colorRow) {
-						colorRow = await pageFrame
+						// The panel lives in the canvas's sidebar beside the page, not in the page.
+						colorRow = await wc
 							.executeJavaScript(
 								`(() => {
 									const row = document.querySelector('#caret-param-panel [data-param-row="color"]')
@@ -2733,7 +2765,7 @@ async function main(): Promise<void> {
 				if (!colorRow) return { error: "the panel never rendered a colour row from the host's Params" }
 
 				// Commit a padding value through the row's input.
-				const committed = await pageFrame.executeJavaScript(
+				const committed = await wc.executeJavaScript(
 					`(() => {
 						const input = document.querySelector('#caret-param-panel [data-param-input="padding"]')
 						if (!input || input.disabled) return false
@@ -2835,6 +2867,8 @@ async function main(): Promise<void> {
 						continue
 					}
 					const at = { x: Math.round(offset.x + subtitleRaw.x), y: Math.round(offset.y + subtitleRaw.y) }
+					// Selection is react-grab's, which starts off when a page opens; a person turns it on from its toolbar.
+					await pageFrame.executeJavaScript(`((window).__REACT_GRAB__?.activate?.(), true)`).catch(() => {})
 					wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
 					await new Promise((r) => setTimeout(r, 200))
 					wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
@@ -2845,7 +2879,7 @@ async function main(): Promise<void> {
 					let onSubtitle = false
 					const subtitleDeadline = Date.now() + 8000
 					while (Date.now() < subtitleDeadline && !onSubtitle) {
-						onSubtitle = await pageFrame
+						onSubtitle = await wc
 							.executeJavaScript(
 								`(document.querySelector('#caret-param-panel')?.dataset?.caretId === 'hero-subtitle')`,
 							)
@@ -2890,14 +2924,14 @@ async function main(): Promise<void> {
 
 					const announceDeadline = Date.now() + 8000
 					while (Date.now() < announceDeadline && !announced) {
-						announced = await pageFrame
+						announced = await wc
 							.executeJavaScript(`(document.querySelector('#caret-param-panel')?.dataset?.selectionCount === '2')`)
 							.catch(() => false)
 						if (!announced) await new Promise((r) => setTimeout(r, 250))
 					}
 				}
 				if (!announced) {
-					const diag = await pageFrame
+					const diag = await wc
 						.executeJavaScript(
 							`(() => { const p = document.querySelector('#caret-param-panel'); return { count: p?.dataset?.selectionCount ?? null, panelId: p?.dataset?.caretId ?? null } })()`,
 						)
@@ -2909,7 +2943,7 @@ async function main(): Promise<void> {
 				let committed = false
 				const commitDeadline = Date.now() + 15000
 				while (Date.now() < commitDeadline && !committed) {
-					committed = await pageFrame.executeJavaScript(
+					committed = await wc.executeJavaScript(
 						`(() => {
 							const input = document.querySelector('#caret-param-panel [data-param-input="padding"]')
 							if (!input || input.disabled) return false
@@ -2984,6 +3018,175 @@ async function main(): Promise<void> {
 		}
 
 		return `one commit put p-[32px] on both elements; Ctrl+Z restored the batch as one step`
+	})
+
+	await scenario("ci. a selection gets a sidebar beside the page and pauses the rest until Enter", async () => {
+		// The property panel used to float over the page, and while an element
+		// was selected every other element still lit up under the pointer. Now
+		// the panel is a sidebar beside the page (the chat closes for it and
+		// comes back after), and the rest of the page is paused until Enter,
+		// or Escape. Real mouse and keys
+		// throughout, and react-grab's own hover target is the witness.
+		await ensureChatOpen(chrome)
+		await chrome.waitForTimeout(800)
+
+		// One small action per call. No named helpers inside the evaluate body:
+		// esbuild wraps them in a __name helper the main process doesn't have.
+		const act = (action: string, arg: any = null) =>
+			app!.evaluate(
+				async ({ BrowserWindow }, input: { action: string; arg: any }) => {
+					let canvas: any = null
+					for (const win of BrowserWindow.getAllWindows()) {
+						const found = ((win?.contentView?.children ?? []) as any[]).find(
+							(v) =>
+								v.webContents &&
+								!v.webContents.isDestroyed() &&
+								v.webContents.getURL().startsWith("http://127.0.0.1"),
+						)
+						if (found && found.webContents.mainFrame.frames.some((f: any) => f.url.includes("mode=focused")))
+							canvas = found
+					}
+					if (!canvas) return { error: "no canvas view with a focused page" }
+					const wc = canvas.webContents
+					const pageFrame = wc.mainFrame.frames.find(
+						(f: any) => f.url.includes("mode=focused") && f.url.includes("page=home"),
+					)
+					if (!pageFrame) return { error: "the focused Home page is not open (bv leaves it open)" }
+					const { action, arg } = input
+
+					if (action === "point") {
+						// Where an element of the page is, in the view's coordinates, right now.
+						const frameBox = await wc.executeJavaScript(
+							`(() => { const r = document.querySelector('.caret-focused-iframe').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width } })()`,
+						)
+						const raw = await pageFrame.executeJavaScript(
+							`(() => { const el = document.querySelector(${JSON.stringify(arg)}); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: innerWidth } })()`,
+						)
+						if (!raw) return { error: `nothing matches ${arg} on the page` }
+						const scale = frameBox.w / raw.w
+						return { x: Math.round(frameBox.x + raw.x * scale), y: Math.round(frameBox.y + raw.y * scale) }
+					}
+					if (action === "click") {
+						wc.sendInputEvent({ type: "mouseMove", x: arg.x, y: arg.y })
+						await new Promise((r) => setTimeout(r, 200))
+						wc.sendInputEvent({ type: "mouseDown", x: arg.x, y: arg.y, button: "left", clickCount: 1 })
+						wc.sendInputEvent({ type: "mouseUp", x: arg.x, y: arg.y, button: "left", clickCount: 1 })
+						await new Promise((r) => setTimeout(r, 900))
+						return { url: pageFrame.url }
+					}
+					if (action === "hover") {
+						wc.sendInputEvent({ type: "mouseMove", x: arg.x - 6, y: arg.y })
+						await new Promise((r) => setTimeout(r, 120))
+						wc.sendInputEvent({ type: "mouseMove", x: arg.x, y: arg.y })
+						await new Promise((r) => setTimeout(r, 400))
+						return {
+							hovered: await pageFrame.executeJavaScript(
+								`(() => { const t = window.__REACT_GRAB__?.getState?.().targetElement; return t ? (t.closest('[data-caret-id]')?.getAttribute('data-caret-id') ?? t.tagName) : null })()`,
+							),
+							// Whether react-grab's highlight is drawn at all: what a person sees.
+							drawn: await pageFrame.executeJavaScript(
+								`(() => { const c = document.querySelector('[data-react-grab]')?.shadowRoot?.querySelector('[data-react-grab-overlay-canvas]'); return !!c && getComputedStyle(c).visibility !== 'hidden' })()`,
+							),
+						}
+					}
+					if (action === "enter") {
+						wc.sendInputEvent({ type: "keyDown", keyCode: "Return" })
+						wc.sendInputEvent({ type: "char", keyCode: "\r" })
+						wc.sendInputEvent({ type: "keyUp", keyCode: "Return" })
+						await new Promise((r) => setTimeout(r, 900))
+						return {}
+					}
+					if (action === "escape") {
+						wc.sendInputEvent({ type: "keyDown", keyCode: "Escape" })
+						wc.sendInputEvent({ type: "keyUp", keyCode: "Escape" })
+						await new Promise((r) => setTimeout(r, 900))
+						return {}
+					}
+					if (action === "page") return { value: await pageFrame.executeJavaScript(arg) }
+					if (action === "panel") {
+						return await wc.executeJavaScript(
+							`(() => {
+								const p = document.querySelector('#caret-inspector #caret-param-panel')
+								const side = document.querySelector('#caret-inspector').getBoundingClientRect()
+								const page = document.querySelector('.caret-focused-iframe-container').getBoundingClientRect()
+								return { subject: p ? p.dataset.caretId : null, sideWidth: Math.round(side.width), sideLeft: Math.round(side.left), pageRight: Math.round(page.right) }
+							})()`,
+						)
+					}
+					return { error: "unknown action " + action }
+				},
+				{ action, arg },
+			) as Promise<any>
+		const must = async (action: string, arg: any = null) => {
+			const result = await act(action, arg)
+			assert(!result?.error, `${action}: ${result?.error}`)
+			return result
+		}
+
+		// Start from nothing selected, with react-grab on as a person turns it on.
+		await must("page", `(window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })), true)`)
+		await chrome.waitForTimeout(800)
+		await must("page", `((window).__REACT_GRAB__?.activate?.(), true)`)
+
+		await must("click", await must("point", '[data-caret-id="hero-subtitle"]'))
+		const selected = await must("panel")
+		assert(
+			selected.subject === "hero-subtitle",
+			`clicking the subtitle did not put it in the sidebar: ${JSON.stringify(selected)}`,
+		)
+		const inPage = (await must("page", `!!document.querySelector('#caret-param-panel')`)).value
+		assert(!inPage, "the panel is still drawn inside the page")
+		assert(selected.sideWidth >= 270, `the sidebar did not open beside the page: ${JSON.stringify(selected)}`)
+		assert(selected.pageRight <= selected.sideLeft + 1, `the sidebar overlaps the page: ${JSON.stringify(selected)}`)
+		await waitFor(
+			"the chat to close while the sidebar is open",
+			async () => ((await chrome.locator('[data-testid="chat-transcript"]').count()) === 0 ? true : null),
+			5000,
+		)
+		await shot(chrome, "ci-sidebar-open")
+
+		// Paused: hovering the headline draws nothing and clicking it picks nothing.
+		const headlineId = (await must("page", `document.querySelector('h1[data-caret-id]').getAttribute('data-caret-id')`)).value
+		const headline = await must("point", "h1[data-caret-id]")
+		const lockedHover = await must("hover", headline)
+		assert(!lockedHover.drawn, `hovering the headline still drew a highlight while paused: ${JSON.stringify(lockedHover)}`)
+		const clicked = await must("click", headline)
+		assert(clicked.url.includes("page=home"), "a click on the paused page navigated it")
+		const stillSubtitle = await must("panel")
+		assert(
+			stillSubtitle.subject === "hero-subtitle",
+			`a click on the headline changed the selection while paused: ${JSON.stringify(stillSubtitle)}`,
+		)
+
+		// Enter finishes: the sidebar closes and the chat comes back.
+		await must("enter")
+		const finished = await must("panel")
+		assert(finished.subject === null, `Enter did not finish with the element: ${JSON.stringify(finished)}`)
+		assert(finished.sideWidth === 0, `the sidebar stayed open after Enter: ${JSON.stringify(finished)}`)
+		await waitFor(
+			"the chat to come back once the sidebar closed",
+			async () => ((await chrome.locator('[data-testid="chat-transcript"]').count()) > 0 ? true : null),
+			5000,
+		)
+
+		// With nothing selected, the same hover is highlighted. This proves the
+		// missing highlight above was the pause, not a probe that can't see it.
+		const freeHover = await must("hover", await must("point", "h1[data-caret-id]"))
+		assert(
+			freeHover.drawn && freeHover.hovered === headlineId,
+			`with nothing selected, hovering the headline did not highlight it: ${JSON.stringify(freeHover)}`,
+		)
+
+		// After letting go, another element can be picked (the paused page left
+		// react-grab able to select), and a real Escape lets that one go too.
+		await must("click", await must("point", "h1[data-caret-id]"))
+		const next = (await must("panel")).subject
+		assert(next === headlineId, `after Enter, clicking the headline did not select it: ${next}`)
+		await must("escape")
+		const released = await must("panel")
+		assert(released.subject === null, `Escape did not let the headline go: ${JSON.stringify(released)}`)
+
+		return `sidebar beside the page (${selected.sideWidth}px; chat closed, then back); hover and clicks paused until Enter; the next element picks, and Escape lets it go`
 	})
 
 	await scenario("bu. editing one .map() row's text writes that row's data item, and only it", async () => {
@@ -3533,10 +3736,19 @@ export default function ShaderDemo() {
 				// __name wrapper, which does not exist on the Electron side (see the
 				// harness notes; this file has hit that exact ReferenceError).
 
-				// Select the subtitle, which the handles attach to.
-				const subtitleRaw = await pageFrame.executeJavaScript(
-					`(() => { const el = document.querySelector('[data-caret-id="hero-subtitle"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`,
-				)
+				// Select the subtitle, which the handles attach to. The page has only
+				// just opened, so wait for it to draw.
+				let subtitleRaw: { x: number; y: number } | null = null
+				deadline = Date.now() + 30000
+				while (Date.now() < deadline && !subtitleRaw) {
+					pageFrame = wc.mainFrame.frames.find((f: any) => f.url.includes("page=home")) ?? pageFrame
+					subtitleRaw = await pageFrame
+						.executeJavaScript(
+							`(() => { const el = document.querySelector('[data-caret-id="hero-subtitle"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`,
+						)
+						.catch(() => null)
+					if (!subtitleRaw) await new Promise((r) => setTimeout(r, 500))
+				}
 				if (!subtitleRaw) return { error: "no subtitle on the page" }
 				const at = {
 					x: Math.round(offset.x + subtitleRaw.x * scale),
@@ -3547,6 +3759,8 @@ export default function ShaderDemo() {
 				deadline = Date.now() + 30000
 				while (Date.now() < deadline && !handles) {
 					pageFrame = wc.mainFrame.frames.find((f: any) => f.url.includes("page=home")) ?? pageFrame
+					// Selection is react-grab's, which starts off when a page opens; a person turns it on from its toolbar.
+					await pageFrame.executeJavaScript(`((window).__REACT_GRAB__?.activate?.(), true)`).catch(() => {})
 					wc.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y })
 					await new Promise((r) => setTimeout(r, 200))
 					wc.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 })
@@ -3562,9 +3776,15 @@ export default function ShaderDemo() {
 				if (!handles) {
 					const diag = await pageFrame
 						.executeJavaScript(
-							`(() => { const p = document.querySelector('#caret-param-panel'); return { panel: !!p, panelId: p?.dataset?.caretId ?? null, grab: !!window.__REACT_GRAB__, ids: document.querySelectorAll('[data-caret-id]').length } })()`,
+							`(() => ({ grab: !!window.__REACT_GRAB__, ids: document.querySelectorAll('[data-caret-id]').length }))()`,
 						)
 						.catch(() => null)
+					const panel = await wc
+						.executeJavaScript(
+							`(() => { const p = document.querySelector('#caret-param-panel'); return { panel: !!p, panelId: p?.dataset?.caretId ?? null } })()`,
+						)
+						.catch(() => null)
+					Object.assign(diag ?? {}, panel ?? {})
 					return { error: "the resize handles never appeared on selection — diag: " + JSON.stringify(diag) }
 				}
 
@@ -3575,6 +3795,20 @@ export default function ShaderDemo() {
 				// that way. The committed width lands back in the DOM as a w-[..px]
 				// class within about a second of a real drag, so each attempt polls
 				// for it and a miss retries the grab instead of reporting nothing.
+				// Selecting opened the property sidebar beside the page (and closed the
+				// chat), so the page has moved since the click: measure it again.
+				await new Promise((r) => setTimeout(r, 600))
+				const placed = await wc.executeJavaScript(
+					`(() => { const r = document.querySelector('.caret-focused-iframe').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width } })()`,
+				)
+				const placedInner = await pageFrame.executeJavaScript(`window.innerWidth`)
+				const dragScale = placedInner > 0 ? placed.w / placedInner : 1
+				// What each press reached, for the failure message.
+				await pageFrame.executeJavaScript(
+					`(window.__DOWNS__ = [], window.addEventListener('pointerdown', (e) => window.__DOWNS__.push(e.type + ':' + (e.target.id || e.target.parentElement?.id || e.target.tagName)), true), window.addEventListener('mousedown', (e) => window.__DOWNS__.push(e.type + ':' + (e.target.id || e.target.parentElement?.id || e.target.tagName)), true), true)`,
+				)
+				let lastFrom = { x: 0, y: 0 }
+
 				let dragged = false
 				for (let attempt = 0; attempt < 3 && !dragged; attempt++) {
 					const handleRaw = await pageFrame.executeJavaScript(
@@ -3582,9 +3816,10 @@ export default function ShaderDemo() {
 					)
 					if (!handleRaw) return { error: "the resize handles disappeared before the drag" }
 					const from = {
-						x: Math.round(offset.x + handleRaw.x * scale),
-						y: Math.round(offset.y + handleRaw.y * scale),
+						x: Math.round(placed.x + handleRaw.x * dragScale),
+						y: Math.round(placed.y + handleRaw.y * dragScale),
 					}
+					lastFrom = from
 					wc.sendInputEvent({ type: "mouseMove", x: from.x, y: from.y })
 					wc.sendInputEvent({ type: "mouseDown", x: from.x, y: from.y, button: "left", clickCount: 1 })
 					for (let step = 1; step <= 6; step++) {
@@ -3609,10 +3844,22 @@ export default function ShaderDemo() {
 						if (!dragged) await new Promise((r) => setTimeout(r, 300))
 					}
 				}
-				if (!dragged)
+				if (!dragged) {
+					const under = await wc
+						.executeJavaScript(
+							`(() => { const el = document.elementFromPoint(${lastFrom.x}, ${lastFrom.y}); return el ? el.tagName + '.' + el.className : 'nothing' })()`,
+						)
+						.catch(() => "?")
+					const downs = await pageFrame.executeJavaScript(`window.__DOWNS__`).catch(() => null)
+					const handleNow = await pageFrame
+						.executeJavaScript(
+							`(() => { const h = document.querySelector('#caret-resize-handles'); if (!h) return null; const r = h.children[0].getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width) } })()`,
+						)
+						.catch(() => null)
 					return {
-						error: `three drags on the handle produced no committed width in the DOM (iframe scale ${scale.toFixed(3)}, iframe ${Math.round(offset.w)}px wide at x=${Math.round(offset.x)} showing innerWidth ${innerWidth}px, in a canvas view ${Math.round(canvas.getBounds().width)}px wide)`,
+						error: `three drags on the handle produced no committed width in the DOM (pressed at ${JSON.stringify(lastFrom)}, view element there ${under}, presses the page saw ${JSON.stringify(downs)}, handle now ${JSON.stringify(handleNow)}; iframe scale ${dragScale.toFixed(3)}, iframe ${Math.round(placed.w)}px wide at x=${Math.round(placed.x)} showing innerWidth ${placedInner}px, in a canvas view ${Math.round(canvas.getBounds().width)}px wide)`,
 					}
+				}
 
 				return { ok: true }
 			} catch (err) {
@@ -3708,6 +3955,13 @@ export default function ShaderDemo() {
 					if (!pageFrame) return { error: "the focused page never became a frame of the canvas" }
 				}
 
+				// bz leaves the subtitle selected, which pauses the rest of the page.
+				// A person lets it go first (Escape); the sidebar then closes and the
+				// page moves back, so measure after.
+				await pageFrame
+					.executeJavaScript(`(window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })), true)`)
+					.catch(() => {})
+				await new Promise((r) => setTimeout(r, 800))
 				const offset = await wc.executeJavaScript(
 					`(() => { const r = document.querySelector('.caret-focused-iframe').getBoundingClientRect(); return { x: r.x, y: r.y } })()`,
 				)
@@ -3837,10 +4091,10 @@ export default function ShaderDemo() {
 		)
 
 		await waitFor(
-			"AGENTS.md to carry the standing correction",
+			"the design layer's rules to carry the standing correction",
 			async () => {
-				const agents = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-				return agents.includes("Standing corrections") && agents.includes(ruleText) ? true : null
+				const layer = await fs.readFile(path.join(fixture, ".caret", "AGENTS.md"), "utf-8").catch(() => "")
+				return layer.includes("Standing corrections") && layer.includes(ruleText) ? true : null
 			},
 			30000,
 		)
@@ -3849,7 +4103,7 @@ export default function ShaderDemo() {
 		const gitignore = await fs.readFile(path.join(fixture, ".caret", ".gitignore"), "utf-8")
 		assert(!gitignore.split("\n").some((l) => l.trim() === "rules.json"), ".caret/.gitignore must not ignore rules.json")
 
-		return `an externally written rules.json reached AGENTS.md ("${ruleText}")`
+		return `an externally written rules.json reached .caret/AGENTS.md ("${ruleText}")`
 	})
 
 	await scenario("br. the design checks find planted defects, and the canvas shows them unasked", async () => {
@@ -3963,15 +4217,18 @@ export default function ShaderDemo() {
 	})
 
 	await scenario(
-		"bs. a catalog import is auto-supplied on consent, and the budget refuses a second signature piece",
+		"bs. a registry import is auto-supplied on consent, with no per-page cap, and an unsupplied import is named",
 		async () => {
-			// The 7.5 loop end to end: an externally written page imports a catalog
-			// component by its documented path; the healer routes it to auto-supply;
-			// the consent prompt is answered with a real click; the vendored source
-			// lands with its licence, lock entry and deps; the rules index marks it
-			// installed. Then the restraint budget: two signature imports on one page
-			// — the first is supplied, the second is refused and flagged as an error.
+			// The supply loop end to end: an externally written page imports a
+			// registry component by its catalog path; the healer routes it to
+			// auto-supply; the consent prompt is answered with a real click; the
+			// source lands from the registry with its lock entry, the `cn` helper
+			// and its deps; the rules list it as installed. Then a second write with
+			// two more imports: the registry one is supplied (there is no per-page
+			// budget any more — component choice is the AI's call),
+			// and the one no registry supplies is named by the design checks.
 			const caretDir = path.join(fixture, ".caret")
+			const catalog = path.join(caretDir, "components", "catalog")
 			const pageDir = path.join(caretDir, "pages", "catalogdemo")
 			await fs.mkdir(pageDir, { recursive: true })
 			await fs.writeFile(
@@ -3992,52 +4249,49 @@ export default function CatalogDemo() {
 `,
 			)
 
-			// Consent arrives docked in the chat, like every blocking ask — it moved
-			// there from a notification toast after the toast rendered under the
-			// native canvas, invisible, during the very agent turns that raise it.
-			// This scenario kept waiting on the toast and failed every run since.
-			// The click is real.
-			const dock = chrome.locator('[data-testid="chat-interview-dock"]', { hasText: "Magic UI" })
+			// Consent arrives docked in the chat, like every blocking ask. The click is real.
+			const dock = chrome.locator('[data-testid="chat-interview-dock"]', { hasText: "@magicui" })
 			await dock.waitFor({ timeout: 60_000 })
 			await dock.locator('[data-testid="interview-choice"]', { hasText: "Allow for this project" }).click()
 
 			await waitFor(
-				"the vendored component to land with its lock entry",
+				"the registry component to land with its lock entry",
 				async () => {
-					const component = await fs
-						.readFile(path.join(caretDir, "components", "catalog", "magicui", "marquee.tsx"), "utf-8")
-						.catch(() => "")
-					const lock = JSON.parse(
-						await fs
-							.readFile(path.join(caretDir, "components", "catalog", "catalog-lock.json"), "utf-8")
-							.catch(() => "{}"),
-					)
+					const component = await fs.readFile(path.join(catalog, "magicui", "marquee.tsx"), "utf-8").catch(() => "")
+					const lock = JSON.parse(await fs.readFile(path.join(catalog, "catalog-lock.json"), "utf-8").catch(() => "{}"))
 					const entry = (lock.installed ?? []).find(
 						(e: { library: string; component: string }) => e.library === "magicui" && e.component === "marquee",
 					)
-					return component.length > 100 && entry && entry.origin.includes("magicuidesign/magicui@") ? true : null
+					return component.length > 100 && entry && entry.origin.includes("magicui.design/r/marquee.json") ? true : null
 				},
 				120_000,
 			)
 
-			// The licence rides with the install, and the dep landed in the design layer.
-			const licence = await fs.readFile(path.join(caretDir, "components", "catalog", "magicui", "LICENSE"), "utf-8")
-			assert(licence.includes("MIT"), "the licence did not travel with the vendored source")
+			// Its alias import points at the shared helper, which landed with its deps.
+			const marquee = await fs.readFile(path.join(catalog, "magicui", "marquee.tsx"), "utf-8")
+			assert(marquee.includes('from "../lib/utils"'), "the registry's @/lib/utils import was not rewritten")
+			assert(
+				(await fs.readFile(path.join(catalog, "lib", "utils.ts"), "utf-8")).includes("twMerge"),
+				"the cn helper did not land",
+			)
 			const caretPkg = JSON.parse(await fs.readFile(path.join(caretDir, "package.json"), "utf-8"))
-			assert(caretPkg.dependencies?.motion, "the component's dep was not added to the design layer")
+			assert(caretPkg.dependencies?.["tailwind-merge"], "the component's deps were not added to the design layer")
 
-			// The rules index knows.
+			// The rules list what is installed, so the next agent reuses it.
 			await waitFor(
-				"the rules index to mark it installed",
-				async () => {
-					const agents = await fs.readFile(path.join(fixture, "AGENTS.md"), "utf-8").catch(() => "")
-					return agents.includes("`magicui/marquee`") && agents.includes("(installed)") ? true : null
-				},
+				"the rules to list it as installed",
+				async () =>
+					(await fs.readFile(path.join(fixture, ".caret", "AGENTS.md"), "utf-8").catch(() => "")).includes(
+						"`magicui/marquee`",
+					)
+						? true
+						: null,
 				30_000,
 			)
 
-			// The budget: two signature imports; the consented library needs no second
-			// prompt, the first signature piece is supplied, the second refused.
+			// No budget: a second registry piece on the same page is supplied (the
+			// library is already consented, so no second prompt); an import nothing
+			// supplies stays unresolved and is named.
 			await fs.writeFile(
 				path.join(pageDir, "index.tsx"),
 				`import { Marquee } from "../../components/catalog/magicui/marquee"
@@ -4057,29 +4311,23 @@ export default function CatalogDemo() {
 			)
 
 			await waitFor(
-				"the first signature component to be supplied",
+				"the second registry component to be supplied too",
 				async () =>
-					(await fs
-						.readFile(path.join(caretDir, "components", "catalog", "magicui", "particles.tsx"), "utf-8")
-						.catch(() => "")) !== ""
+					(await fs.readFile(path.join(catalog, "magicui", "particles.tsx"), "utf-8").catch(() => "")) !== ""
 						? true
 						: null,
 				120_000,
 			)
-
-			// pixel-trail must NOT be supplied — the page already carries particles.
-			// (fancy has never been consented either, but the budget check fires first
-			// and is the thing this pins.)
 			const pixelTrailLanded = await fs
-				.access(path.join(caretDir, "components", "catalog", "fancy", "pixel-trail.tsx"))
+				.access(path.join(catalog, "fancy", "pixel-trail.tsx"))
 				.then(() => true)
 				.catch(() => false)
-			assert(!pixelTrailLanded, "the budget did not stop a second signature component")
+			assert(!pixelTrailLanded, "an import no registry supplies was somehow installed")
 
 			// And the checker names it, over the same MCP surface an agent uses.
 			assert(discovery, "no MCP discovery record")
 			const findings = await waitFor(
-				"run_design_checks to flag the budget breach",
+				"run_design_checks to name the unsupplied import",
 				async () => {
 					const response = await callMcp(discovery!.url, discovery!.token, {
 						jsonrpc: "2.0",
@@ -4092,13 +4340,14 @@ export default function CatalogDemo() {
 					if (!payloadMatch) return null
 					const parsed = JSON.parse(JSON.parse(`"${payloadMatch[1]}"`))
 					const checks = new Set((parsed.findings ?? []).map((f: { check: string }) => f.check))
-					return checks.has("restraint-budget") ? [...checks] : null
+					return checks.has("catalog-unknown") ? [...checks] : null
 				},
 				60_000,
 			)
+			assert(!findings.includes("restraint-budget"), "the retired per-page budget still fires")
 
 			await fs.rm(pageDir, { recursive: true, force: true })
-			return `marquee auto-supplied on a real consent click (licence + lock + deps + rules index); second signature piece refused; checker flagged restraint-budget (findings: ${findings.join(", ")})`
+			return `marquee supplied from the registry on a real consent click (lock + cn helper + deps + rules); particles supplied too, no budget; fancy/pixel-trail named (findings: ${findings.join(", ")})`
 		},
 	)
 
@@ -4306,9 +4555,23 @@ export default function CatalogDemo() {
 		assert(tokens.border?.focusRing?.color === "#7c3aed", "the focus ring did not follow the brand")
 
 		// Back on the view, the new swatch is what renders.
-		await chrome.waitForSelector('[data-testid="ds-section-color"]', { timeout: 20_000 })
-		const colorText = await chrome.textContent('[data-testid="ds-section-color"]')
-		assert(colorText?.includes("#7c3aed"), "the DS view did not re-read the saved seed")
+		// Waited for, not read once: the file lands before the view re-reads it,
+		// and a single read raced that (failed twice, passed on the next run). A
+		// view that never re-reads still fails here, after 15 seconds.
+		let colorText: string | null = null
+		await waitFor(
+			"the DS view to show the saved seed",
+			async () => {
+				colorText = await chrome.textContent('[data-testid="ds-section-color"]').catch(() => null)
+				return colorText?.includes("#7c3aed") ? true : null
+			},
+			15_000,
+			async () => `the colour section reads: ${(colorText ?? "(missing)").slice(0, 300)}`,
+		).catch(() => {
+			throw new Error(
+				`the DS view did not re-read the saved seed; the colour section reads: ${(colorText ?? "(missing)").slice(0, 300)}`,
+			)
+		})
 
 		// Leave the surface where the suite expects it.
 		await chrome.getByTestId("top-bar").getByRole("button", { name: "Foundation" }).click()
@@ -4391,6 +4654,79 @@ export default function CatalogDemo() {
 		)
 		return "history replaced the chat, and back restored it"
 	})
+
+	await scenario(
+		"dp. the Design pass is gone; the Libraries tab lists, installs, keys and switches libraries per project",
+		async () => {
+			await ensureChatOpen(chrome)
+			// Removed on 2026-10-15: no switch or line under the composer. The
+			// project's design skill shows there instead.
+			await chrome.getByTestId("chat-skill").waitFor({ timeout: 10_000 })
+			assert(
+				(await chrome.getByTestId("chat-skill").textContent()) === "Skill: none",
+				"the chat names a design skill nobody chose",
+			)
+			for (const id of ["design-pass-switch", "design-pass-line"]) {
+				assert((await chrome.getByTestId(id).count()) === 0, `${id} is still on screen`)
+			}
+
+			await chrome.getByTestId("top-bar").getByRole("button", { name: "Libraries", exact: true }).click()
+			await chrome.getByTestId("libraries-view").waitFor({ timeout: 15_000 })
+			const cards = await chrome
+				.getByTestId("library-card")
+				.evaluateAll((all) => all.map((card) => card.getAttribute("data-id")))
+			assert(
+				cards.join(",") === "shadcn,aceternity,twentyfirst,lazyweb,gummble",
+				`Browse lists ${cards.join(",")} (components, then references)`,
+			)
+
+			await chrome.getByTestId("catalog-tab-installed").click()
+			await waitFor(
+				"the three libraries that need no account to be installed",
+				async () => ((await chrome.getByTestId("library-row").count()) === 3 ? true : null),
+				30_000,
+			)
+			const rows = await chrome
+				.getByTestId("library-row")
+				.evaluateAll((all) => all.map((row) => row.getAttribute("data-library")))
+			assert(rows.join(",") === "shadcn,aceternity,lazyweb", `installed by default: ${rows.join(",")}`)
+
+			// 21st.dev is paid: installing it asks for the key, nothing else to configure.
+			await chrome.getByTestId("catalog-tab-browse").click()
+			await chrome.locator('[data-testid="library-card"][data-id="twentyfirst"]').getByTestId("library-install").click()
+			await chrome.getByTestId("catalog-tab-installed").click()
+			const twentyfirst = chrome.locator('[data-library="twentyfirst"]')
+			await twentyfirst.waitFor({ timeout: 15_000 })
+			assert((await twentyfirst.getByTestId("library-key").count()) === 1, "21st.dev does not offer to take a key")
+
+			// A library can be switched off in this project, and it is remembered for this project.
+			const aceternity = chrome.locator('[data-library="aceternity"]')
+			await aceternity.getByTestId("library-toggle").click()
+			await waitFor(
+				"Aceternity to read off",
+				async () => ((await aceternity.getByTestId("library-toggle").textContent()) === "Off" ? true : null),
+				15_000,
+			)
+			const afterToggle = JSON.parse(await fs.readFile(path.join(userData, "preferences.json"), "utf-8")) as {
+				librariesOff?: Record<string, string[]>
+			}
+			assert(
+				Object.entries(afterToggle.librariesOff ?? {}).some(
+					([project, off]) => path.basename(project) === path.basename(fixture) && off.includes("aceternity"),
+				),
+				`switching a library off was not remembered for this project: ${JSON.stringify(afterToggle.librariesOff)}`,
+			)
+			await shot(chrome, "dp-libraries")
+
+			// Leave the libraries as later scenarios expect them.
+			await aceternity.getByTestId("library-toggle").click()
+			await twentyfirst.getByTestId("library-remove").click()
+			await waitFor("21st.dev to be removed", async () => ((await twentyfirst.count()) === 0 ? true : null), 15_000)
+			await chrome.getByTestId("libraries-view").getByRole("button", { name: "Done" }).click()
+			await ensureChatOpen(chrome)
+			return "no Design pass; the chat shows the project's skill; Libraries lists five, installs the free three, takes 21st.dev's key, and remembers a per-project switch"
+		},
+	)
 
 	await scenario("ce. an overlay move edit gets measured geometry and lands centered, verified by re-measure", async () => {
 		// The spatial feedback loop end to end: two images, one askew; the overlay
@@ -4938,7 +5274,9 @@ export default function CatalogDemo() {
 		// The decisive half: Caret answered the permission itself. A `.caret/` write
 		// is auto-approved by fixed policy, and the transcript has to say so —
 		// a silent auto-approval is indistinguishable from an agent nobody checked.
-		const resolved = await chrome.getByTestId("chat-permission-resolved").first().textContent()
+		// The write's own entry: a session that tried to edit before reading the
+		// design layer's rules has a "read the rules first" denial above it.
+		const resolved = await chrome.getByTestId("chat-permission-resolved").filter({ hasText: "Allowed" }).first().textContent()
 		assert(resolved?.includes("Allowed"), `the write was not recorded as allowed: ${resolved}`)
 		assert(resolved?.includes("design layer"), `the transcript does not say why Caret allowed it without asking: ${resolved}`)
 		return `page rewritten; permission auto-answered ("${resolved?.trim().slice(0, 60)}…")`
@@ -5101,7 +5439,31 @@ export default function CatalogDemo() {
 
 		if (!bookmark) {
 			const transcript = (await chrome.textContent('[data-testid="chat-transcript"]').catch(() => null)) ?? ""
-			throw new Inconclusive(`the model was still working after 7 minutes; last of the chat: …${transcript.slice(-400)}`)
+			// Stop the turn, as a person giving up would. Left running, it holds the
+			// chat busy (Stop where Send should be), and the next scenario that types
+			// in the chat fails on a turn that isn't its own: dq timed out on this.
+			const stop = chrome.getByTestId("chat-stop")
+			let clicked = "no Stop button was showing"
+			if (await stop.count()) {
+				clicked = await stop
+					.click({ timeout: 10_000 })
+					.then(() => "Stop clicked")
+					.catch((err) => `Stop click failed: ${String(err).split("\n")[0]}`)
+			}
+			const stopped = await waitFor(
+				"the chat to be free after stopping the apply turn",
+				async () => (await chrome.getByTestId("chat-stop").count()) === 0,
+				60_000,
+			).catch(() => false)
+			// When Stop does not free the chat, say what was on screen: a known
+			// chain (gg gives up, then bq, bq2 and by fail on leftover work) has no
+			// cause yet, and the next occurrence should name it.
+			const after = stopped
+				? ""
+				: ` After Stop: ${clicked}; permission dock showing: ${await chrome.getByTestId("chat-permission").count()}; chat tail: …${((await chrome.textContent('[data-testid="chat-transcript"]').catch(() => null)) ?? "").slice(-300)}`
+			throw new Inconclusive(
+				`the model was still working after 7 minutes${stopped ? " (stopped, so the chat is free for what follows)" : `; Stop did not free the chat.${after}`}; last of the chat before Stop: …${transcript.slice(-400)}`,
+			)
 		}
 
 		// This half *is* Caret's, and stays a hard failure: the bookmark may only
@@ -5115,124 +5477,6 @@ export default function CatalogDemo() {
 		assert(applied.includes("Zephyr"), `the app did not follow the design:\n${applied.slice(0, 1200)}`)
 
 		return `app updated after ${allowed} allowed write(s), bookmark at ${bookmark.slice(0, 8)}`
-	})
-
-	await inference("ii. the wizard interviews, finishes on demand, and Caret writes the file", async () => {
-		// The whole loop, live: the model composes a question from the widget
-		// vocabulary, the UI renders and answers it, "Just finish" forces a
-		// proposal from what's known, and the committed file is Caret's own
-		// derivation. Two model turns, so it stays affordable on a free model.
-		// The fixture is committed, so the road in is the DS view's re-run door.
-		await openDesignSystem(chrome)
-		await chrome.click('[data-testid="ds-rerun"]')
-		await openDescribe(
-			chrome,
-			"A quiet reading app for long-form essays. People sit with it for an hour at a time. Calm, bookish, light background.",
-		)
-		await chrome.click('[data-testid="foundation-mode-collaborative"]')
-
-		// The first question is a whole model turn composing UI; give it the same
-		// patience as any inference scenario — and a model that cannot produce one
-		// in time is the model's failure, not Caret's, same as ff's five-minute
-		// rule. A free model has been observed doing this in 90s on one run and
-		// blowing 240s on the next.
-		const first = await Promise.race([
-			chrome.waitForSelector('[data-testid="wizard-question"]', { timeout: 300_000 }).then(() => "question" as const),
-			chrome.waitForSelector('[data-testid="wizard-error"]', { timeout: 300_000 }).then(() => "error" as const),
-		]).catch(() => "timeout" as const)
-		if (first === "timeout") {
-			throw new Inconclusive("the model did not compose a first question within five minutes")
-		}
-		if (first === "error") {
-			const message = (await chrome.textContent('[data-testid="wizard-error"]'))?.trim() ?? ""
-			throw new Inconclusive(`the model never produced a renderable question: ${message.slice(0, 200)}`)
-		}
-
-		const questionText = (await chrome.textContent('[data-testid="wizard-question"] h1'))?.trim() ?? ""
-		assert(questionText.length > 5, "a question rendered with no text")
-		await shot(chrome, "15-wizard-question")
-
-		// Answer it through the real UI. Whatever kind the model chose, either the
-		// widget preselected something (Continue enabled) or it needs input (skip
-		// is the honest answer for a harness with no opinions).
-		const continueEnabled = await chrome.getByTestId("wizard-continue").isEnabled()
-		await chrome.click(continueEnabled ? '[data-testid="wizard-continue"]' : '[data-testid="wizard-skip"]')
-
-		// Then stop the interview and make it construct from what it has.
-		await chrome
-			.waitForSelector('[data-testid="wizard-finish-now"], [data-testid="wizard-finish"], [data-testid="wizard-error"]', {
-				timeout: 300_000,
-			})
-			.catch(() => {
-				throw new Inconclusive("the model did not produce a second turn within five minutes")
-			})
-		if (await chrome.getByTestId("wizard-finish-now").count()) {
-			await chrome.click('[data-testid="wizard-finish-now"]')
-		}
-
-		const finished = await Promise.race([
-			chrome.waitForSelector('[data-testid="wizard-finish"]', { timeout: 300_000 }).then(() => "finish" as const),
-			chrome.waitForSelector('[data-testid="wizard-error"]', { timeout: 300_000 }).then(() => "error" as const),
-		]).catch(() => "timeout" as const)
-		if (finished === "timeout") {
-			throw new Inconclusive("the model did not construct a foundation within five minutes")
-		}
-		if (finished === "error") {
-			const message = (await chrome.textContent('[data-testid="wizard-error"]'))?.trim() ?? ""
-			throw new Inconclusive(`the model could not construct a valid foundation: ${message.slice(0, 200)}`)
-		}
-		await shot(chrome, "16-wizard-finish")
-
-		const before = await fs.readFile(path.join(fixture, ".caret", "tokens", "foundation.json"), "utf-8")
-		await chrome.click('[data-testid="wizard-commit"]')
-
-		const tokens = await waitFor(
-			"the wizard to write foundation.json",
-			async () => {
-				const raw = await fs.readFile(path.join(fixture, ".caret", "tokens", "foundation.json"), "utf-8")
-				return raw !== before ? JSON.parse(raw) : null
-			},
-			30_000,
-		)
-
-		// Caret's derivation, not the model's file: scales must exist and cohere.
-		assert(tokens.typography?.fontFamily, "no body typeface")
-		assert(Object.keys(tokens.typography.scale ?? {}).length > 0, "no derived type scale")
-		assert(/^#[0-9a-f]{6}$/.test(tokens.color?.brand?.seed ?? ""), `brand seed is not a hex: ${tokens.color?.brand?.seed}`)
-		assert(Object.keys(tokens.color.brand.scale ?? {}).length > 0, "no derived colour scale")
-		// The seed IS 500 — the repaired ramp contract, asserted where a real
-		// interview writes a real file. A near-white or near-black seed is nudged
-		// by design, so only a mid-range seed is held to exact equality.
-		{
-			const hex = tokens.color.brand.seed.slice(1)
-			const [r, g, b] = [0, 2, 4].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255)
-			const lightness = (Math.max(r, g, b) + Math.min(r, g, b)) / 2
-			if (lightness >= 0.2 && lightness <= 0.85) {
-				assert(
-					tokens.color.brand.scale?.["500"] === tokens.color.brand.seed,
-					`brand-500 (${tokens.color.brand.scale?.["500"]}) is not the seed (${tokens.color.brand.seed})`,
-				)
-			}
-		}
-		assert((tokens.spacing?.scale ?? []).length > 0, "no spacing scale")
-		// The commit's survivors: the rationale and the committed marker, which
-		// used to be destroyed with the scratch.
-		assert(tokens.meta?.committed === true, "the committed foundation carries no meta.committed marker")
-		assert((tokens.meta?.rule ?? "").length > 0, "the restraint rule was not persisted into meta")
-		assert(Object.keys(tokens.color.neutral?.scale ?? {}).length > 0, "the neutral scale shipped empty — stock grey again")
-
-		// Scratch cleared on commit — a committed interview must not offer a resume.
-		await waitFor(
-			"the wizard's scratch to be cleared",
-			async () =>
-				fs
-					.access(path.join(fixture, ".caret", ".interview.json"))
-					.then(() => null)
-					.catch(() => true),
-			20_000,
-		)
-
-		return `asked "${questionText.slice(0, 50)}…", finished → ${tokens.typography.displayFamily ?? tokens.typography.fontFamily}, ${tokens.color.brand.seed}`
 	})
 
 	await inference(

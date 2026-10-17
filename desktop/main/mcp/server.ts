@@ -14,10 +14,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "http"
 import type { AddressInfo } from "net"
-import type { InstallResult, PageCheckResult } from "../../../src/core/design"
+import type { PageCheckResult } from "../../../src/core/design"
+import type { InstallOutcome } from "../../../src/core/design/catalog/registry-install"
 import { Logger } from "../../../src/shared/services/Logger"
 import { capture } from "../analytics"
 import { cancelInterviewPrompts, type InterviewPrompt } from "../interview"
+import { libraryHub } from "../libraries/libraries"
+import { passLibrariesOn } from "../libraries/pass-on"
 import type { ScreenshotResult } from "../types"
 import { authorize, generateToken } from "./auth"
 import { clearDiscovery, writeDiscovery } from "./discovery"
@@ -38,12 +41,21 @@ export interface CaretMcpServerOptions {
 	/** Runs the deterministic design checks on one page (or all), returning findings. */
 	runChecks?(pageId?: string): Promise<PageCheckResult[]>
 	/** Installs an allowlisted catalog component into the project (consent-gated). */
-	installComponent?(libraryId: string, componentId: string): Promise<InstallResult>
+	installComponent?(ref: string): Promise<InstallOutcome>
 	/** Sends an interview question or option set to the chrome renderer. */
 	onInterviewPrompt?(prompt: InterviewPrompt): void
 }
 
+/** What every client is told on connecting: short, because it is in every session. */
+const SERVER_INSTRUCTIONS = `Caret's design layer for this project lives in .caret/. Read its rules before writing pages: .caret/AGENTS.md, or call get_guide (page-writing tools refuse until you have). get_project and list_assets list a page at a time. Install ready-made components with install_component. Call run_design_checks on every page you wrote before you finish.`
+
 export class CaretMcpServer {
+	/**
+	 * Whether an outside agent has read the design layer's rules (`get_guide`)
+	 * since Caret opened this project. Page writes from outside agents wait for
+	 * it; Caret cannot see their own file reads, so the tool is the proof.
+	 */
+	private guideRead = false
 	private http: Server | null = null
 	private token = generateToken()
 	private port: number | null = null
@@ -115,17 +127,22 @@ export class CaretMcpServer {
 		this.setConnected(false)
 	}
 
-	private registerTools(mcp: McpServer): void {
+	private registerTools(mcp: McpServer, viaChat: boolean): void {
 		const ctx: ToolContext = {
 			projectPath: this.options.projectPath,
+			viaChat,
+			rulesRead: () => this.guideRead,
+			markRulesRead: () => {
+				this.guideRead = true
+			},
 			screenshot: (pageId, part) =>
 				this.options.screenshot?.(pageId, part) ??
 				Promise.resolve({ ok: false as const, reason: "this project has no window to render pages in" }),
 			runChecks: (pageId) =>
 				this.options.runChecks?.(pageId) ?? Promise.reject(new Error("this project has no window to render pages in")),
-			installComponent: (libraryId, componentId) =>
-				this.options.installComponent?.(libraryId, componentId) ??
-				Promise.resolve({ ok: false as const, reason: "this project has no window to install into" }),
+			installComponent: (ref) =>
+				this.options.installComponent?.(ref) ??
+				Promise.resolve({ ok: false as const, ref, reason: "this project has no window to install into" }),
 		}
 
 		const tools = [...TOOLS, ...buildInterviewTools({ send: (prompt) => this.options.onInterviewPrompt?.(prompt) })]
@@ -163,6 +180,16 @@ export class CaretMcpServer {
 				}) as never,
 			)
 		}
+
+		// The component and reference libraries, passed on: Caret's chat and any
+		// coding tool connected to Caret see the same ones, and keys stay here.
+		const libraries = libraryHub()
+		const projectPath = this.options.projectPath
+		passLibrariesOn(mcp, {
+			tools: () => libraries.tools(projectPath),
+			owns: (name) => libraries.owns(name),
+			call: (name, args) => libraries.call(projectPath, name, args),
+		})
 	}
 
 	private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -197,7 +224,7 @@ export class CaretMcpServer {
 		// answers the first request correctly and then returns 500 to every request
 		// after it, forever. That is invisible until something makes a second call,
 		// which is why `verify:app` now makes several.
-		const mcp = new McpServer({ name: "caret", version: "0.1.0" })
+		const mcp = new McpServer({ name: "caret", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS })
 		const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
 
 		res.on("close", () => {
@@ -206,7 +233,7 @@ export class CaretMcpServer {
 		})
 
 		try {
-			this.registerTools(mcp)
+			this.registerTools(mcp, req.headers["x-caret-client"] === "chat")
 			await mcp.connect(transport)
 			await transport.handleRequest(req, res, body)
 		} catch (err) {
