@@ -286,6 +286,7 @@ export interface BackendReportWire {
 	installed: boolean
 	authenticated: boolean
 	ready: boolean
+	failed?: boolean
 	detail: string
 	remedy?: { label: string; command?: string; url?: string }
 }

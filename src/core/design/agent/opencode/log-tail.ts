@@ -18,21 +18,17 @@
  * real event arrive, and should be deleted then (verify live, per the rules).
  */
 import * as fs from "fs/promises"
-import * as os from "os"
 import * as path from "path"
 
+import { bundledOpencodeDir } from "./data-home"
+
 /**
- * Shared by every instance the binary runs — the server appends, we follow.
- *
- * Mirrors the pinned binary's own resolution, read from its bundle: a pure XDG
- * fallback chain with NO platform branch — `XDG_DATA_HOME || ~/.local/share`,
- * Windows included (homedir there is %USERPROFILE%). Honouring XDG_DATA_HOME
- * matters because the server inherits our environment and writes wherever it
- * points; a tail on the unset-default would silently follow nothing.
+ * The bundled server's log, under the data home Caret spawns it with — not
+ * the user's own OpenCode's, which a different version may be writing in a
+ * different format (see `data-home.ts`).
  */
 export function opencodeLogPath(): string {
-	const dataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share")
-	return path.join(dataHome, "opencode", "log", "opencode.log")
+	return path.join(bundledOpencodeDir(), "log", "opencode.log")
 }
 
 /**

@@ -18,6 +18,7 @@ import * as net from "net"
 import { Logger } from "@/shared/services/Logger"
 import { BackendError } from "../backend"
 import { resolveOpencodeBinary } from "./binary"
+import { caretDataHome, discardSeededDatabase, seedFromSharedInstall } from "./data-home"
 import type { OpencodeConfig } from "./protocol"
 
 /** How long to wait for the "listening on" line before giving up. */
@@ -58,7 +59,26 @@ export async function stopOpencodeServer(): Promise<void> {
 	process.kill()
 }
 
+/**
+ * Boots against Caret's own data home, seeded once from the shared one.
+ *
+ * A seeded database the pinned binary refuses is discarded and the boot runs
+ * again on an empty one: losing an earlier Caret's session history is better
+ * than having no backend.
+ */
 async function boot(config: OpencodeConfig): Promise<RunningServer> {
+	const seeded = seedFromSharedInstall()
+	try {
+		return await launch(config)
+	} catch (err) {
+		if (!seeded) throw err
+		Logger.warn(`[backend] the carried-over OpenCode database was refused, starting fresh: ${err}`)
+		discardSeededDatabase()
+		return launch(config)
+	}
+}
+
+async function launch(config: OpencodeConfig): Promise<RunningServer> {
 	const binary = resolveOpencodeBinary()
 	if (!binary) {
 		throw new BackendError(
@@ -73,6 +93,7 @@ async function boot(config: OpencodeConfig): Promise<RunningServer> {
 	const proc = spawn(binary, [`--port=${port}`, `--hostname=127.0.0.1`, "serve"], {
 		env: {
 			...process.env,
+			XDG_DATA_HOME: caretDataHome(),
 			OPENCODE_SERVER_PASSWORD: password,
 			// The user's own ~/.claude/CLAUDE.md and skills are theirs, not the
 			// design agent's: keep them out (the switch is in the pinned binary).
@@ -95,7 +116,7 @@ async function boot(config: OpencodeConfig): Promise<RunningServer> {
 		}, BOOT_TIMEOUT_MS)
 
 		const scan = (chunk: Buffer) => {
-			output += chunk.toString()
+			output += stripAnsi(chunk.toString())
 			if (settled) return
 			// The binary announces itself as `opencode server listening on <url>`.
 			const match = output.match(/listening on\s+(https?:\/\/\S+)/)
@@ -140,6 +161,12 @@ async function boot(config: OpencodeConfig): Promise<RunningServer> {
 	running = { url, authorization: `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}` }
 	Logger.info(`[backend] opencode listening on ${url}`)
 	return running
+}
+
+/** The binary colours its errors; the panel shows them as plain text. */
+function stripAnsi(text: string): string {
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: the escape character is what is being stripped
+	return text.replace(/\x1b\[[0-9;]*m/g, "")
 }
 
 /** Asks the OS for a port, then hands it to the server. */

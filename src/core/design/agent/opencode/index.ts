@@ -265,6 +265,7 @@ export class OpencodeBackend implements CodingBackend {
 				installed: true,
 				authenticated: false,
 				ready: false,
+				failed: true,
 				detail: err instanceof Error ? err.message : String(err),
 			}
 		}

@@ -292,6 +292,12 @@ export interface AvailabilityReport {
 	authenticated: boolean
 	/** Installed and authenticated — the only state in which sessions start. */
 	ready: boolean
+	/**
+	 * The backend itself broke — it would not start, or stopped answering — so
+	 * whether it is signed in is unknown. Without this the panel could only call
+	 * a crash "needs sign-in", and sent people to sign in to something dead.
+	 */
+	failed?: boolean
 	/** One line the user reads. Never a stack trace. */
 	detail: string
 	providerName: string

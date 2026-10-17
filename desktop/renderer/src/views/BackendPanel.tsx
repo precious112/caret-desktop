@@ -460,7 +460,9 @@ function BackendRow({ backend, selected, onChoose }: { backend: BackendReportWir
 						ready
 					</span>
 				) : (
-					<span className="text-[11px] text-amber-300">{backend.installed ? "needs sign-in" : "not installed"}</span>
+					<span className="text-[11px] text-amber-300">
+						{!backend.installed ? "not installed" : backend.failed ? "failed to start" : "needs sign-in"}
+					</span>
 				)}
 
 				<div className="flex-1" />
