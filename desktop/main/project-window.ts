@@ -21,9 +21,9 @@ import * as fs from "fs"
 import * as path from "path"
 
 import {
+	type AppProfile,
 	type ConversationState,
 	caretDirectoryExists,
-	type AppProfile,
 	DesignSession,
 	detectAppProfile,
 	hostFor,
@@ -169,6 +169,7 @@ export class ProjectWindow {
 			onState: (state) => {
 				this.sendToChrome("agent:state", this.projectPath, state)
 				this.noticeAskWaiting(state)
+				this.noticePagesBeingWritten(state)
 			},
 			// The pill lives where the intent was expressed: in the canvas, not the
 			// chat. This is the entire live surface a canvas edit gets.
@@ -182,6 +183,9 @@ export class ProjectWindow {
 			onTurnComplete: (conversation, outcome, request) => {
 				this.checks.afterTurn(conversation, outcome, request)
 				this.overlayVerify.afterTurn(conversation, outcome, request)
+				if (conversation === this.agent.conversation) {
+					this.clearPagesWriting()
+				}
 			},
 		})
 
@@ -201,7 +205,7 @@ export class ProjectWindow {
 			onAgentConnectionChanged: () => void this.pushState(),
 			screenshot: (pageId, part) => this.screenshotPage(pageId, part),
 			runChecks: (pageId) => this.checks.run(pageId ? [pageId] : undefined),
-			installComponent: (libraryId, componentId) => this.catalog.install(libraryId, componentId),
+			installComponent: (ref) => this.catalog.install(ref),
 			onInterviewPrompt: (prompt) => this.sendToChrome("interview:prompt", prompt),
 		})
 
@@ -340,6 +344,32 @@ export class ProjectWindow {
 			this.notifiedAsks.add(entry.requestId)
 			const { requestId, summary } = entry
 			setTimeout(() => this.notifyAsk(requestId, summary), 1_500)
+		}
+	}
+
+	/** Pages the canvas is showing a "writing" placeholder for. */
+	private readonly pagesWriting = new Set<string>()
+
+	/** The canvas shows a placeholder for a page until its file lands (or the turn ends). */
+	private notePageWriting(pageId: string): void {
+		if (this.pagesWriting.has(pageId)) return
+		if (fs.existsSync(path.join(this.projectPath, ".caret", "pages", pageId, "index.tsx"))) return
+		this.pagesWriting.add(pageId)
+		this.sendToCanvas({ source: "caret-host", type: "page-writing", payload: { pageId, active: true } })
+	}
+
+	private clearPagesWriting(): void {
+		if (this.pagesWriting.size === 0) return
+		this.pagesWriting.clear()
+		this.sendToCanvas({ source: "caret-host", type: "page-writing", payload: { active: false } })
+	}
+
+	/** A running write to a page that does not exist yet is a page being written. */
+	private noticePagesBeingWritten(state: ConversationState): void {
+		for (const entry of state.transcript.entries) {
+			if (entry.kind !== "tool" || entry.status !== "running") continue
+			const match = /\.caret[\\/]pages[\\/]([a-z0-9][\w-]*)[\\/]index\.tsx/i.exec(entry.summary)
+			if (match && !match[1].includes("--v")) this.notePageWriting(match[1])
 		}
 	}
 
@@ -494,14 +524,23 @@ export class ProjectWindow {
 				},
 			})
 			this.canvas.webContents.on("ipc-message", (_event, channel, payload) => {
-				if (channel === "canvas:toHost") {
-					void this.handleCanvasMessage(payload as DesignInboundMessage)
+				if (channel !== "canvas:toHost") return
+				// The canvas's property sidebar opened or closed: the chrome makes room.
+				if ((payload as { type?: unknown })?.type === "inspector-changed") {
+					const open = (payload as { payload?: { open?: unknown } }).payload?.open === true
+					this.sendToChrome("canvas:inspector-changed", this.projectPath, open)
+					return
 				}
+				void this.handleCanvasMessage(payload as DesignInboundMessage)
 			})
 			// The gap that made the Windows canvas failure invisible: the main
 			// process watched Vite (healthy) but nothing watched whether the
 			// renderer actually REACHED it. This is the user's side of the story.
-			this.canvas.webContents.on("did-fail-load", (_e, code, description, validatedUrl) => {
+			this.canvas.webContents.on("did-fail-load", (_e, code, description, validatedUrl, isMainFrame) => {
+				// Only the canvas page itself counts. A page preview inside it (a card,
+				// a take) is "aborted" (-3) every time it is closed or replaced, which
+				// is normal and was being reported as a blocked canvas.
+				if (!isMainFrame || code === -3) return
 				Logger.error(`[canvas] failed to load ${validatedUrl}: ${description} (${code})`)
 				emitDesignEvent("canvas_blocked", { reason: "renderer_load_failed", code })
 			})

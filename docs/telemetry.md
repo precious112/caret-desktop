@@ -46,15 +46,15 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 | `app_launched` | `restored_windows` (count) |
 | `app_quit` | `session_duration_s` |
 | `project_opened` | `open_windows` (count); `has_app_code` (bool: whether the folder already held app code, never what it was) |
-| `surface_switched` | `surface`: canvas / foundation / agent / assets; `initial` (true only for the automatic landing on Foundation when a project has no design system yet) |
+| `surface_switched` | `surface`: canvas / foundation / agent / assets / skills / libraries; `initial` (true only for the automatic landing on Foundation when a project has no design system yet) |
 
 ### Foundation interview (onboarding)
 
 | Event | Properties |
 |---|---|
 | `setup_route_chosen` | `route`: from-app / ai-new-look / ai-describe / manual; `has_app_code` (bool) |
-| `wizard_started` | `mode`: ai-led / collaborative / from-app / other |
-| `wizard_step` | `action`: answer / back / retry / finish_now; `ok`; `duration_s` |
+| `wizard_started` | `mode`: collaborative / from-app / other |
+| `wizard_step` | `action`: opening / answer / back / retry / finish_now; `ok`; `duration_s` |
 | `wizard_committed` | `ok`; `duration_s` |
 | `wizard_abandoned` | `ok`; `duration_s` |
 
@@ -62,7 +62,7 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 
 | Event | Properties |
 |---|---|
-| `generate_step` | `stage`: clarify / brief / variants / refine / render; `lane`: image / recipe / mark / shader / model3d; `ok`; `duration_s` |
+| `generate_step` | `stage`: clarify / brief / variants / refine / render; `lane`: image / recipe / mark / shader / model3d; for the image board, `prompt_help`: polish / ask / exact (first takes) or `strength`: subtle / strong (a change); `ok`; `duration_s` |
 | `generate_accepted` | `lane`; `ok`; `duration_s` |
 | `generate_abandoned` | `ok`; `duration_s` |
 
@@ -105,13 +105,25 @@ Common properties on all events: `app_version`, `platform` (e.g. `darwin`), `arc
 
 Screen names, routes and file paths are never sent.
 
-### Component catalog
+### Components
 
 | Event | Properties |
 |---|---|
-| `catalog_install_requested` | `initiator`: agent / auto; `library` (fixed catalog id, or "unknown") |
+| `catalog_install_requested` | `initiator`: agent / auto; `library`: shadcn / magicui / aceternity / smoothui / kokonutui / 21st / other |
 | `catalog_install_completed` | same |
 | `catalog_install_denied` | same |
+
+### Skills, libraries and coding tools
+
+Skill, library and tool names from Caret's own lists, and failure kinds. Never a skill's text, a search, or anything from your project.
+
+| Event | Properties |
+|---|---|
+| `skill_installed` | `skill`: frontend-design / impeccable / taste-skill / emil-design-eng / shadcn / web-design-guidelines |
+| `skill_chosen` | `skill`: one of the above, or none |
+| `library_installed` | `library`: shadcn / aceternity / lazyweb / gummble / twentyfirst |
+| `library_failure` | `library`: as above; `kind`: rate-limit / auth / unavailable |
+| `coding_tool_set_up` | `tool`: claude / codex / cursor / opencode |
 
 ### Errors
 

@@ -1,0 +1,324 @@
+{
+  "format": 2,
+  "calls": [
+    {
+      "tag": "interview:opening",
+      "area": null,
+      "systemPrompt": "You start a design interview inside Caret, a design tool, for an app that already exists. Read the app in your working directory and find what its code already decides about these topics. Then state each finding as one line the user can confirm.\n\nWhere to look: Tailwind config or @theme blocks, CSS custom properties, theme objects (MUI, Chakra, styled-components), how fonts are loaded, and the most used values in the styles. Never read node_modules, build output or the .caret folder.\n\n- One statement per topic the code clearly decides; leave the rest out (Caret asks about them).\n- Each statement's value is exactly what the code says, and `source` is the file it came from, relative to the project.\n- If a font is not a Google Fonts family, name the closest Google Fonts family and say so in the text.\n- Each statement is shown already agreed; the user presses \"Not quite\" on any that is wrong. So every statement must be true on its own, and all must be true together.\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- `question` is one short sentence introducing the screen, like \"Before the questions, here's what I took from your description.\"\n\nTopics and the shape of each value:\n- surface (light or dark): {\"surface\": \"light\" or \"dark\"}\n- display-type (the heading typeface): {\"family\": \"Google Fonts family name\"}\n- body-type (the body typeface): {\"family\": \"Google Fonts family name\"}\n- type-scale (type size and weight): {\"baseSize\": 12 to 20, \"scaleRatio\": 1.05 to 1.5}\n- brand-color (the brand colour): {\"hex\": \"#rrggbb\"}\n- secondary-color (a supporting colour): {\"hex\": \"#rrggbb\"} or {\"none\": true}\n- accent-color (an accent colour): {\"hex\": \"#rrggbb\"} or {\"none\": true}\n- neutral (the greys): {\"neutral\": \"cool\", \"true\", \"warm\" or \"slight-tint\"}\n- semantics (success/warning/error colours): {\"success\": \"#rrggbb\", \"warning\": \"#rrggbb\", \"error\": \"#rrggbb\", \"info\": \"#rrggbb\"}\n- spacing (density and spacing): {\"spacingUnit\": 4 or 8}\n- radius (corner rounding): {\"radiusCharacter\": \"sharp\", \"soft\", \"round\" or \"pill\"}\n- depth (shadows and depth): {\"elevation\": \"flat\", \"subtle\" or \"pronounced\"}",
+      "prompt": "Their app is in your working directory. What Caret detected:\n\"\"\"\nFramework: Next.js.\nStyling: Tailwind.\nFiles that probably declare the look (start here, but they are not the whole story): app/globals.css.\n\"\"\"\n\nWrite the opening screen.",
+      "templateHash": "0fc2796ffa36788d",
+      "reply": {
+        "question": "Before the questions, here's what I read from your app's code. Tell me if any of it looks wrong.",
+        "statements": [
+          {
+            "area": "surface",
+            "value": {
+              "surface": "light"
+            },
+            "text": "Your app is light mode: a very pale grey-blue page background with near-black text on top.",
+            "source": "app/globals.css"
+          },
+          {
+            "area": "display-type",
+            "value": {
+              "family": "Inter"
+            },
+            "text": "Headings use Inter, a plain neutral sans-serif. It is the only font your app loads.",
+            "source": "app/layout.tsx"
+          },
+          {
+            "area": "body-type",
+            "value": {
+              "family": "Inter"
+            },
+            "text": "Body text uses Inter too, loaded from Google Fonts and set once for the whole app.",
+            "source": "app/globals.css"
+          },
+          {
+            "area": "brand-color",
+            "value": {
+              "hex": "#4f46e5"
+            },
+            "text": "Your main colour is #4f46e5, a strong blue-violet. It fills the buttons, like \"New order\".",
+            "source": "app/globals.css"
+          },
+          {
+            "area": "neutral",
+            "value": {
+              "neutral": "cool"
+            },
+            "text": "Your greys lean cool, with a slight blue tint. They come from Tailwind's slate family.",
+            "source": "app/page.tsx"
+          },
+          {
+            "area": "spacing",
+            "value": {
+              "spacingUnit": 4
+            },
+            "text": "Spacing moves in 4-pixel steps. Every padding and margin in the app is a multiple of 4px.",
+            "source": "app/page.tsx"
+          },
+          {
+            "area": "radius",
+            "value": {
+              "radiusCharacter": "soft"
+            },
+            "text": "Corners are softly rounded, one single step of about 8px (0.5rem), on buttons and inputs.",
+            "source": "app/globals.css"
+          },
+          {
+            "area": "depth",
+            "value": {
+              "elevation": "flat"
+            },
+            "text": "Nothing casts a shadow. Buttons even switch shadows off outright, so the look is flat.",
+            "source": "app/page.tsx"
+          }
+        ]
+      },
+      "emulated": false
+    },
+    {
+      "tag": "interview:area",
+      "area": "type-scale",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about type size and weight.\n\nHow it is shown: shown as a slider from quiet to bold, with a live preview. They can also type their own size and step, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nEach option is a body text size in px (12 to 20) and the step between heading sizes (a ratio from 1.05 to 1.5). Offer 3 to 5 options from quiet to bold, in that order. Each label names both numbers, like \"Balanced: 16px body, headings ×1.2\".",
+      "prompt": "Their app, as Caret detected it:\n\"\"\"\nFramework: Next.js.\nStyling: Tailwind.\nFiles that probably declare the look (start here, but they are not the whole story): app/globals.css.\n\"\"\"\nWhat was read from its code is listed under \"Decided so far\". You can't open its files in this step.\n\nDecided so far:\n- light or dark: Light (read from app/globals.css)\n- the heading typeface: Inter (read from app/layout.tsx)\n- the body typeface: Inter (read from app/globals.css)\n- the greys: Cool (read from app/page.tsx)\n- density and spacing: Tight, 4px base (read from app/page.tsx)\n- corner rounding: Soft, 8px (read from app/globals.css)\n- shadows and depth: Flat (read from app/page.tsx)\n\nWrite the question about type size and weight.",
+      "templateHash": "17d44754bd0902ff",
+      "reply": {
+        "question": "How big should your body text be, and how far apart should heading sizes step? Drag the slider — left is quiet, right is bold. You can also type your own size and step.",
+        "options": [
+          {
+            "value": {
+              "baseSize": 14,
+              "scaleRatio": 1.1
+            },
+            "label": "Quiet: 14px body, headings ×1.1",
+            "reason": "Your spacing is tight (4px) and your shadows are flat, so 14px body fits a lot of text on screen. Headings step up only a little (×1.1), so the page reads even and calm."
+          },
+          {
+            "value": {
+              "baseSize": 15,
+              "scaleRatio": 1.2
+            },
+            "label": "Calm: 15px body, headings ×1.2",
+            "reason": "Tight 4px spacing already packs your page, so 15px body stays compact. A ×1.2 step gives headings a clear but gentle lift above the flat layout."
+          },
+          {
+            "value": {
+              "baseSize": 16,
+              "scaleRatio": 1.25
+            },
+            "label": "Balanced: 16px body, headings ×1.25",
+            "reason": "16px is the easy-to-read default and pairs well with your Inter type and cool greys. ×1.25 makes headings clearly bigger without shouting on a flat, tight page."
+          },
+          {
+            "value": {
+              "baseSize": 17,
+              "scaleRatio": 1.4
+            },
+            "label": "Bold: 17px body, headings ×1.4",
+            "reason": "17px body reads large, and ×1.4 lifts headings well above the text. With your tight 4px spacing this fills the screen faster, so fewer items fit at once."
+          },
+          {
+            "value": {
+              "baseSize": 18,
+              "scaleRatio": 1.5
+            },
+            "label": "Loud: 18px body, headings ×1.5",
+            "reason": "18px body with ×1.5 headings is the boldest setting, where headings feel nearly twice the body. Your flat, tight layout turns dramatic but holds less per screen."
+          }
+        ],
+        "recommended": 2,
+        "why": "Your spacing is tight, shadows flat, greys cool, and everything uses Inter — an even, easy read. 16px body with a ×1.25 heading step fits that: readable, calm, and clear."
+      },
+      "emulated": false
+    },
+    {
+      "tag": "interview:area",
+      "area": "brand-color",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about the brand colour.\n\nHow it is shown: shown as colour swatches with a preview. They can also pick or type their own colour, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nThe brand colour goes on primary buttons and links. Offer colours that come from this product and its world. Each label names the colour and its hex.",
+      "prompt": "Their app, as Caret detected it:\n\"\"\"\nFramework: Next.js.\nStyling: Tailwind.\nFiles that probably declare the look (start here, but they are not the whole story): app/globals.css.\n\"\"\"\nWhat was read from its code is listed under \"Decided so far\". You can't open its files in this step.\n\nDecided so far:\n- light or dark: Light (read from app/globals.css)\n- the heading typeface: Inter (read from app/layout.tsx)\n- the body typeface: Inter (read from app/globals.css)\n- type size and weight: 16px body, headings ×1.25 (they picked it)\n- the greys: Cool (read from app/page.tsx)\n- density and spacing: Tight, 4px base (read from app/page.tsx)\n- corner rounding: Soft, 8px (read from app/globals.css)\n- shadows and depth: Flat (read from app/page.tsx)\n\nOn the opening screen they said this about the brand colour was not quite right: \"Our brand is the deeper indigo, #3730a3.\". Take it into account.\n\nAvoid (overused AI defaults they did not ask for): #F4F1EA, #EDE7D8, #F7F1E4, #D97757, #D9622B, #6366f1, #a855f7, #ec4899, #4f46e5, #16d5e6, #2563eb, #3b82f6\n\nWrite the question about the brand colour.",
+      "templateHash": "aedc6fb9cd0b8694",
+      "reply": {
+        "question": "The brand colour fills primary buttons and link text. You said your brand is the deeper indigo, #3730a3. Which one should we use?",
+        "options": [
+          {
+            "value": {
+              "hex": "#3730a3"
+            },
+            "label": "Deeper indigo #3730a3 — 9.9:1 on white",
+            "reason": "This is the deeper indigo you named. It stays dark on your light background, so button labels and links are easy to read."
+          },
+          {
+            "value": {
+              "hex": "#312e81"
+            },
+            "label": "Midnight indigo #312e81 — 11.4:1 on white",
+            "reason": "A darker step of your indigo. Buttons look heavier and more serious, and text on them is the most readable of the three."
+          },
+          {
+            "value": {
+              "hex": "#4338ca"
+            },
+            "label": "Bright indigo #4338ca — 7.9:1 on white",
+            "reason": "A lighter step of your indigo. Buttons feel livelier, but they lose the deeper look you asked for."
+          }
+        ],
+        "recommended": 0,
+        "why": "You told us your brand is the deeper indigo, #3730a3, so that is the pick. It stays dark against your light grey background, which keeps button and link text clearly readable."
+      },
+      "emulated": false
+    },
+    {
+      "tag": "interview:area",
+      "area": "secondary-color",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about a supporting colour.\n\nHow it is shown: shown as colour swatches with a preview. They can also pick or type their own colour, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nA supporting colour for secondary buttons, charts and highlights, used less than the brand. It must look clearly different from the brand colour. Caret adds a None option itself, so don't offer one.",
+      "prompt": "Their app, as Caret detected it:\n\"\"\"\nFramework: Next.js.\nStyling: Tailwind.\nFiles that probably declare the look (start here, but they are not the whole story): app/globals.css.\n\"\"\"\nWhat was read from its code is listed under \"Decided so far\". You can't open its files in this step.\n\nDecided so far:\n- light or dark: Light (read from app/globals.css)\n- the heading typeface: Inter (read from app/layout.tsx)\n- the body typeface: Inter (read from app/globals.css)\n- type size and weight: 16px body, headings ×1.25 (they picked it)\n- the brand colour: #3730a3 (they typed it)\n- the greys: Cool (read from app/page.tsx)\n- density and spacing: Tight, 4px base (read from app/page.tsx)\n- corner rounding: Soft, 8px (read from app/globals.css)\n- shadows and depth: Flat (read from app/page.tsx)\n\nAvoid (overused AI defaults they did not ask for): #F4F1EA, #EDE7D8, #F7F1E4, #D97757, #D9622B, #6366f1, #a855f7, #ec4899, #4f46e5, #16d5e6, #2563eb, #3b82f6\n\nWrite the question about a supporting colour.",
+      "templateHash": "890bb8465c6f3c4f",
+      "reply": {
+        "question": "Your brand colour is a deep indigo (#3730a3). Pick the second colour for secondary buttons, charts and highlights on your light background.",
+        "why": "This colour is used less than the brand, so it only needs to look clearly different from the indigo and hold up in small chart marks. Your greys are cool, so a cool second colour sits next to them without looking dirty.",
+        "options": [
+          {
+            "value": {
+              "hex": "#0f766e"
+            },
+            "label": "Teal #0f766e",
+            "reason": "Dark teal reads as a clear step away from your indigo and matches your cool greys. Good for small chart lines and secondary buttons on white."
+          },
+          {
+            "value": {
+              "hex": "#b45309"
+            },
+            "label": "Amber #b45309",
+            "reason": "Warm amber pops against a cool indigo and cool greys, so highlights and chart bars stand out. Use it for small areas only."
+          },
+          {
+            "value": {
+              "hex": "#15803d"
+            },
+            "label": "Green #15803d",
+            "reason": "Deep green gives a positive, calm second colour that never looks like your indigo. Works for highlights, but chart marks can blur with teal-adjacent greys."
+          }
+        ],
+        "recommended": 0
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:area",
+      "area": "accent-color",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about an accent colour.\n\nHow it is shown: shown as colour swatches with a preview. They can also pick or type their own colour, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nA small accent colour for rare details, like status dots or badges. It must look clearly different from the brand and supporting colours. Caret adds a None option itself, so don't offer one.",
+      "prompt": "Their app, as Caret detected it:\n\"\"\"\nFramework: Next.js.\nStyling: Tailwind.\nFiles that probably declare the look (start here, but they are not the whole story): app/globals.css.\n\"\"\"\nWhat was read from its code is listed under \"Decided so far\". You can't open its files in this step.\n\nDecided so far:\n- light or dark: Light (read from app/globals.css)\n- the heading typeface: Inter (read from app/layout.tsx)\n- the body typeface: Inter (read from app/globals.css)\n- type size and weight: 16px body, headings ×1.25 (they picked it)\n- the brand colour: #3730a3 (they typed it)\n- a supporting colour: #0f766e (they picked it)\n- the greys: Cool (read from app/page.tsx)\n- density and spacing: Tight, 4px base (read from app/page.tsx)\n- corner rounding: Soft, 8px (read from app/globals.css)\n- shadows and depth: Flat (read from app/page.tsx)\n\nAvoid (overused AI defaults they did not ask for): #F4F1EA, #EDE7D8, #F7F1E4, #D97757, #D9622B, #6366f1, #a855f7, #ec4899, #4f46e5, #16d5e6, #2563eb, #3b82f6\n\nWrite the question about an accent colour.",
+      "templateHash": "76453eb1ab8bc764",
+      "reply": {
+        "question": "Your brand is deep indigo (#3730a3) and your supporting colour is teal (#0f766e). Pick one small accent colour for rare details like a status dot or a badge. It must not look like either of those.",
+        "why": "Little dots and badges are easy to misread as your brand or supporting colour if the accent is close to them. Each choice below is clearly a different hue, so it stands apart on a light screen. Caret adds a None option.",
+        "options": [
+          {
+            "value": {
+              "hex": "#f59e0b"
+            },
+            "label": "Amber #f59e0b — warm yellow-orange",
+            "reason": "Far from both indigo and teal, so a tiny dot clearly pops on your light screens. Works for 'in progress' or 'needs attention' badges without looking like an error."
+          },
+          {
+            "value": {
+              "hex": "#dc2626"
+            },
+            "label": "Red #dc2626 — strong warm red",
+            "reason": "The loudest of the three. A small dot reads instantly as blocked or failed, which suits your flat, tight layout where nothing else shouts."
+          },
+          {
+            "value": {
+              "hex": "#84cc16"
+            },
+            "label": "Lime #84cc16 — bright yellow-green",
+            "reason": "A clearly different green from your teal support colour, so a badge still separates from it at dot size. Good for 'done' or 'active' labels."
+          }
+        ],
+        "recommended": 0
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:area",
+      "area": "semantics",
+      "systemPrompt": "You write one question in a design interview inside Caret, a design tool. Caret runs the interview and decides the topics and their order. Your only job is the question about success/warning/error colours.\n\nHow it is shown: shown as cards of four swatches. They can also type their own four colours, or Skip.\n\nRules:\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Every option and its reason must come from what they told you about their product, in their words.\n- Options must be real alternatives that look clearly different from each other.\n- Put each option's numbers in its label where it has them (hex, px, ratio).\n- Recommend exactly one option.\n- Never offer anything on the Avoid line.\n\nFour colours for status: success, warning, error and info. Each option is a full set of four that reads clearly on the chosen background.",
+      "prompt": "Their app, as Caret detected it:\n\"\"\"\nFramework: Next.js.\nStyling: Tailwind.\nFiles that probably declare the look (start here, but they are not the whole story): app/globals.css.\n\"\"\"\nWhat was read from its code is listed under \"Decided so far\". You can't open its files in this step.\n\nDecided so far:\n- light or dark: Light (read from app/globals.css)\n- the heading typeface: Inter (read from app/layout.tsx)\n- the body typeface: Inter (read from app/globals.css)\n- type size and weight: 16px body, headings ×1.25 (they picked it)\n- the brand colour: #3730a3 (they typed it)\n- a supporting colour: #0f766e (they picked it)\n- an accent colour: #f59e0b (they picked it)\n- the greys: Cool (read from app/page.tsx)\n- density and spacing: Tight, 4px base (read from app/page.tsx)\n- corner rounding: Soft, 8px (read from app/globals.css)\n- shadows and depth: Flat (read from app/page.tsx)\n\nWrite the question about success/warning/error colours.",
+      "templateHash": "fc1d05127232701e",
+      "reply": {
+        "question": "Your screens are light, your brand is a deep indigo, and amber is already your accent. Pick the set of four status colours — success, warning, error, info — that should appear on that light background.",
+        "why": "On flat, light screens with a deep indigo brand, status colours need to be darker than your amber accent so a warning is not mistaken for a highlight. The 700 set stays clearly readable on white and never clashes with #f59e0b.",
+        "options": [
+          {
+            "value": {
+              "success": "#16a34a",
+              "warning": "#d97706",
+              "error": "#dc2626",
+              "info": "#2563eb"
+            },
+            "label": "Standard 600 — #16a34a, #d97706, #dc2626, #2563eb",
+            "reason": "The usual Tailwind 600 shades, so they fit code you already have. They read fine on white, but #d97706 warning sits close to your #f59e0b accent, so a warning could look like a highlight."
+          },
+          {
+            "value": {
+              "success": "#15803d",
+              "warning": "#b45309",
+              "error": "#b91c1c",
+              "info": "#1e40af"
+            },
+            "label": "Deeper 700 — #15803d, #b45309, #b91c1c, #1e40af",
+            "reason": "Darker 700 shades match your deep #3730a3 brand and stay far from the amber accent. Strong contrast on white for small text and thin flat icons."
+          },
+          {
+            "value": {
+              "success": "#22c55e",
+              "warning": "#f59e0b",
+              "error": "#ef4444",
+              "info": "#3b82f6"
+            },
+            "label": "Brighter 500 — #22c55e, #f59e0b, #ef4444, #3b82f6",
+            "reason": "Brighter 500 shades feel lighter and friendlier, but warning #f59e0b is exactly your accent, so warnings would blend into the rest of the screen."
+          }
+        ],
+        "recommended": 1
+      },
+      "emulated": true
+    },
+    {
+      "tag": "interview:prose",
+      "area": null,
+      "systemPrompt": "You write the summary at the end of a design interview inside Caret, a design tool. Every value is already decided and final.\n\n- summary: 2 or 3 sentences to the user about how their foundation fits their product.\n- rule: one sentence on how colour is used (for example, where the brand colour appears and where it never does).\n- reasons: one sentence per topic on why that choice fits, grounded in what they said and chose.\n- Write for someone who builds software but has no design vocabulary. Short sentences. Say what a choice does and how it will look. A design term is fine only next to its plain meaning.\n- Never change, add or suggest a value. Never name a colour or font that is not in the list you are given.",
+      "prompt": "Their app, as Caret detected it:\n\"\"\"\nFramework: Next.js.\nStyling: Tailwind.\nFiles that probably declare the look (start here, but they are not the whole story): app/globals.css.\n\"\"\"\nWhat was read from its code is listed under \"Decided so far\". You can't open its files in this step.\n\nThe decided foundation:\n- surface (light or dark): Light\n- display-type (the heading typeface): Inter\n- body-type (the body typeface): Inter\n- type-scale (type size and weight): 16px body, headings ×1.25. Shown with the reason: 16px is the easy-to-read default and pairs well with your Inter type and cool greys. ×1.25 makes headings clearly bigger without shouting on a flat, tight page.\n- brand-color (the brand colour): #3730a3\n- secondary-color (a supporting colour): #0f766e. Shown with the reason: Dark teal reads as a clear step away from your indigo and matches your cool greys. Good for small chart lines and secondary buttons on white.\n- accent-color (an accent colour): #f59e0b. Shown with the reason: Far from both indigo and teal, so a tiny dot clearly pops on your light screens. Works for 'in progress' or 'needs attention' badges without looking like an error.\n- neutral (the greys): Cool\n- semantics (success/warning/error colours): #15803d, #b45309, #b91c1c. Shown with the reason: Darker 700 shades match your deep #3730a3 brand and stay far from the amber accent. Strong contrast on white for small text and thin flat icons.\n- spacing (density and spacing): Tight, 4px base\n- radius (corner rounding): Soft, 8px\n- depth (shadows and depth): Flat",
+      "templateHash": "5ab61ed6b7978717",
+      "reply": {
+        "summary": "Your foundation is built for a light, flat Next.js app that reads cleanly on white. Inter for both headings and body keeps all text in one familiar family, and a 4px spacing rhythm with softly rounded 8px corners gives the product a calm, tidy feel. Deep indigo carries the brand while teal and amber stay reserved for small supporting jobs.",
+        "rule": "Indigo #3730a3 is the brand colour and belongs on primary buttons, links and active states, never on large background fills or long blocks of body text.",
+        "reasons": {
+          "surface": "A light surface suits a flat, tight page and lets your deep #3730a3 and cool greys show at full strength on white.",
+          "display-type": "Inter for headings matches your body type, so titles and text look like one family and the app only loads a single font.",
+          "body-type": "Inter is a familiar, highly readable screen font that stays clear at 16px in tables, forms and dashboards.",
+          "type-scale": "16px is the easy-to-read default and pairs well with your Inter type and cool greys, and ×1.25 makes headings clearly bigger without shouting on a flat, tight page.",
+          "brand-color": "A deep indigo like #3730a3 has enough weight to carry primary buttons and links on white without any shadow or gloss.",
+          "secondary-color": "Dark teal reads as a clear step away from your indigo and matches your cool greys, so it works for small chart lines and secondary buttons on white.",
+          "accent-color": "Amber is far from both indigo and teal, so a tiny dot clearly pops on your light screens for 'in progress' or 'needs attention' badges without looking like an error.",
+          "neutral": "Cool greys sit naturally beside your indigo and teal, keeping borders, captions and disabled states quiet and consistent.",
+          "semantics": "Darker 700 shades match your deep #3730a3 brand and stay far from the amber accent, giving strong contrast on white for small text and thin flat icons.",
+          "spacing": "A tight 4px base packs more rows and controls on screen, which fits a data-heavy app where users scan a lot at once.",
+          "radius": "Soft 8px corners take the hard edge off buttons and cards while staying modest enough for a flat, business-like look.",
+          "depth": "Flat surfaces with no shadows keep the page calm and fast, so your indigo, teal and amber carry the meaning instead of drop shadows."
+        }
+      },
+      "emulated": true
+    }
+  ],
+  "recorded": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "at": "2026-10-15T14:42:31.238Z",
+    "gitSha": "be2d3803"
+  },
+  "script": "from-app",
+  "mode": "from-app",
+  "description": "Framework: Next.js.\nStyling: Tailwind.\nFiles that probably declare the look (start here, but they are not the whole story): app/globals.css."
+}

@@ -1,0 +1,2101 @@
+[
+  {
+    "id": "any-inter-everywhere",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "Inter (or Roboto/system stack) for every word, no pairing",
+    "description": "One generic sans, usually Inter, carries both display and body, especially the centered hero H1.",
+    "detect": {
+      "type": "font",
+      "hint": "computed font-family of h1 and body both resolve to the same generic sans",
+      "values": [
+        "Inter",
+        "Roboto",
+        "Open Sans",
+        "system-ui"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Inter used for everything, but especially the centered hero headlines"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "Inter (or Roboto, or Open Sans) used as both display and body, with no pairing face."
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "Type that is always Inter, Roboto, or the system stack, with no pairing and no display face."
+      },
+      {
+        "url": "https://www.925studios.co/blog/ai-slop-design-tells",
+        "date": "2026-06-14",
+        "author": "925studios",
+        "quote": "The Inter font, used everywhere, is not wrong, it is just the safest possible answer."
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "Centered Inter typeface hero with pill-shaped badge above headline"
+      },
+      {
+        "url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+        "date": "2026-04-28",
+        "author": "Sailop",
+        "quote": "The font is Inter"
+      },
+      {
+        "url": "https://cloud.tencent.com/developer/article/2687093",
+        "date": "2026-06-12",
+        "author": "程序员鱼皮 (Tencent Cloud dev community)",
+        "quote": "字体死板：基本上就是 Inter、Roboto 等几种固定的字体"
+      },
+      {
+        "url": "https://news.ycombinator.com/item?id=48508171",
+        "date": "2026-06-12",
+        "author": "stefan_ (HN, quoting Anthropic frontend-design skill)",
+        "quote": "overused font families (Inter, Roboto, Arial, system fonts)"
+      }
+    ],
+    "independent_sources": 8,
+    "newest_source_date": "2026-09-24",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-tasteful-slop-fonts",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "The \"tasteful free font\" set: Space Grotesk, Instrument Serif, Geist, Fraunces, Syne",
+    "description": "Second-wave AI font picks that replaced Inter once models were told to avoid it.",
+    "detect": {
+      "type": "font",
+      "hint": "font-family on headings/body in this list",
+      "values": [
+        "Space Grotesk",
+        "Instrument Serif",
+        "Geist",
+        "Fraunces",
+        "Syne",
+        "Plus Jakarta Sans",
+        "Roboto",
+        "Inter"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "LLM tend to use certain font combos like Space Grotesk, Instrument Serif and Geist"
+      },
+      {
+        "url": "https://news.ycombinator.com/item?id=47865795",
+        "date": "2026-04-22",
+        "author": "flexagoon (HN)",
+        "quote": "Slop fonts: Space Grotesk, Instrument Serif, Geist, Syne, Fraunces"
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Inter, Roboto, Fraunces, Geist, Plus Jakarta Sans, and Space Grotesk are used on so many sites they no longer feel distinctive."
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "the \"tasteful free font\" set (Space Grotesk, Geist, Instrument Serif, Fraunces)"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Inter / Geist / Space Grotesk / Instrument Serif italic accent"
+      }
+    ],
+    "independent_sources": 5,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-italic-serif-accent-word",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "One italic serif accent word inside an otherwise sans hero headline",
+    "description": "A roman/sans H1 with one word flipped to italic serif (or the whole hero set in italic serif display).",
+    "detect": {
+      "type": "dom",
+      "hint": "h1 containing an <em>/<i>/span with font-style:italic and a serif font-family different from the h1",
+      "values": [
+        "Instrument Serif",
+        "Fraunces",
+        "Recoleta",
+        "Playfair",
+        "Newsreader"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Serif italic for one accent word in an otherwise-Inter hero"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "The italicised emphasis-word-in-a-header is among the most reliable AI tells"
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Oversized italic serif (Fraunces, Recoleta, Playfair, Newsreader-italic) as the primary hero headline"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "one accented headline word"
+      }
+    ],
+    "independent_sources": 4,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-vibecode-purple",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "\"VibeCode Purple\": indigo/violet accent and purple-to-blue gradients",
+    "description": "Indigo-violet primary (Tailwind indigo-500/600 lineage) on CTAs, often as a purple-to-blue or indigo-purple-pink gradient in the hero.",
+    "detect": {
+      "type": "color",
+      "hint": "filled CTA or hero gradient hue in HSL 240-295 deg with >=35% saturation (slop-detect's rule); Tailwind classes from-indigo-500 via-purple-500 to-pink-500, indigo-600",
+      "values": [
+        "indigo-500",
+        "indigo-600",
+        "from-indigo-500 via-purple-500 to-pink-500"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "VibeCode Purple"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Indigo-violet (HSL 240–295°, ≥35% sat) on filled CTAs"
+      },
+      {
+        "url": "https://www.925studios.co/blog/ai-slop-design-tells",
+        "date": "2026-06-14",
+        "author": "925studios",
+        "quote": "The blue-to-purple gradient is the single loudest AI tell in 2026."
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "This is the single most-recognised AI aesthetic."
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Purple/violet gradients and cyan-on-dark are the most recognizable tells of AI-generated UIs."
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "purple or indigo gradient fading into blue"
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "Recurring Tailwind classes include indigo-600, slate-900, rounded-2xl"
+      },
+      {
+        "url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+        "date": "2026-04-28",
+        "author": "Sailop",
+        "quote": "from-indigo-500 via-purple-500 to-pink-500"
+      },
+      {
+        "url": "https://www.ohhwells.com/blog/vibe-coded-website",
+        "date": "2026-08-03",
+        "author": "OhhWells Team",
+        "quote": "Purple-blue gradient, oversized headline, two buttons"
+      },
+      {
+        "url": "https://cloud.tencent.com/developer/article/2687093",
+        "date": "2026-06-12",
+        "author": "程序员鱼皮 (Tencent Cloud dev community)",
+        "quote": "配色死板：蓝紫渐变色用到吐"
+      },
+      {
+        "url": "https://news.ycombinator.com/item?id=48508171",
+        "date": "2026-06-12",
+        "author": "stefan_ (HN, quoting Anthropic frontend-design skill)",
+        "quote": "cliched color schemes (particularly purple gradients on white backgrounds)"
+      },
+      {
+        "url": "https://open-design.ai/agents/deepseek-design/",
+        "date": "2026-09-06",
+        "author": "open-design.ai",
+        "quote": "an Inter-and-purple vibe that 'screams an AI made this'"
+      }
+    ],
+    "independent_sources": 12,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-perma-dark-grey-text",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "Permanent dark mode with medium-grey body text (barely passing contrast)",
+    "description": "Dark page background by default, body copy in mid grey, often near the WCAG AA floor.",
+    "detect": {
+      "type": "css",
+      "hint": "body/html background luminance < 0.1 and body text color mid-grey; contrast ratio near 4.5",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Perma dark mode with medium-grey body text and all-caps section labels"
+      },
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Barely passing body-text contrast in dark themes"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Dark page background (body / html / wrapper) with mid-grey body text"
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-09-15",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-gradient-everything",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Gradients everywhere (backgrounds, buttons, borders)",
+    "description": "Many elements carry CSS gradient backgrounds rather than flat fills.",
+    "detect": {
+      "type": "css",
+      "hint": "count elements whose background-image contains linear-/radial-gradient; slop-detect flags >=5",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Gradient everything"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "≥5 visible elements with CSS gradient backgrounds"
+      },
+      {
+        "url": "https://open-design.ai/agents/deepseek-design/",
+        "date": "2026-09-06",
+        "author": "open-design.ai",
+        "quote": "soft gradients, floating panels, oversized rounded corners, dramatic shadows"
+      }
+    ],
+    "independent_sources": 3,
+    "newest_source_date": "2026-09-15",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-gradient-text-headline",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Gradient-filled headline text (background-clip: text)",
+    "description": "Hero H1 or metric numbers filled with a purple-pink or blue-cyan gradient via background-clip:text.",
+    "detect": {
+      "type": "css",
+      "hint": "-webkit-background-clip:text + color transparent + gradient background-image on h1/metrics; Tailwind bg-clip-text",
+      "values": [
+        "bg-clip-text"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "Signals \"AI generated\" faster than almost anything else."
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Gradient text is decorative rather than meaningful — a common AI tell, especially on headings and metrics."
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "H1 with `background-clip: text` + gradient"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "bg-clip-text gradients"
+      }
+    ],
+    "independent_sources": 4,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-colored-glow",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Large coloured glows / chromatic box-shadows",
+    "description": "Zero-offset coloured halos around cards/buttons, especially on dark backgrounds.",
+    "detect": {
+      "type": "css",
+      "hint": "box-shadow or text-shadow with non-grey color and blur >= 24px",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Large colored glows and colored box-shadows"
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Colored glow shadows — a zero-offset chromatic halo (box- or text-shadow) on any background"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "A card on a dark background with a `box-shadow` that leaves a soft coloured halo around it."
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Box-shadows with ≥24px blur and non-grey color"
+      }
+    ],
+    "independent_sources": 4,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-radial-halo-aurora",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Radial spotlight halo / aurora blobs / floating orbs behind the hero",
+    "description": "Saturated radial or conic gradient washes and blurred blobs drifting behind hero copy.",
+    "detect": {
+      "type": "css",
+      "hint": "absolutely positioned elements with radial-/conic-gradient or large filter:blur behind hero",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "An accent-colored radial gradient fading to transparent, dropped behind a hero or section as a \"spotlight\""
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "Flowing organic mesh blobs in purple-to-pink-to-cyan, layered behind hero text."
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Blurred radial/conic gradient \"aurora\" backdrop"
+      }
+    ],
+    "independent_sources": 3,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-glassmorphism",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Glassmorphism: frosted translucent panels and glassy navbars",
+    "description": "backdrop-filter blur on translucent panels/nav used decoratively.",
+    "detect": {
+      "type": "css",
+      "hint": "backdrop-filter: blur() on elements with rgba/alpha background; Tailwind backdrop-blur",
+      "values": [
+        "backdrop-blur"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Glassmorphism"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "Frosted-glass panels everywhere — usually layered over a gradient that you also shouldn't have."
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "`backdrop-filter: blur()` on translucent layers"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "wrapped in `rounded-2xl`, `shadow-lg`, and `backdrop-blur`"
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "frosted glass panels"
+      }
+    ],
+    "independent_sources": 5,
+    "newest_source_date": "2026-09-24",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-centered-hero",
+    "family": "any",
+    "models": [],
+    "kind": "layout",
+    "name": "Centered hero: headline, subhead, two buttons, all centered (often full viewport)",
+    "description": "Full-width centered hero in a generic sans, short sentence, one or two CTAs, often min-height:100vh.",
+    "detect": {
+      "type": "structure",
+      "hint": "first section: h1 text-align center (or centered container), >=28px, followed by 1-2 buttons; min-height 100vh",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Centered hero set in a generic sans"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "`min-height: 100vh` (or `100dvh`), everything centred, one short sentence, one big CTA."
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "centers everything: hero, subhead, two buttons, then a three-card feature grid"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "H1 centered (or in a centered container), ≥28px, in a slop font"
+      },
+      {
+        "url": "https://github.com/Vasiliy-katsyka/gemini-frontend-design",
+        "date": "2026-10-03",
+        "author": "Vasiliy Katsyka",
+        "quote": "Centered hero with 3 identical cards below",
+        "model_named": "Gemini (default output)"
+      }
+    ],
+    "independent_sources": 5,
+    "newest_source_date": "2026-10-03",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-badge-above-h1",
+    "family": "any",
+    "models": [],
+    "kind": "element",
+    "name": "Pill badge / eyebrow chip right above the hero H1",
+    "description": "Rounded pill (\"New\", \"Now in beta\", often with sparkle) or tiny tracked uppercase label sitting directly above the hero headline.",
+    "detect": {
+      "type": "dom",
+      "hint": "element with border-radius >= height/2, small font, immediately preceding the hero h1",
+      "values": [
+        "Now in beta",
+        "New"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Badge right above the hero H1"
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "A tiny uppercase letter-spaced label sitting immediately above an oversized hero headline — or the same shape rendered as a pill chip"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Rounded pill above H1 (\"Now in beta\", \"New\")"
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "pill-shaped badge above headline"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "Pill badge + centered hero"
+      },
+      {
+        "url": "https://karozieminski.substack.com/p/kimi-k3-ai-website-design-styles",
+        "date": "2026-08-25",
+        "author": "Karo Zieminski",
+        "quote": "Badge pills everywhere."
+      }
+    ],
+    "independent_sources": 6,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-eyebrow-every-section",
+    "family": "any",
+    "models": [],
+    "kind": "element",
+    "name": "Tracked all-caps eyebrow / kicker label above every section heading",
+    "description": "Small uppercase, letter-spaced (often mono) label above each section H2.",
+    "detect": {
+      "type": "css",
+      "hint": "text-transform:uppercase + letter-spacing > 0.05em small text directly before h2",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "All-caps headings and section labels"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "Every section starts with an uppercase mono-cap eyebrow"
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "A tiny tracked uppercase or small-caps label sitting as its own block directly above a heading"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "tracked all-caps eyebrows and `A · B · C` meta strings"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "`text-transform: uppercase` section labels"
+      }
+    ],
+    "independent_sources": 5,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-numbered-section-labels",
+    "family": "any",
+    "models": [],
+    "kind": "element",
+    "name": "Decorative 01 / 02 / 03 numbered section labels",
+    "description": "Small numeric index labels (\"01 / EXAMPLES\", \"01 · THE TOUR\") beside or above section headings, repeated section after section.",
+    "detect": {
+      "type": "text",
+      "hint": "regex ^0[1-9]\\s*[/·—.-] in small labels adjacent to h2",
+      "values": [
+        "01 / 02 / 03",
+        "01 · THE TOUR",
+        "01 — HELLO."
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Small numeric index labels riding next to section headings, repeated section after section, are AI editorial scaffolding"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "`01 / EXAMPLES`, `02 / WHAT'S INSIDE`, `03 / INSTALL`, `01 · THE TOUR`"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "decorative 01 / 02 / 03"
+      }
+    ],
+    "independent_sources": 3,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-icon-tile-feature-cards",
+    "family": "any",
+    "models": [],
+    "kind": "layout",
+    "name": "Three identical feature cards, each with an icon tile on top",
+    "description": "Row of 3 equal rounded cards: small rounded-square icon container, two-line heading, three-line body.",
+    "detect": {
+      "type": "structure",
+      "hint": ">=3 sibling cards with identical structure, svg/icon in a rounded square above heading; Tailwind grid-cols-3",
+      "values": [
+        "grid-cols-3",
+        "rounded-2xl"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Identical feature cards, each with an icon on top"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "Three equal columns, each with an icon above a two-line heading above a three-line body."
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "A small rounded-square icon container above a heading is the universal AI feature-card template"
+      },
+      {
+        "url": "https://www.925studios.co/blog/ai-slop-design-tells",
+        "date": "2026-06-14",
+        "author": "925studios",
+        "quote": "a row of three feature cards, rounded corners, soft shadow, thin-line icon at the top"
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "Three identical cards in a row, each one-third width with centered icons"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "≥3 identical feature cards with icon on top"
+      },
+      {
+        "url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+        "date": "2026-04-28",
+        "author": "Sailop",
+        "quote": "three-card features section using `grid-cols-3` and `rounded-2xl`"
+      },
+      {
+        "url": "https://cloud.tencent.com/developer/article/2687093",
+        "date": "2026-06-12",
+        "author": "程序员鱼皮 (Tencent Cloud dev community)",
+        "quote": "布局死板：首屏放个大标题，下面三个卡片并排"
+      }
+    ],
+    "independent_sources": 8,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-side-stripe-card",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Coloured accent border on one edge of a card (top or left stripe)",
+    "description": "Card with a thick coloured border on only the left or top edge.",
+    "detect": {
+      "type": "css",
+      "hint": "border-left-width or border-top-width >= 3px with chromatic color while other sides are 0/hairline",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Colored borders on cards, on the top or left edge"
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs."
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "A card with a thick coloured border on one edge (usually left, 4–6px, purple or green)."
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Cards with thick colored top/left border only"
+      }
+    ],
+    "independent_sources": 4,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-numbered-steps",
+    "family": "any",
+    "models": [],
+    "kind": "layout",
+    "name": "Numbered \"1, 2, 3\" step sequence section",
+    "description": "How-it-works row of three numbered steps.",
+    "detect": {
+      "type": "structure",
+      "hint": "3 sibling blocks each led by a digit 1/2/3 in a circle or large numeral",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Numbered \"1, 2, 3\" step sequences"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "\"1 · 2 · 3\" step sequences"
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-09-15",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-stat-banner",
+    "family": "any",
+    "models": [],
+    "kind": "layout",
+    "name": "Stat banner row of big numbers (often invented)",
+    "description": "Row of large metrics like 10k+, 99.9% uptime, often fabricated and sometimes count-up animated.",
+    "detect": {
+      "type": "text",
+      "hint": "row of 3-4 siblings each with a large numeral matching /\\d+[kKmM+%x×]/ and a small caption",
+      "values": [
+        "10k+",
+        "99.9%",
+        "10× faster",
+        "trusted by 50,000+ teams"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Stat banner rows"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Big-number stat row (\"10k+\", \"99.9%\")"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "\"10× faster\", \"saves 5 hours per week\", \"trusted by 50,000+ teams\", \"99.9 % uptime\""
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "count-up stats"
+      }
+    ],
+    "independent_sources": 4,
+    "newest_source_date": "2026-09-24",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-emoji-icons",
+    "family": "any",
+    "models": [],
+    "kind": "element",
+    "name": "Emoji used as icons (nav, feature cards, sparkle-for-AI)",
+    "description": "Emoji (🚀 ⚡ 🔒 ✨ 🎯 ✅) standing in for an icon library in nav, features, badges; ✨/Sparkles icon for 'AI'.",
+    "detect": {
+      "type": "text",
+      "hint": "Extended_Pictographic code points inside nav items, card headings, buttons; lucide Sparkles icon",
+      "values": [
+        "🚀",
+        "⚡",
+        "🔒",
+        "✨",
+        "🔥",
+        "🎯",
+        "✅"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "Sidebar or nav with emoji icons"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "`✨` `🚀` `⚡` `🔥` `🎯` `✅` rendered as the primary icon"
+      },
+      {
+        "url": "https://www.ohhwells.com/blog/vibe-coded-website",
+        "date": "2026-08-03",
+        "author": "OhhWells Team",
+        "quote": "🚀 for launch, ⚡ for speed, 🔒 for security"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "✨ / lucide \"Sparkles\" \"AI magic\" tells"
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "Emoji replacing icons in navigation and feature lists"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "the sparkle-for-AI"
+      },
+      {
+        "url": "https://cloud.tencent.com/developer/article/2687093",
+        "date": "2026-06-12",
+        "author": "程序员鱼皮 (Tencent Cloud dev community)",
+        "quote": "Emoji 泛滥"
+      }
+    ],
+    "independent_sources": 7,
+    "newest_source_date": "2026-09-24",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-shadcn-tailwind-defaults",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "Untouched shadcn/ui + Tailwind defaults (rounded-2xl, shadow-lg, slate)",
+    "description": "Stock shadcn/ui components and Tailwind default tokens left as shipped.",
+    "detect": {
+      "type": "css",
+      "hint": "class names rounded-2xl/rounded-3xl/shadow-lg/shadow-md/p-6/slate-*; shadcn CSS vars (--radius, --primary)",
+      "values": [
+        "rounded-2xl",
+        "rounded-3xl",
+        "shadow-lg",
+        "shadow-md",
+        "p-6",
+        "slate-900",
+        "slate-50"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.adriankrebs.ch/blog/design-slop/",
+        "date": "2026-04-20",
+        "author": "Adrian Krebs",
+        "quote": "shadcn/ui"
+      },
+      {
+        "url": "https://muz.li/blog/vibe-design-in-2026-what-ai-generated-ui-means-for-your-work/",
+        "date": "2026-04-14",
+        "author": "Eyal Zuri (Muzli)",
+        "quote": "Both default to Shadcn/UI patterns, which is why every AI-generated product in 2026 reads as a variation of the same three SaaS templates."
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "`indigo-600`, `slate-900`, `rounded-2xl`, `rounded-3xl`, `shadow-lg`, and `p-6`"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "untouched shadcn"
+      },
+      {
+        "url": "https://karozieminski.substack.com/p/kimi-k3-ai-website-design-styles",
+        "date": "2026-08-25",
+        "author": "Karo Zieminski",
+        "quote": "Identically rounded cards with soft shadows. Badge pills everywhere. Tailwind, Tailwind, Tailwind."
+      },
+      {
+        "url": "https://arxiv.org/abs/2603.13036v1",
+        "date": "2026-03-13",
+        "author": "Shin, Gao, Pang, Lee, Reinecke, Tseng",
+        "quote": "generic layouts, standard component libraries, and a clean, but non-distinctive, professional veneer"
+      }
+    ],
+    "independent_sources": 6,
+    "newest_source_date": "2026-09-24",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-cream-terracotta",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "Second-order \"tasteful\" default: warm cream / beige surface with terracotta accent",
+    "description": "What models produce when told to avoid purple: warm off-white page with a terracotta accent (the Claude interface look).",
+    "detect": {
+      "type": "color",
+      "hint": "body background warm off-white (high L, low chroma, hue ~40-90) plus orange-brown accent",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "A warm cream or beige page background has become the default \"tasteful\" AI surface"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "cream with a terracotta accent (Claude's own interface color)"
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Warm off-white / beige default page surface"
+      }
+    ],
+    "independent_sources": 3,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-near-black-acid-accent",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "Near-black page with one acid-green / vermilion / cyan signal colour",
+    "description": "Second-order default: near-black ground, single neon accent (acid green, vermilion) or cyan-on-dark.",
+    "detect": {
+      "type": "color",
+      "hint": "dark background with a single highly saturated accent hue in green/cyan/vermilion range",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "near-black with one acid-green or vermilion signal"
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "flat neon ink on a dark ground is charged once a second tell hue joins it"
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-grid-line-background",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Decorative hairline grid-line background",
+    "description": "Hairline grid/graph-paper background drawn with tiled linear-gradient layers.",
+    "detect": {
+      "type": "css",
+      "hint": "background-image with two linear-gradients of 1px lines and background-size in px",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "A decorative grid or line-field background drawn with hairline linear-gradient layers tiled by a fixed pixel cell"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-fake-window-chrome",
+    "family": "any",
+    "models": [],
+    "kind": "element",
+    "name": "Re-drawn UI chrome: fake browser bar / traffic-light window dots",
+    "description": "Hand-built browser frame or macOS window dots around screenshots or code blocks.",
+    "detect": {
+      "type": "dom",
+      "hint": "three small circles (red/yellow/green) in a row atop a panel; fake URL pill",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "A fake browser bar (URL pill + traffic-light dots) wrapping a screenshot."
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "fake window dots"
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-09-24",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-ai-nav-footer",
+    "family": "any",
+    "models": [],
+    "kind": "layout",
+    "name": "Generic SaaS nav and 4-column footer",
+    "description": "Wordmark left, 4-5 links (Features · Pricing · Docs · Blog · About), CTA right, sticky; footer of Product · Company · Resources · Legal + social icons.",
+    "detect": {
+      "type": "structure",
+      "hint": "header with logo + 4-5 anchors + button; footer with 4 link columns and social-icon row",
+      "values": [
+        "Features",
+        "Pricing",
+        "Docs",
+        "Blog",
+        "About",
+        "Product",
+        "Company",
+        "Resources",
+        "Legal"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "Wordmark hard-left, 4–5 inline text links (`Features · Pricing · Docs · Blog · About`)"
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "4 columns of links (Product · Company · Resources · Legal), social-icon row beneath"
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "hero, features grid, social proof, pricing, FAQ, footer"
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-07-26",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-bento-grid",
+    "family": "any",
+    "models": [],
+    "kind": "layout",
+    "name": "Bento grid of mixed-span rounded cards",
+    "description": "Apple-keynote style wall of rounded cards with varied spans.",
+    "detect": {
+      "type": "structure",
+      "hint": "CSS grid with children using col-span/row-span variations, all rounded",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Apple-keynote mixed-span rounded card wall"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-09-15",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-gradient-letter-avatars",
+    "family": "any",
+    "models": [],
+    "kind": "element",
+    "name": "Letter-only testimonial avatars on gradient circles / placeholder avatars",
+    "description": "Testimonials with initials on gradient backgrounds instead of photos.",
+    "detect": {
+      "type": "dom",
+      "hint": "circular element with 1-2 letters and gradient background inside testimonial",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Letter-only testimonial avatars on gradient backgrounds"
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "placeholder avatars"
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-09-24",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-nested-cards",
+    "family": "any",
+    "models": [],
+    "kind": "layout",
+    "name": "Cards nested inside cards",
+    "description": "Bordered container holding cards holding micro-cards.",
+    "detect": {
+      "type": "dom",
+      "hint": "card-like element (border/shadow/radius/bg) with a card-like ancestor",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Cards inside cards create visual noise and excessive depth."
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "A bordered container with cards inside it."
+      },
+      {
+        "url": "https://github.com/ravidsrk/slop-detect",
+        "date": "2026-09-15",
+        "author": "Ravindra Kumar (slop-detect)",
+        "quote": "Card-like element inside a card-like ancestor"
+      }
+    ],
+    "independent_sources": 3,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-hairline-border-wide-shadow",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Every card wears a hairline border plus a wide diffuse shadow",
+    "description": "Row of cards each with 1px border and soft wide shadow.",
+    "detect": {
+      "type": "css",
+      "hint": "cards with border-width 1px AND box-shadow blur >= 16px",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Every card of this row wears a hairline border paired with a wide, diffuse shadow, which is a recurring generated-UI signature."
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-motion-tells",
+    "family": "any",
+    "models": [],
+    "kind": "treatment",
+    "name": "Scroll fade-up on every section, bounce easing, hover:scale-105, pulsing dot",
+    "description": "Universal scroll-triggered fade/slide, elastic or overshoot easings, card lift on hover, decorative pulsing status dots, blinking cursor in hero.",
+    "detect": {
+      "type": "css",
+      "hint": "IntersectionObserver fade classes on every section; cubic-bezier(0.34, 1.56, 0.64, 1); hover:scale-105; animate-pulse dot",
+      "values": [
+        "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "hover:scale-105",
+        "transition-all"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "Every section fades in when it enters the viewport."
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Bounce and elastic easing feel dated and tacky."
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Small pulsing status dots simulate liveness decoratively."
+      },
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "bounce easing"
+      },
+      {
+        "url": "https://github.com/Vasiliy-katsyka/gemini-frontend-design",
+        "date": "2026-10-03",
+        "author": "Vasiliy Katsyka",
+        "quote": "Scattered fade-and-slide on every DOM node",
+        "model_named": "Gemini (default output)"
+      }
+    ],
+    "independent_sources": 4,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-buzzword-copy",
+    "family": "any",
+    "models": [],
+    "kind": "copy",
+    "name": "Weightless SaaS buzzword copy (Elevate / Empower / Seamless / Unlock)",
+    "description": "Interchangeable hero and feature copy built from generic verbs and adjectives.",
+    "detect": {
+      "type": "text",
+      "hint": "case-insensitive regex over visible text",
+      "values": [
+        "Elevate your workflow",
+        "Get Started",
+        "Build faster. Ship smarter.",
+        "Empowering businesses with innovative solutions",
+        "Empower",
+        "Unlock",
+        "Transform",
+        "Seamless Integration",
+        "streamline",
+        "supercharge",
+        "world-class",
+        "enterprise-grade",
+        "next-generation",
+        "cutting-edge"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/funboy322/avoid-ai-design",
+        "date": "2026-09-24",
+        "author": "funboy322 (avoid-ai-design)",
+        "quote": "Opens with \"Elevate your workflow\" and ends with \"Get Started\""
+      },
+      {
+        "url": "https://www.925studios.co/blog/ai-slop-design-tells",
+        "date": "2026-06-14",
+        "author": "925studios",
+        "quote": "weightless headline copy ('Build faster. Ship smarter.')"
+      },
+      {
+        "url": "https://www.ohhwells.com/blog/vibe-coded-website",
+        "date": "2026-08-03",
+        "author": "OhhWells Team",
+        "quote": "Empowering businesses with innovative solutions"
+      },
+      {
+        "url": "https://codemyspec.com/blog/vibe-coded-websites-look-the-same",
+        "date": "2026-07-26",
+        "author": "John Davenport",
+        "quote": "\"Empower,\" \"Unlock,\" \"Transform,\" \"Seamless Integration\""
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Generic SaaS phrases (streamline / empower / supercharge / world-class / enterprise-grade / next-generation / cutting-edge / etc) are instant AI tells."
+      }
+    ],
+    "independent_sources": 5,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-aphoristic-cadence",
+    "family": "any",
+    "models": [],
+    "kind": "copy",
+    "name": "Aphoristic rebuttal cadence (\"Not a feature. A platform.\" / \"X. No Y.\")",
+    "description": "Sections closing on short manufactured-contrast sentences; also the \"theater\" framing tic.",
+    "detect": {
+      "type": "text",
+      "hint": "regex /\\bNot an? [^.]+\\. An? [^.]+\\./ and /\\. (No|Just) [^.]+\\./ repeated >=3 times; word 'theater'",
+      "values": [
+        "Not a feature. A platform.",
+        "theater"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Three or more sections landing on a short rebuttal sentence (\"X. No Y.\" / \"X. Just Y.\")"
+      },
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Dismissing something as \"theater\" is a recurring generated-copy tic."
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-em-dash-copy",
+    "family": "any",
+    "models": [],
+    "kind": "copy",
+    "name": "Em-dash saturation in body copy",
+    "description": "Dense em dashes in UI and marketing copy as an AI cadence marker.",
+    "detect": {
+      "type": "text",
+      "hint": "count of — or -- in body text; impeccable fires at >=8 and ~1 per 500 chars",
+      "values": [
+        "—",
+        "--"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/pbakaus/impeccable/blob/main/crates/live/assets/antipatterns.json",
+        "date": "2026-10-07",
+        "author": "Paul Bakaus (impeccable)",
+        "quote": "Em-dash saturation in body copy is an AI cadence tell."
+      },
+      {
+        "url": "https://www.noemamag.com/now-entering-the-era-of-bleh/",
+        "date": "2026-09-24",
+        "author": "Aaron Horwath (Noema)",
+        "quote": "overuse of em dashes as a marker of \"AI slop\""
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-10-07",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-placeholder-names",
+    "family": "any",
+    "models": [],
+    "kind": "copy",
+    "name": "Startup-cliche product names and placeholder people",
+    "description": "Acme / Nexus / Pulse product names; Jane Doe / John Smith testimonials.",
+    "detect": {
+      "type": "text",
+      "hint": "match visible text against list",
+      "values": [
+        "Acme",
+        "Nexus",
+        "Pulse",
+        "Jane Doe",
+        "John Smith",
+        "Example User"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "\"Acme\", \"Nexus\", \"Pulse\", \"Unleash\", \"Seamless\", \"Supercharge\"."
+      },
+      {
+        "url": "https://github.com/Nutlope/hallmark/blob/main/skills/hallmark/references/anti-patterns.md",
+        "date": "2026-06-02",
+        "author": "Hassan El Mghari (Nutlope/hallmark)",
+        "quote": "\"Jane Doe\", \"John Smith\", \"Example User\"."
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-06-02",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-minimalist-western-homogenization",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "Globally averaged minimalist look: whitespace, standard sans, rounded corners, drop shadows",
+    "description": "Vibe-coded sites converge on a Western-centric minimalist aesthetic regardless of locale or genre.",
+    "detect": {
+      "type": "structure",
+      "hint": "inferred: low information density, generic sans, uniform radius/shadow across sections",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://arxiv.org/abs/2603.13036v1",
+        "date": "2026-03-13",
+        "author": "Shin, Gao, Pang, Lee, Reinecke, Tseng",
+        "quote": "a globally average aesthetic characterized by minimalist whitespace, standard sans-serif typography, and predictable hero images"
+      },
+      {
+        "url": "https://arxiv.org/abs/2603.13036v1",
+        "date": "2026-03-13",
+        "author": "Shin, Gao, Pang, Lee, Reinecke, Tseng",
+        "quote": "generic web styles—such as standard drop shadows or rounded corners"
+      },
+      {
+        "url": "https://www.noemamag.com/now-entering-the-era-of-bleh/",
+        "date": "2026-09-24",
+        "author": "Aaron Horwath (Noema)",
+        "quote": "converging on the same Claude-aesthetic, the same tone of voice"
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-09-24",
+    "older_than_7_months": false
+  },
+  {
+    "id": "any-white-bg-blue-cta",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "White background with a blue CTA / blue accent",
+    "description": "Plain white or slate-50 page with a single blue primary button.",
+    "detect": {
+      "type": "color",
+      "hint": "body background #fff or near and primary button hue ~210-235",
+      "values": [
+        "slate-50"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.banani.co/blog/gemini-3.1-for-web-and-ui-design",
+        "date": "2026-08-05",
+        "author": "Vlad Solomakha (Banani)",
+        "quote": "It didn't default to the usual white background with a blue CTA button.",
+        "model_named": "Gemini 3.1 Pro (contrasted against usual AI default)"
+      },
+      {
+        "url": "https://muz.li/blog/vibe-design-in-2026-what-ai-generated-ui-means-for-your-work/",
+        "date": "2026-04-14",
+        "author": "Eyal Zuri (Muzli)",
+        "quote": "a blue accent color, an Inter-like font at default weight, a sidebar with icons and labels, a card grid, a data table"
+      },
+      {
+        "url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+        "date": "2026-04-28",
+        "author": "Sailop",
+        "quote": "The background is white or `slate-50`"
+      }
+    ],
+    "independent_sources": 3,
+    "newest_source_date": "2026-08-05",
+    "older_than_7_months": false
+  },
+  {
+    "id": "gemini-generic-sans-inter",
+    "family": "gemini",
+    "models": [
+      "Gemini Pro / Flash (default output)"
+    ],
+    "kind": "foundation",
+    "name": "Generic sans-serif: Inter / system-ui",
+    "description": "Default Gemini output sets type in Inter or system-ui with no expressive pairing.",
+    "detect": {
+      "type": "font",
+      "hint": "computed font-family of h1/body resolves to Inter or system-ui",
+      "values": [
+        "Inter",
+        "system-ui"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Vasiliy-katsyka/gemini-frontend-design",
+        "date": "2026-10-03",
+        "author": "Vasiliy Katsyka",
+        "quote": "Generic sans-serif (`Inter`, `system-ui`)",
+        "model_named": "Gemini Pro / Flash (default output)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-10-03",
+    "older_than_7_months": false
+  },
+  {
+    "id": "gemini-indigo-gradient-on-slate-900",
+    "family": "gemini",
+    "models": [
+      "Gemini Pro / Flash (default output)"
+    ],
+    "kind": "foundation",
+    "name": "Flat purple/indigo gradients on a #0F172A (Tailwind slate-900) ground",
+    "description": "Dark slate-900 page with flat purple/indigo gradients as the colour scheme.",
+    "detect": {
+      "type": "color",
+      "hint": "body background #0F172A (bg-slate-900) plus indigo/violet gradient fills",
+      "values": [
+        "#0F172A"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Vasiliy-katsyka/gemini-frontend-design",
+        "date": "2026-10-03",
+        "author": "Vasiliy Katsyka",
+        "quote": "Flat purple/indigo gradients on `#0F172A`",
+        "model_named": "Gemini Pro / Flash (default output)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-10-03",
+    "older_than_7_months": false
+  },
+  {
+    "id": "gemini-centered-hero-three-cards",
+    "family": "gemini",
+    "models": [
+      "Gemini Pro / Flash (default output)"
+    ],
+    "kind": "layout",
+    "name": "Centered hero with 3 identical cards below",
+    "description": "Default page skeleton: centered hero then a row of three identical cards.",
+    "detect": {
+      "type": "structure",
+      "hint": "centered first-section h1 followed by grid of 3 structurally identical cards",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Vasiliy-katsyka/gemini-frontend-design",
+        "date": "2026-10-03",
+        "author": "Vasiliy Katsyka",
+        "quote": "Centered hero with 3 identical cards below",
+        "model_named": "Gemini Pro / Flash (default output)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-10-03",
+    "older_than_7_months": false
+  },
+  {
+    "id": "gemini-fade-slide-everything",
+    "family": "gemini",
+    "models": [
+      "Gemini Pro / Flash (default output)"
+    ],
+    "kind": "treatment",
+    "name": "Fade-and-slide entrance on every element",
+    "description": "Scroll/entrance fade-and-slide animation applied to every DOM node rather than one orchestrated reveal.",
+    "detect": {
+      "type": "css",
+      "hint": "opacity 0 + translateY transitions/IntersectionObserver classes on most sections/cards",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Vasiliy-katsyka/gemini-frontend-design",
+        "date": "2026-10-03",
+        "author": "Vasiliy Katsyka",
+        "quote": "Scattered fade-and-slide on every DOM node",
+        "model_named": "Gemini Pro / Flash (default output)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-10-03",
+    "older_than_7_months": false
+  },
+  {
+    "id": "gemini-corporate-filler-copy",
+    "family": "gemini",
+    "models": [
+      "Gemini Pro / Flash (default output)"
+    ],
+    "kind": "copy",
+    "name": "Corporate filler copy (\"Empowering your workflow\")",
+    "description": "Generic empowering-verb SaaS copy.",
+    "detect": {
+      "type": "text",
+      "hint": "regex /empower(ing)? your/i and similar",
+      "values": [
+        "Empowering your workflow"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/Vasiliy-katsyka/gemini-frontend-design",
+        "date": "2026-10-03",
+        "author": "Vasiliy Katsyka",
+        "quote": "Corporate filler (\"Empowering your workflow\")",
+        "model_named": "Gemini Pro / Flash (default output)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-10-03",
+    "older_than_7_months": false
+  },
+  {
+    "id": "gemini-material3-google-sans-pastel",
+    "family": "gemini",
+    "models": [
+      "Gemini 2.5 Pro"
+    ],
+    "kind": "foundation",
+    "name": "Material 3 residue: Google Sans / Roboto, soft pastel palette",
+    "description": "Gemini output inherits Material 3 / Material You patterns, Google Sans inflections and a soft pastel palette; needs explicit bans to break.",
+    "detect": {
+      "type": "font",
+      "hint": "font-family Google Sans/Roboto; Material-style tonal pastel surfaces, pill FABs, tonal buttons",
+      "values": [
+        "Google Sans",
+        "Roboto"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+        "date": "2026-04-28",
+        "author": "Sailop",
+        "quote": "Gemini 2.5 Pro: Material 3 residue, Google Sans inflections, soft pastel palette",
+        "model_named": "Gemini 2.5 Pro"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-04-28",
+    "older_than_7_months": false
+  },
+  {
+    "id": "gemini-sneaks-subtle-gradient",
+    "family": "gemini",
+    "models": [
+      "Gemini 2.5 Pro"
+    ],
+    "kind": "treatment",
+    "name": "Injects a \"subtle\" gradient on buttons or card edges even when gradients are banned",
+    "description": "Gradient fills reappear on button backgrounds or card edges despite explicit prompt bans.",
+    "detect": {
+      "type": "css",
+      "hint": "background-image gradient on button or border-image/gradient on card edges; Tailwind bg-gradient-*",
+      "values": [
+        "bg-gradient-*"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+        "date": "2026-04-28",
+        "author": "Sailop",
+        "quote": "Gemini 2.5 Pro will sometimes inject a 'subtle' gradient on a button background or a card edge.",
+        "model_named": "Gemini 2.5 Pro"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-04-28",
+    "older_than_7_months": false
+  },
+  {
+    "id": "gemini-gold-yellow-palette",
+    "family": "gemini",
+    "models": [
+      "Gemini 2.5 Pro (Canvas)",
+      "Gemini 3"
+    ],
+    "kind": "foundation",
+    "name": "Gold / yellow (gold-and-white) colour scheme",
+    "description": "Two independent comparison tests saw Gemini settle on a gold/yellow accent palette. Recurrence is inferred from two one-off tests.",
+    "detect": {
+      "type": "color",
+      "hint": "primary/accent hue in gold-yellow range on white ground",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.komposo.ai/blog/gpt-5-vs-gemini-3-ai-design-comparison",
+        "date": "2026-01-04",
+        "author": "Komposo Team",
+        "quote": "a distinctive gold/yellow colour scheme",
+        "model_named": "Gemini 3"
+      },
+      {
+        "url": "https://www.xda-developers.com/i-asked-claude-gemini-chatgpt-redesign-my-landing-page/",
+        "date": "2026-05-26",
+        "author": "Tanveer Singh (XDA)",
+        "quote": "it ultimately arrived at a gold-and-white layout after showing a monochrome one on the way",
+        "model_named": "Gemini 2.5 Pro (Canvas)"
+      }
+    ],
+    "independent_sources": 2,
+    "newest_source_date": "2026-05-26",
+    "older_than_7_months": false,
+    "note": "Weak: two single-run comparisons; 'recurring' is inferred."
+  },
+  {
+    "id": "gemini-emoji-category-icons",
+    "family": "gemini",
+    "models": [
+      "Gemini 3"
+    ],
+    "kind": "element",
+    "name": "Emoji-style icons for categories",
+    "description": "Category organisation decorated with emoji-style icons.",
+    "detect": {
+      "type": "text",
+      "hint": "Extended_Pictographic glyphs in category/nav labels",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.komposo.ai/blog/gpt-5-vs-gemini-3-ai-design-comparison",
+        "date": "2026-01-04",
+        "author": "Komposo Team",
+        "quote": "Cleaner category organisation with emoji-style icons",
+        "model_named": "Gemini 3"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-01-04",
+    "older_than_7_months": true,
+    "note": "Single comparison test; source predates 2026-03-10."
+  },
+  {
+    "id": "gemini-same-colour-text-on-bg",
+    "family": "gemini",
+    "models": [
+      "Gemini 2.5 Pro (Canvas)"
+    ],
+    "kind": "treatment",
+    "name": "Text rendered in the same colour as its background; generic, outdated layout with stock images",
+    "description": "Redesign looked generic, used stock images and had legibility failures where text and background shared a colour.",
+    "detect": {
+      "type": "css",
+      "hint": "contrast ratio ~1:1 between text color and nearest painted background; stock photo hosts",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.xda-developers.com/i-asked-claude-gemini-chatgpt-redesign-my-landing-page/",
+        "date": "2026-05-26",
+        "author": "Tanveer Singh (XDA)",
+        "quote": "it had tons of legibility issues, such as text and backgrounds rendered in the same color",
+        "model_named": "Gemini 2.5 Pro (Canvas)"
+      },
+      {
+        "url": "https://www.xda-developers.com/i-asked-claude-gemini-chatgpt-redesign-my-landing-page/",
+        "date": "2026-05-26",
+        "author": "Tanveer Singh (XDA)",
+        "quote": "its redesigned webpage looked terribly generic",
+        "model_named": "Gemini 2.5 Pro (Canvas)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-05-26",
+    "older_than_7_months": false,
+    "note": "Single test."
+  },
+  {
+    "id": "deepseek-terminal-aesthetic",
+    "family": "deepseek",
+    "models": [
+      "DeepSeek-V3"
+    ],
+    "kind": "foundation",
+    "name": "Gravitates to a terminal aesthetic",
+    "description": "DeepSeek-V3 drifts to terminal-style UI (dark, monospace) by default; must be told 'NOT terminal' to get other styles.",
+    "detect": {
+      "type": "font",
+      "hint": "monospace font-family on headings/body, dark ground, prompt-like '>' or '$' prefixes (inferred from 'terminal aesthetics')",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://www.sailop.com/blog/anti-slop-prompt-template-2026",
+        "date": "2026-04-28",
+        "author": "Sailop",
+        "quote": "gravitates toward terminal aesthetics",
+        "model_named": "DeepSeek-V3"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-04-28",
+    "older_than_7_months": false,
+    "note": "Single source; concrete values (mono font, dark ground) are inferred from the word 'terminal'."
+  },
+  {
+    "id": "minimax-emoji-icons",
+    "family": "minimax",
+    "models": [
+      "MiniMax (frontend-dev skill)"
+    ],
+    "kind": "element",
+    "name": "Emoji used as icons (vendor-banned)",
+    "description": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found.",
+    "detect": {
+      "type": "text",
+      "hint": "Extended_Pictographic glyphs anywhere in UI",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/MiniMax-AI/skills/blob/main/skills/frontend-dev/SKILL.md",
+        "date": "2026-04-18",
+        "author": "MiniMax-AI (official skills repo)",
+        "quote": "ANTI-EMOJI POLICY: NEVER use emojis anywhere. Use Phosphor or Radix icons only.",
+        "model_named": "MiniMax (frontend-dev skill)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-04-18",
+    "older_than_7_months": false,
+    "note": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found."
+  },
+  {
+    "id": "minimax-inter-font",
+    "family": "minimax",
+    "models": [
+      "MiniMax (frontend-dev skill)"
+    ],
+    "kind": "foundation",
+    "name": "Inter as the default font (vendor-banned)",
+    "description": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found.",
+    "detect": {
+      "type": "font",
+      "hint": "font-family Inter",
+      "values": [
+        "Inter"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/MiniMax-AI/skills/blob/main/skills/frontend-dev/SKILL.md",
+        "date": "2026-04-18",
+        "author": "MiniMax-AI (official skills repo)",
+        "quote": "NEVER use Inter — use Geist/Outfit/Satoshi.",
+        "model_named": "MiniMax (frontend-dev skill)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-04-18",
+    "older_than_7_months": false,
+    "note": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found."
+  },
+  {
+    "id": "minimax-ai-purple-blue",
+    "family": "minimax",
+    "models": [
+      "MiniMax (frontend-dev skill)"
+    ],
+    "kind": "foundation",
+    "name": "\"AI purple/blue\" accent (vendor-banned)",
+    "description": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found.",
+    "detect": {
+      "type": "color",
+      "hint": "accent hue in blue-violet range; more than one accent; saturation >= 80%",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/MiniMax-AI/skills/blob/main/skills/frontend-dev/SKILL.md",
+        "date": "2026-04-18",
+        "author": "MiniMax-AI (official skills repo)",
+        "quote": "NEVER use AI purple/blue.",
+        "model_named": "MiniMax (frontend-dev skill)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-04-18",
+    "older_than_7_months": false,
+    "note": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found."
+  },
+  {
+    "id": "minimax-centered-hero",
+    "family": "minimax",
+    "models": [
+      "MiniMax (frontend-dev skill)"
+    ],
+    "kind": "layout",
+    "name": "Centered hero (vendor-banned at higher variance)",
+    "description": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found.",
+    "detect": {
+      "type": "structure",
+      "hint": "centered hero h1 + CTAs",
+      "values": []
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/MiniMax-AI/skills/blob/main/skills/frontend-dev/SKILL.md",
+        "date": "2026-04-18",
+        "author": "MiniMax-AI (official skills repo)",
+        "quote": "NEVER use centered heroes when VARIANCE > 4.",
+        "model_named": "MiniMax (frontend-dev skill)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-04-18",
+    "older_than_7_months": false,
+    "note": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found."
+  },
+  {
+    "id": "minimax-neon-glow-gradient-text-black",
+    "family": "minimax",
+    "models": [
+      "MiniMax (frontend-dev skill)"
+    ],
+    "kind": "treatment",
+    "name": "Neon glows, pure black #000, gradient text on headers, oversized H1 (vendor-banned)",
+    "description": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found.",
+    "detect": {
+      "type": "css",
+      "hint": "chromatic box-shadow glows; background #000000; background-clip:text gradients on h1/h2; oversized h1",
+      "values": [
+        "#000"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://github.com/MiniMax-AI/skills/blob/main/skills/frontend-dev/SKILL.md",
+        "date": "2026-04-18",
+        "author": "MiniMax-AI (official skills repo)",
+        "quote": "Neon glows, pure black (#000), oversaturated accents, gradient text on headers, custom cursors",
+        "model_named": "MiniMax (frontend-dev skill)"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-04-18",
+    "older_than_7_months": false,
+    "note": "Inferred: MiniMax's own frontend-dev skill (shipped for its agent/models) bans this outright, implying the model drifts toward it unprompted. No direct observation of MiniMax output found."
+  },
+  {
+    "id": "any-tailwind-stock-blue",
+    "family": "any",
+    "models": [],
+    "kind": "foundation",
+    "name": "Untouched Tailwind blue as the accent",
+    "description": "The brand or accent colour left at Tailwind's stock blue, the shade every AI-built product reaches for.",
+    "detect": {
+      "type": "color",
+      "hint": "Inferred: the source says 'Tailwind-blue' without naming a shade; blue-600 and blue-500 are the stock shades used for buttons and links.",
+      "values": [
+        "blue-600",
+        "blue-500"
+      ]
+    },
+    "evidence": [
+      {
+        "url": "https://dev.to/james_anderson_h/the-purple-gradient-problem-why-ai-ui-all-looks-alike-and-how-to-fix-it-3j65",
+        "date": "2026-09-13",
+        "author": "James Anderson",
+        "quote": "Default shadcn-gray and Tailwind-blue"
+      }
+    ],
+    "independent_sources": 1,
+    "newest_source_date": "2026-09-13",
+    "older_than_7_months": false
+  }
+]

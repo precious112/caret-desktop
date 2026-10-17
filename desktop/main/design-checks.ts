@@ -31,7 +31,7 @@ import {
 	tailwindFindings,
 } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
-import { settleScript } from "./page-settle"
+import { finishMotionScript, settleScript } from "./page-settle"
 
 /** axe-core's minified source, read once — injected into each rendered page. */
 let axeSource: string | null = null
@@ -236,9 +236,13 @@ export class DesignChecksService {
 
 		try {
 			await window.loadURL(`${base}?page=${encodeURIComponent(pageId)}&isolated=1`)
-			// Same settle contract as the screenshot path: what the checks see must
-			// be the finished page, and a check against fallback type lies.
-			await window.webContents.executeJavaScript(settleScript(4000)).catch(() => {})
+			// Same settle contract as the screenshot path, scroll sweep included:
+			// what the checks see must be the finished page. A check against
+			// fallback type lies, and so does one against text halfway through a
+			// fade-in (it reads as too faint). The sweep starts the animations that
+			// wait to be scrolled into view; then every animation jumps to its end.
+			await window.webContents.executeJavaScript(settleScript(6000, { fullPage: true })).catch(() => {})
+			await window.webContents.executeJavaScript(finishMotionScript(2000)).catch(() => {})
 
 			// A page that error-carded is not a design to audit — it is one finding,
 			// carrying the real error, which the enforcement loop feeds back to the

@@ -5,10 +5,10 @@
  * project-specific lives on a {@link ProjectWindow}; this file only decides what
  * exists and when.
  */
+
 import { app, BrowserWindow, dialog, nativeImage, shell } from "electron"
 import * as path from "path"
 import { fileURLToPath } from "url"
-
 import { disposeBackends, setBundledBackendDirectory } from "../../src/core/design"
 import { extendOpencodeServerConfig } from "../../src/core/design/agent/opencode"
 import { subscribeDesignEvents } from "../../src/core/design/telemetry-hooks"
@@ -25,11 +25,17 @@ import {
 } from "./analytics"
 import { registerIpcHandlers } from "./ipc"
 import { closeLauncherWindow, hasLauncherWindow, type LauncherWindowOptions, openLauncherWindow } from "./launcher-window"
+import { startLibraryHub } from "./libraries/libraries"
+import { testLibraryFromEnv } from "./libraries/test-library"
 import { startFileLog } from "./log-file"
 import { ensureMcpBridge } from "./mcp/stdio-bridge"
 import { MUTATING_TOOL_NAMES } from "./mcp/tools"
 import { buildMenu } from "./menu"
 import { loadPrefs } from "./prefs"
+import { setLibrariesOnSource } from "./rules/context"
+import { regenerateRulesFiles } from "./rules/generate"
+import { skillsSourceFromEnv, startSkillService } from "./skills/skills"
+import { applyImageCallCap } from "./test-image-service"
 import { WindowManager } from "./window-manager"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -119,6 +125,19 @@ async function main(): Promise<void> {
 	} catch (err) {
 		Logger.warn(`[main] chat agent will have no Caret tools: ${err}`)
 	}
+	// Caret connects to the component and reference libraries itself and passes
+	// their tools on through its own connection; started early so the first
+	// tool list finds them ready.
+	applyImageCallCap()
+	const testLibrary = testLibraryFromEnv(process.env, app.isPackaged, process.execPath)
+	if (testLibrary)
+		Logger.info(`[main] TEST LIBRARY from ${testLibrary.connection.kind === "stdio" ? testLibrary.connection.args[0] : ""}`)
+	const libraries = startLibraryHub({ extra: testLibrary ? [testLibrary] : [] })
+	const skillsSource = skillsSourceFromEnv(process.env, app.isPackaged)
+	if (skillsSource) Logger.info(`[main] TEST SKILLS SOURCE ${skillsSource}`)
+	const skills = startSkillService(skillsSource)
+	setLibrariesOnSource((projectPath) => libraries.onLibraries(projectPath))
+	void libraries.warm()
 
 	const launcherOptions: LauncherWindowOptions = {
 		chromeEntry: resolveChromeEntry(),
@@ -134,6 +153,23 @@ async function main(): Promise<void> {
 
 	registerIpcHandlers(windows)
 	buildMenu(windows)
+
+	// Every open window's Skills tab and chat label follow a change.
+	skills.onChange((projectPath) => {
+		for (const window of windows.list()) {
+			if (!projectPath || window.projectPath === projectPath) window.sendToChrome("skills:changed", window.projectPath)
+		}
+	})
+
+	// The rules name the libraries that are on, so a change rewrites every open
+	// project's rules files.
+	libraries.onChange((projectPath) => {
+		for (const window of windows.list()) {
+			if (projectPath && window.projectPath !== projectPath) continue
+			void regenerateRulesFiles(window.projectPath).catch((err) => Logger.warn(`[main] rules regen failed: ${err}`))
+			window.sendToChrome("libraries:changed", window.projectPath)
+		}
+	})
 
 	app.on("second-instance", (_event, argv) => {
 		const fromArgv = projectPathFromArgv(argv)
@@ -195,6 +231,8 @@ async function main(): Promise<void> {
 		Logger.info(`[main] before-quit fired (windows open: ${BrowserWindow.getAllWindows().length})`)
 		capture("app_quit", { session_duration_s: sessionDurationSeconds() })
 		void windows.closeAll()
+		// The local libraries are child processes too.
+		void libraries.close()
 		// The embedded backend is a child process. Left running it would outlive
 		// the app and keep holding a port.
 		void disposeBackends()

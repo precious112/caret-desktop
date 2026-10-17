@@ -128,6 +128,8 @@ export interface VariantRequestPayload {
 	fromId?: string
 	/** A new page to explore into existence — settling adds it to the canvas. */
 	newPage?: { name: string }
+	/** For a branch: change only what the instruction names (subtle), or let the layout change too (strong). */
+	strength?: "subtle" | "strong"
 }
 
 export interface VariantPickPayload {
@@ -279,7 +281,8 @@ const PAYLOAD_VALIDATORS: Record<string, (p: Record<string, unknown>) => boolean
 	"promote-token": (p) => isStr(p.token) && isStr(p.hex) && isStr(p.filePath) && isNum(p.lineNumber),
 	"variant-request": (p) => {
 		const origins = [isStr(p.pageId), isStr(p.fromId), isNewPage(p.newPage)].filter(Boolean).length
-		return isStr(p.instruction) && origins === 1
+		const strength = p.strength === undefined || p.strength === "subtle" || p.strength === "strong"
+		return isStr(p.instruction) && origins === 1 && strength
 	},
 	"variant-cancel": (p) => p.nodeId === undefined || isStr(p.nodeId),
 	"param-resolve": (p) => isStr(p.filePath) && isStr(p.caretId) && isNum(p.viewportWidth),
@@ -360,6 +363,9 @@ export interface ExploreStatusPayload {
 	error?: string
 }
 
+/** A page an agent is writing (placeholder card on the canvas), or the turn ended (clear them all). */
+export type PageWritingPayload = { pageId: string; active: true } | { active: false; pageId?: string }
+
 export type DesignOutboundMessage =
 	| { source: "caret-host"; type: "edit-result"; payload: EditResultPayload }
 	| { source: "caret-host"; type: "param-resolve-result"; payload: ParamResolveResultPayload }
@@ -367,5 +373,6 @@ export type DesignOutboundMessage =
 	| { source: "caret-host"; type: "edit-status"; payload: EditStatusPayload }
 	| { source: "caret-host"; type: "explore-status"; payload: ExploreStatusPayload }
 	| { source: "caret-host"; type: "precompute-result"; payload: PrecomputeResultPayload }
+	| { source: "caret-host"; type: "page-writing"; payload: PageWritingPayload }
 
 export type DesignMessage = DesignInboundMessage | DesignOutboundMessage

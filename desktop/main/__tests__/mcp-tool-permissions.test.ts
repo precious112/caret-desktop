@@ -43,6 +43,8 @@ const READ_ONLY_OR_INTERACTIVE = new Set([
 	"present_question",
 	"present_options",
 	"present_asset_options",
+	// Fetches a public reference image for the AI; writes nothing.
+	"view_reference",
 ])
 
 /** interview-tools.ts tools that DO write, named in MUTATING_TOOL_NAMES. */

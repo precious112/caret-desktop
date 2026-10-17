@@ -1,47 +1,27 @@
 /**
- * The foundation interview.
+ * The AI interview that sets up a project's design foundation.
  *
- * **The wizard** is the feature: the model runs the interview — minimal in
- * ai-led mode, exhaustive in collaborative mode — composing every question
- * from the widget vocabulary (`widgets.ts`), one validated turn at a time
- * (`conductor.ts`), finishing in a parameter proposal that Caret alone turns
- * into `foundation.json` (`finalize.ts`). Progress survives a crash
- * (`scratch.ts`).
- *
- * **The external-agent path** commits through `commit.ts` (`buildFoundation`),
- * assembling curated library pieces the agent's user pointed at.
+ * Caret runs the interview: the topics, their order and how each is shown
+ * (`areas.ts`). The model only writes the opening screen, one question per
+ * topic, the "Just finish it" values and the finish's words (`model-calls.ts`).
+ * Every answer is an exact value in one record (`state.ts`), checked the same
+ * way by the screen and the engine (`answers.ts`). `session.ts` runs one
+ * interview and saves it after every change (`scratch.ts`); `finalize.ts`
+ * turns the finished values into foundation.json.
  */
-export { buildFoundation, type CommittedFoundation, IncompleteInterviewError } from "./commit"
-export {
-	bindSettledValues,
-	COLLABORATIVE_QUESTION_CAP,
-	COVERAGE_AREAS,
-	type ConductorInput,
-	checkValueEcho,
-	coveredAreas,
-	nextWizardTurn,
-	QUESTION_CAP,
-	questionCapFor,
-	tracksCoverage,
-	type SettledValue,
-	settledValues,
-	validateQuestion,
-	type WizardMode,
-	WizardTurnError,
-} from "./conductor"
+export { type AreaOption, type AreaQuestion, acceptAnswer, type OwnRaw, optionAnswer, ownAnswer, skipAnswer } from "./answers"
+export { AREA_ORDER, AREAS, type AreaId, type AreaValue, describeValue, isAreaValue, RANGES } from "./areas"
 export { type FinalizedFoundation, finalizeProposal, ProposalError } from "./finalize"
-export { clearWizardScratch, readWizardScratch, type WizardScratch, writeWizardScratch } from "./scratch"
-export { type Decisions, type StepId, tagsFromDescription } from "./steps"
+export { InterviewTurnError } from "./model-calls"
+export { clearInterviewScratch, readInterviewScratch, writeInterviewScratch } from "./scratch"
+export { buildProposal, InterviewSession, type SessionScratch, type SessionView, viewOf } from "./session"
 export {
-	type FoundationProposal,
-	normalizeHex,
-	type ScaleStep,
-	type SpecimenParams,
-	type StoredQA,
-	WIZARD_TURN_SCHEMA,
-	type WidgetKind,
-	type WizardAnswer,
-	type WizardOption,
-	type WizardQuestion,
-	type WizardTurn,
-} from "./widgets"
+	type AreaAnswer,
+	deriveState,
+	type InterviewMode,
+	type InterviewRecord,
+	type InterviewState,
+	type OpeningStatement,
+	type Verdict,
+} from "./state"
+export { type FoundationProposal, normalizeHex, type SpecimenParams } from "./widgets"

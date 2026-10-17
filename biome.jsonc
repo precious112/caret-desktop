@@ -109,10 +109,7 @@
 			"!!**/out",
 			"!!**/release",
 			"!!**/node_modules",
-			"!!**/test-results",
-			// Vendored third-party catalog source, mirrored byte-faithful at
-			// pinned SHAs — linting it would rewrite upstream code.
-			"!!assets/catalog"
+			"!!**/test-results"
 		]
 	}
 }

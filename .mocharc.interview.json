@@ -1,0 +1,19 @@
+{
+	"extension": [
+		"ts"
+	],
+	"require": [
+		"tsx",
+		"./test-setup.ts"
+	],
+	"spec": [
+		"src/core/design/interview/__tests__/*.test.ts",
+		"src/core/design/agent/__tests__/replay.test.ts",
+		"desktop/main/__tests__/interview-backend.test.ts",
+		"desktop/main/__tests__/wizard-one-turn.test.ts"
+	],
+	"forbid-only": true,
+	"forbid-pending": true,
+	"exit": true,
+	"timeout": 20000
+}

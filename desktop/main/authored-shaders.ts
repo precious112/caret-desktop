@@ -128,6 +128,8 @@ export async function authorShader(request: ShaderRequest): Promise<ShaderResult
 			mode: "read-only",
 			model: model || undefined,
 			title: "caret shader",
+			// It replies with GLSL; it needs no tools and no coding-agent prompt.
+			lean: true,
 			systemPrompt: SHADER_SYSTEM_PROMPT,
 		})
 

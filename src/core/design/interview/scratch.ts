@@ -1,76 +1,57 @@
 /**
- * A half-finished wizard, on disk.
+ * An interview in progress, on disk (`.caret/.interview.json`).
  *
- * Every answered question cost a real model call, and the answers are the
- * user's own judgment — losing either to a crash or a closed window is how
- * someone abandons the flow and ships without foundations. So the whole state
- * (description, transcript, the question currently on screen, a finished
- * proposal awaiting confirmation) is written after every change, and reopening
- * resumes exactly where it stopped — with no model call, because the current
- * question is stored too.
+ * Every answer cost a real model call, and the answers are the user's own
+ * decisions, so the whole interview is written after every change: the record
+ * of answers, the question on screen, an error if the last step failed, and
+ * the finish's words. Reopening Caret shows exactly the same screen without
+ * asking the model anything.
  *
  * Gitignored: a half-finished interview is not a design decision anyone should
- * review. Deleted on commit: once `foundation.json` exists, the scratch is a
- * stale copy of a real file, and "resume" into it would re-propose decisions
- * the user already committed.
+ * review. Deleted when the foundation is saved, when the user leaves for "Set
+ * it by hand", and when a foundation saved some other way is newer than it.
  */
 import * as fs from "fs/promises"
 import * as path from "path"
 
 import { Logger } from "@/shared/services/Logger"
-import type { WizardMode } from "./conductor"
-import type { FoundationProposal, StoredQA, WizardQuestion } from "./widgets"
+import type { SessionScratch } from "./session"
 
-export interface WizardScratch {
-	description: string
-	/** Which interview this is; scratch written before modes existed is ai-led. */
-	mode?: WizardMode
-	/** Answered questions, in order. */
-	history: StoredQA[]
-	/** On screen but not yet answered, so resume re-renders it for free. */
-	pending?: WizardQuestion
-	/** Present once the model finished; the user is at the confirm screen. */
-	proposal?: FoundationProposal
-	updatedAt: number
-}
+export type SavedInterview = SessionScratch & { updatedAt: number }
 
 function scratchPath(projectPath: string): string {
 	return path.join(projectPath, ".caret", ".interview.json")
 }
 
-export async function readWizardScratch(projectPath: string): Promise<WizardScratch | null> {
+/** The saved interview, or null when there is none (or it was saved by an older Caret, which is discarded once). */
+export async function readInterviewScratch(projectPath: string): Promise<SavedInterview | null> {
+	let raw: string
 	try {
-		const raw = await fs.readFile(scratchPath(projectPath), "utf8")
-		const parsed = JSON.parse(raw) as Partial<WizardScratch>
-		// No description → nothing to ground a resume in. This also quietly
-		// discards scratch from the pre-wizard flow, whose shape had no history.
-		if (typeof parsed.description !== "string" || !parsed.description.trim()) return null
-		if (!Array.isArray(parsed.history)) return null
-		return {
-			description: parsed.description,
-			mode: parsed.mode === "collaborative" || parsed.mode === "from-app" ? parsed.mode : "ai-led",
-			history: parsed.history,
-			pending: parsed.pending,
-			proposal: parsed.proposal,
-			updatedAt: parsed.updatedAt ?? 0,
-		}
+		raw = await fs.readFile(scratchPath(projectPath), "utf8")
 	} catch {
+		return null
+	}
+	try {
+		const parsed = JSON.parse(raw) as Partial<SavedInterview>
+		if (parsed.version !== 2 || !parsed.record || !Array.isArray(parsed.record.answers)) {
+			Logger.warn("[interview] discarded an interview saved by an older Caret; it can't be resumed")
+			await clearInterviewScratch(projectPath)
+			return null
+		}
+		return { questions: {}, pending: null, updatedAt: 0, ...parsed } as SavedInterview
+	} catch {
+		Logger.warn("[interview] discarded an unreadable saved interview")
+		await clearInterviewScratch(projectPath)
 		return null
 	}
 }
 
-export async function writeWizardScratch(projectPath: string, scratch: Omit<WizardScratch, "updatedAt">): Promise<void> {
-	try {
-		const file = scratchPath(projectPath)
-		await fs.mkdir(path.dirname(file), { recursive: true })
-		await fs.writeFile(file, `${JSON.stringify({ ...scratch, updatedAt: Date.now() }, null, 2)}\n`)
-	} catch (err) {
-		// Scratch is a convenience, never a precondition: an unwritable project
-		// costs the resume point, not the interview.
-		Logger.warn(`[wizard] could not save progress: ${err}`)
-	}
+export async function writeInterviewScratch(projectPath: string, scratch: SessionScratch): Promise<void> {
+	const file = scratchPath(projectPath)
+	await fs.mkdir(path.dirname(file), { recursive: true })
+	await fs.writeFile(file, `${JSON.stringify({ ...scratch, updatedAt: Date.now() }, null, 2)}\n`)
 }
 
-export async function clearWizardScratch(projectPath: string): Promise<void> {
+export async function clearInterviewScratch(projectPath: string): Promise<void> {
 	await fs.rm(scratchPath(projectPath), { force: true }).catch(() => {})
 }

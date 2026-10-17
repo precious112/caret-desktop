@@ -110,6 +110,12 @@ export interface Prefs {
 	 * chain stays built and certified behind it.
 	 */
 	chatAssetGeneration: boolean
+	/** Installed libraries; absent until the user installs or removes one (then the defaults apply). */
+	librariesInstalled?: string[]
+	/** Libraries switched off, per project path. */
+	librariesOff: Record<string, string[]>
+	/** Coding tools connected to Caret through their own command (Claude Code, Codex). */
+	codingToolsSetUp?: Record<string, boolean>
 }
 
 const DEFAULTS: Prefs = {
@@ -134,6 +140,7 @@ const DEFAULTS: Prefs = {
 	telemetryId: "",
 	telemetryNoticeShown: false,
 	chatAssetGeneration: false,
+	librariesOff: {},
 }
 
 const MAX_RECENTS = 12

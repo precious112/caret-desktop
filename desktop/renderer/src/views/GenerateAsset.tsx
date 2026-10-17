@@ -31,6 +31,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import type {
 	AssetEntryWire,
 	AssetRequestWire,
+	BoardStartWire,
 	ClarifyQuestionWire,
 	GeneratedVariantWire,
 	GenerateProgressWire,
@@ -38,6 +39,7 @@ import type {
 	MarkOutcomeWire,
 	Model3dOutcomeWire,
 	ProjectState,
+	PromptModeWire,
 	RecipeCardWire,
 	ShaderOutcomeWire,
 	TaskModelWire,
@@ -45,8 +47,24 @@ import type {
 import { invoke, on } from "../ipc"
 import { ShaderPreview } from "../lib/ShaderPreview"
 import { cn } from "../lib/utils"
+import { TakeBoard } from "./generate/TakeBoard"
 
-type Stage = "ask" | "clarify" | "recipe" | "variant" | "name" | "mark" | "model3d" | "shader"
+type Stage = "ask" | "clarify" | "recipe" | "variant" | "name" | "mark" | "model3d" | "shader" | "board"
+
+/** The three kinds of help with the prompt, as the describe step offers them. */
+const PROMPT_MODES: Array<{ id: PromptModeWire; label: string; hint: string }> = [
+	{
+		id: "polish",
+		label: "Polish it",
+		hint: "Caret turns your words into a full brief and starts straight away. You can see both versions on the board.",
+	},
+	{
+		id: "ask",
+		label: "Ask me first",
+		hint: "A couple of quick questions, then you read and edit the brief before anything is made.",
+	},
+	{ id: "exact", label: "Use my words", hint: "Sent exactly as typed. For when you know how to prompt." },
+]
 
 /** The things this screen makes. Picked, never guessed from prose. */
 const KINDS: Array<{ id: GenerationKindWire; label: string; hint: string }> = [
@@ -57,7 +75,7 @@ const KINDS: Array<{ id: GenerationKindWire; label: string; hint: string }> = [
 	{
 		id: "shader",
 		label: "An animated background",
-		hint: "A living gradient, written as code — colours and motion stay tunable.",
+		hint: "A living gradient, written as code. Colours and motion stay tunable.",
 	},
 ]
 
@@ -117,6 +135,15 @@ export function GenerateAsset({ project, onClose }: { project: ProjectState; onC
 	const [kind, setKind] = useState<GenerationKindWire>("image")
 	const [text, setText] = useState("")
 	const [transparent, setTransparent] = useState(false)
+
+	// The image kind's describe step: how much help the prompt gets, and the
+	// "Ask me first" path's questions and brief, shown on the same screen.
+	const [promptMode, setPromptMode] = useState<PromptModeWire>("polish")
+	const [keepLook, setKeepLook] = useState(true)
+	const [askPhase, setAskPhase] = useState<"none" | "questions" | "brief">("none")
+	const [brief, setBrief] = useState("")
+	const [phrases, setPhrases] = useState<Array<{ text: string; alternatives: string[] }>>([])
+	const [boardStart, setBoardStart] = useState<BoardStartWire | null>(null)
 
 	const [questions, setQuestions] = useState<ClarifyQuestionWire[]>([])
 	const [replies, setReplies] = useState<Record<string, string>>({})
@@ -306,9 +333,87 @@ export function GenerateAsset({ project, onClose }: { project: ProjectState; onC
 	 * a pro's words stand. Textures have no subject to name, so they keep the
 	 * recipe cards, where sliders beat a sentence.
 	 */
+	/** The image kind goes to a take board, with whatever help the prompt was given. */
+	const startImageBoard = useCallback(
+		(mode: PromptModeWire, briefText?: string) => {
+			setBoardStart({
+				request: request(mode === "ask" ? replies : undefined),
+				aspect,
+				mode,
+				...(mode === "ask" && briefText?.trim() ? { brief: briefText.trim() } : {}),
+				...(mode === "exact" ? { keepFoundationLook: keepLook } : {}),
+			})
+			setStage("board")
+		},
+		[request, replies, aspect, keepLook],
+	)
+
+	/** "Ask me first", step one: Caret's questions, shown under the prompt. Every one can be skipped. */
+	const askFirst = useCallback(async () => {
+		setBusy(true)
+		setError(null)
+		try {
+			const result = await invoke("generate:clarify", project.path, request())
+			setQuestions(result && !result.sufficient ? result.questions : [])
+		} catch {
+			setQuestions([])
+		} finally {
+			setReplies({})
+			setAskPhase("questions")
+			setBusy(false)
+		}
+	}, [project.path, request])
+
+	/** "Ask me first", step two: the brief, for the person to read and edit before anything is made. */
+	const writeBrief = useCallback(async () => {
+		setBusy(true)
+		setBriefing(true)
+		setError(null)
+		try {
+			const withQuestions = Object.fromEntries(
+				questions
+					.filter((question) => replies[question.id]?.trim())
+					.map((question) => [question.question, replies[question.id]]),
+			)
+			const refined = await invoke("generate:refineBrief", project.path, {
+				...request(),
+				...(Object.keys(withQuestions).length > 0 ? { answers: withQuestions } : {}),
+			}).catch(() => null)
+			if (refined?.prompt?.trim()) {
+				setBrief(refined.prompt.trim())
+				setPhrases(refined.phrases ?? [])
+			} else {
+				setBrief(text.trim())
+				setPhrases([])
+				setError(
+					"Caret couldn't write a brief (is an AI model connected in Backend?). Your words are below: edit them, or generate as they are.",
+				)
+			}
+			setAskPhase("brief")
+		} finally {
+			setBriefing(false)
+			setBusy(false)
+		}
+	}, [project.path, request, questions, replies, text])
+
+	// Words, kind or mode changed: any questions or brief were for the old request.
+	useEffect(() => {
+		setAskPhase("none")
+		setBrief("")
+		setPhrases([])
+	}, [text, kind, promptMode])
+
 	const begin = useCallback(async () => {
 		if (!text.trim()) return
 		setError(null)
+
+		if (kind === "image") {
+			if (promptMode !== "ask") return startImageBoard(promptMode)
+			if (askPhase === "none") return askFirst()
+			if (askPhase === "questions") return writeBrief()
+			if (brief.trim()) return startImageBoard("ask", brief)
+			return
+		}
 
 		if (kind === "texture") {
 			setBusy(true)
@@ -336,7 +441,7 @@ export function GenerateAsset({ project, onClose }: { project: ProjectState; onC
 		}
 		setBusy(false)
 		await route({})
-	}, [kind, text, project.path, request, route])
+	}, [kind, text, project.path, request, route, promptMode, askPhase, brief, startImageBoard, askFirst, writeBrief])
 
 	const chooseRecipe = useCallback(
 		async (card: RecipeCardWire, withAspect?: string) => {
@@ -383,23 +488,25 @@ export function GenerateAsset({ project, onClose }: { project: ProjectState; onC
 					<h1 className="text-lg font-semibold">Generate an asset</h1>
 					<p className="text-sm text-shell-muted">
 						{stage === "ask"
-							? "Say what you want. Caret will ask if it needs anything more."
-							: stage === "clarify"
-								? "A couple of things that would make this better."
-								: stage === "recipe"
-									? "Every one of these is built from your project's own colours."
-									: stage === "variant"
-										? "Three takes of the same thing. Point at the one you like."
-										: stage === "mark"
-											? "The model draws it, sees its own render, and corrects — three rounds."
-											: stage === "model3d"
-												? "Built from an image in your library, then optimized to a page-friendly weight."
-												: stage === "shader"
-													? "The model writes it as code, compiles it, and corrects against its own frames."
-													: "Give it a name you would type."}
+							? "Say what it is. Caret works out how it looks from your foundation."
+							: stage === "board"
+								? "Change a take to grow a branch from it. Use any take to save it; the board stays open."
+								: stage === "clarify"
+									? "A couple of things that would make this better."
+									: stage === "recipe"
+										? "Every one of these is built from your project's own colours."
+										: stage === "variant"
+											? "Three takes of the same thing. Point at the one you like."
+											: stage === "mark"
+												? "The model draws it, sees its own render, and corrects — three rounds."
+												: stage === "model3d"
+													? "Built from an image in your library, then optimized to a page-friendly weight."
+													: stage === "shader"
+														? "The model writes it as code, compiles it, and corrects against its own frames."
+														: "Give it a name you would type."}
 					</p>
 				</div>
-				<div className="flex items-center gap-2">
+				<div className={cn("flex items-center gap-2", stage === "board" && "hidden")}>
 					{stage !== "ask" && (
 						<button
 							className="rounded-md border border-shell-border px-3 py-1.5 text-sm"
@@ -422,449 +529,607 @@ export function GenerateAsset({ project, onClose }: { project: ProjectState; onC
 				</div>
 			</header>
 
-			<div className="flex-1 overflow-y-auto px-8 py-8">
-				{stage === "ask" && (
-					<section className="mx-auto max-w-2xl" data-testid="generate-ask">
-						<h2 className="text-xl font-semibold">What are you making?</h2>
-						<div className="mt-4 grid grid-cols-2 gap-2">
-							{KINDS.map((option) => (
-								<button
-									className={cn(
-										"rounded-lg border p-3 text-left",
-										kind === option.id
-											? "border-caret-accent"
-											: "border-shell-border hover:border-caret-accent",
-									)}
-									data-generate-kind={option.id}
-									key={option.id}
-									onClick={() => setKind(option.id)}
-									type="button">
-									<span className="block text-sm font-medium">{option.label}</span>
-									<span className="mt-0.5 block text-xs text-shell-muted">{option.hint}</span>
-								</button>
-							))}
-						</div>
+			{stage === "board" && boardStart ? (
+				<TakeBoard
+					onDone={(saved) => onClose(saved)}
+					onNewPrompt={() => {
+						void invoke("generate:boardClose", project.path)
+						setBoardStart(null)
+						setStage("ask")
+					}}
+					project={project}
+					start={boardStart}
+				/>
+			) : (
+				<div className="flex-1 overflow-y-auto px-8 py-8">
+					{stage === "ask" && (
+						<section className="mx-auto max-w-2xl" data-testid="generate-ask">
+							<h2 className="text-xl font-semibold">What are you making?</h2>
+							<div className="mt-3 flex flex-wrap gap-1.5">
+								{KINDS.map((option) => (
+									<button
+										className={cn(
+											"rounded-full border px-3 py-1 text-[13px]",
+											kind === option.id
+												? "border-caret-accent bg-caret-accent/15 text-blue-300"
+												: "border-shell-border hover:border-shell-muted",
+										)}
+										data-generate-kind={option.id}
+										key={option.id}
+										onClick={() => setKind(option.id)}
+										title={option.hint}
+										type="button">
+										{option.label}
+									</button>
+								))}
+							</div>
+							<p className="mt-2 text-xs text-shell-muted">{KINDS.find((option) => option.id === kind)?.hint}</p>
 
-						<label className="mt-8 block text-sm font-medium" htmlFor="generate-request">
-							{kind === "texture" ? "What is it for?" : "What is it?"}
-						</label>
-						<p className="mt-1 text-xs text-shell-muted">
-							In your own words. Say as much or as little as you like — Caret decides how it is lit, framed and
-							coloured from your foundation.
-						</p>
-						<textarea
-							className="mt-2 w-full resize-none rounded-md border border-shell-border bg-transparent px-3 py-2 text-sm outline-none focus:border-caret-accent"
-							data-testid="generate-request"
-							id="generate-request"
-							onChange={(event) => setText(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) void begin()
-							}}
-							placeholder={
-								kind === "mark"
-									? "a broken ring of twelve dashes"
-									: kind === "object3d"
-										? "a ceramic mug with a simple silhouette"
-										: "a stainless steel ruler and a yellow pencil"
-							}
-							rows={3}
-							value={text}
-						/>
-
-						{kind === "image" && (
-							<label className="mt-4 flex items-center gap-2 text-sm">
-								<input
-									checked={transparent}
-									data-testid="generate-transparent"
-									onChange={(event) => setTransparent(event.target.checked)}
-									type="checkbox"
+							<div className="mt-5 rounded-xl border border-shell-border bg-shell-panel focus-within:border-caret-accent">
+								<label className="sr-only" htmlFor="generate-request">
+									{kind === "texture" ? "What is it for?" : "What is it?"}
+								</label>
+								<textarea
+									className="w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] outline-none"
+									data-testid="generate-request"
+									id="generate-request"
+									onChange={(event) => setText(event.target.value)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) void begin()
+									}}
+									placeholder={
+										kind === "mark"
+											? "a broken ring of twelve dashes"
+											: kind === "object3d"
+												? "a ceramic mug with a simple silhouette"
+												: kind === "texture"
+													? "a soft grain behind the pricing cards"
+													: "a stainless steel ruler and a yellow pencil"
+									}
+									rows={3}
+									value={text}
 								/>
-								<span>
-									No background
-									<span className="ml-2 text-xs text-shell-muted">
-										Cut out clean, so it sits on any surface.
-									</span>
-								</span>
-							</label>
-						)}
-
-						{kind === "image" && !transparent && anchorOptions.length > 0 && (
-							<label className="mt-3 block text-sm">
-								<span className="font-medium">Match the light of a saved photo</span>
-								<span className="ml-2 text-xs text-shell-muted">
-									Borrows its lighting and grade only — the framing still comes from what you describe.
-								</span>
-								<select
-									className="mt-1.5 block w-full rounded-md border border-shell-border bg-transparent px-3 py-2 text-sm outline-none focus:border-caret-accent"
-									data-testid="generate-style-anchor"
-									onChange={(event) => setAnchorTag(event.target.value)}
-									value={anchorTag}>
-									<option value="">None — light it from the description alone</option>
-									{anchorOptions.map((tag) => (
-										<option key={tag} value={tag}>
-											{tag}
-										</option>
-									))}
-								</select>
-							</label>
-						)}
-
-						<button
-							className="mt-6 rounded-md bg-caret-accent px-4 py-2 text-sm text-white disabled:opacity-50"
-							data-testid="generate-begin"
-							disabled={busy || !text.trim()}
-							onClick={begin}
-							type="button">
-							{busy ? (
-								<>
-									<ButtonSpinner /> Thinking…
-								</>
-							) : (
-								"Continue"
+								{kind === "image" && (
+									<div className="flex flex-wrap items-center gap-2 px-3 pb-3 text-xs">
+										<span className="text-shell-muted">Shape</span>
+										<select
+											className="rounded-full border border-shell-border bg-transparent px-2 py-1 outline-none"
+											data-testid="generate-aspect"
+											onChange={(event) => setAspect(event.target.value)}
+											value={aspect}>
+											{IMAGE_ASPECTS.map((option) => (
+												<option key={option} value={option}>
+													{option}
+												</option>
+											))}
+										</select>
+										<label className="flex items-center gap-1.5 rounded-full border border-shell-border px-2.5 py-1">
+											<input
+												checked={transparent}
+												data-testid="generate-transparent"
+												onChange={(event) => setTransparent(event.target.checked)}
+												type="checkbox"
+											/>
+											No background
+										</label>
+										{!transparent && anchorOptions.length > 0 && (
+											<select
+												className="rounded-full border border-shell-border bg-transparent px-2 py-1 outline-none"
+												data-testid="generate-style-anchor"
+												onChange={(event) => setAnchorTag(event.target.value)}
+												title="Borrows only the light and colour of a saved photo; the framing comes from your words."
+												value={anchorTag}>
+												<option value="">Match the light of: none</option>
+												{anchorOptions.map((tag) => (
+													<option key={tag} value={tag}>
+														Match the light of @{tag}
+													</option>
+												))}
+											</select>
+										)}
+										<span className="ml-auto text-shell-muted">
+											Changing these costs nothing; nothing is made yet.
+										</span>
+									</div>
+								)}
+							</div>
+							{kind !== "image" && (
+								<p className="mt-2 text-xs text-shell-muted">
+									In your own words. Say as much or as little as you like. Caret decides how it is lit, framed
+									and coloured from your foundation.
+								</p>
 							)}
-						</button>
-					</section>
-				)}
 
-				{stage === "clarify" && (
-					<section className="mx-auto max-w-2xl" data-testid="generate-clarify">
-						<p className="text-sm text-shell-muted">
-							You asked for <span className="text-shell-fg">{text.trim()}</span>.
-						</p>
-						<div className="mt-6 flex flex-col gap-6">
-							{questions.map((question) => (
-								<div data-generate-clarify={question.id} key={question.id}>
-									<h3 className="text-base font-medium">{question.question}</h3>
-									<p className="mt-0.5 text-xs text-shell-muted">{question.why}</p>
-									<div className="mt-2 flex flex-wrap gap-2">
-										{question.suggestions.map((suggestion) => (
+							{kind === "image" && (
+								<div className="mt-5 rounded-xl border border-shell-border p-4" data-testid="generate-help">
+									<div className="text-[11px] tracking-wider text-shell-muted uppercase">
+										Help with the prompt
+									</div>
+									<div className="mt-2.5 grid grid-cols-3 gap-2">
+										{PROMPT_MODES.map((mode) => (
 											<button
+												aria-pressed={promptMode === mode.id}
 												className={cn(
-													"rounded-md border px-2 py-1 text-xs",
-													replies[question.id] === suggestion
-														? "border-caret-accent text-caret-accent"
-														: "border-shell-border",
+													"rounded-lg border p-2.5 text-left",
+													promptMode === mode.id
+														? "border-caret-accent bg-caret-accent/10"
+														: "border-shell-border hover:border-shell-muted",
 												)}
-												key={suggestion}
-												onClick={() => setReplies({ ...replies, [question.id]: suggestion })}
+												data-prompt-mode={mode.id}
+												key={mode.id}
+												onClick={() => setPromptMode(mode.id)}
 												type="button">
-												{suggestion}
+												<span className="block text-[13px] font-semibold">{mode.label}</span>
+												<span className="mt-0.5 block text-[11.5px] leading-snug text-shell-muted">
+													{mode.hint}
+												</span>
 											</button>
 										))}
 									</div>
-									{/* Suggestions are fast paths, never the whole answer. */}
-									<input
-										className="mt-2 w-full rounded-md border border-shell-border bg-transparent px-3 py-2 text-sm outline-none"
-										data-generate-clarify-input={question.id}
-										onChange={(event) => setReplies({ ...replies, [question.id]: event.target.value })}
-										placeholder="or say it yourself"
-										value={replies[question.id] ?? ""}
-									/>
+
+									{promptMode === "exact" && (
+										<label className="mt-3 flex items-center gap-2 text-xs">
+											<input
+												checked={keepLook}
+												data-testid="generate-keep-look"
+												onChange={(event) => setKeepLook(event.target.checked)}
+												type="checkbox"
+											/>
+											Still use my foundation's colours and light
+											<span className="text-shell-muted">
+												Off means nothing at all is added to your words.
+											</span>
+										</label>
+									)}
+
+									{promptMode === "ask" && askPhase !== "none" && (
+										<div
+											className="mt-4 border-t border-dashed border-shell-border pt-3"
+											data-testid="generate-clarify">
+											{questions.length === 0 ? (
+												<p className="text-xs text-shell-muted">
+													Caret has no questions; your description covers it.
+												</p>
+											) : (
+												<p className="text-xs">
+													<b>Anything to add?</b>{" "}
+													<span className="text-shell-muted">
+														Answer what you like; every question can be skipped.
+													</span>
+												</p>
+											)}
+											<div className="mt-1 flex flex-col gap-3">
+												{questions.map((question) => (
+													<div data-generate-clarify={question.id} key={question.id}>
+														<div className="text-[13px]">{question.question}</div>
+														<div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+															{question.suggestions.map((suggestion) => (
+																<button
+																	className={cn(
+																		"rounded-full border px-2.5 py-0.5 text-xs",
+																		replies[question.id] === suggestion
+																			? "border-caret-accent text-blue-300"
+																			: "border-shell-border",
+																	)}
+																	key={suggestion}
+																	onClick={() =>
+																		setReplies({ ...replies, [question.id]: suggestion })
+																	}
+																	type="button">
+																	{suggestion}
+																</button>
+															))}
+															<input
+																className="min-w-[180px] flex-1 rounded-full border border-shell-border bg-transparent px-3 py-0.5 text-xs outline-none focus:border-caret-accent"
+																data-generate-clarify-input={question.id}
+																onChange={(event) =>
+																	setReplies({ ...replies, [question.id]: event.target.value })
+																}
+																placeholder="or say it yourself"
+																value={replies[question.id] ?? ""}
+															/>
+														</div>
+													</div>
+												))}
+											</div>
+											{askPhase === "brief" && (
+												<BriefEditor
+													brief={brief}
+													onBack={() => {
+														setAskPhase("questions")
+														setBrief("")
+														setPhrases([])
+													}}
+													onChange={(next, nextPhrases) => {
+														setBrief(next)
+														setPhrases(nextPhrases)
+													}}
+													phrases={phrases}
+												/>
+											)}
+										</div>
+									)}
 								</div>
-							))}
-						</div>
-						<div className="mt-8 flex items-center gap-3">
-							<button
-								className="rounded-md bg-caret-accent px-4 py-2 text-sm text-white disabled:opacity-50"
-								data-testid="generate-clarify-done"
-								disabled={busy}
-								onClick={() => rebuildAndRoute(replies)}
-								type="button">
-								{briefing ? (
-									<>
-										<ButtonSpinner /> Writing the brief…
-									</>
-								) : (
-									"Generate"
-								)}
-							</button>
-							{/* Answering is optional. Nothing here is a gate — and the
+							)}
+
+							{error && (
+								<p className="mt-3 text-xs text-amber-300" data-testid="generate-ask-error">
+									{error}
+								</p>
+							)}
+
+							<div className="mt-5 flex items-center gap-3">
+								<button
+									className="rounded-md bg-caret-accent px-4 py-2 text-sm text-white disabled:opacity-50"
+									data-testid="generate-begin"
+									disabled={busy || !text.trim() || (askPhase === "brief" && !brief.trim())}
+									onClick={begin}
+									type="button">
+									{busy ? (
+										<>
+											<ButtonSpinner /> {briefing ? "Writing the brief…" : "Thinking…"}
+										</>
+									) : kind !== "image" ? (
+										"Continue"
+									) : promptMode !== "ask" ? (
+										"Generate 4 takes"
+									) : askPhase === "none" ? (
+										"Ask me"
+									) : askPhase === "questions" ? (
+										"Write the brief"
+									) : (
+										"Generate 4 takes from this brief"
+									)}
+								</button>
+								<span className="text-[11px] text-shell-muted">⌘↵</span>
+							</div>
+						</section>
+					)}
+
+					{stage === "clarify" && (
+						<section className="mx-auto max-w-2xl" data-testid="generate-clarify">
+							<p className="text-sm text-shell-muted">
+								You asked for <span className="text-shell-fg">{text.trim()}</span>.
+							</p>
+							<div className="mt-6 flex flex-col gap-6">
+								{questions.map((question) => (
+									<div data-generate-clarify={question.id} key={question.id}>
+										<h3 className="text-base font-medium">{question.question}</h3>
+										<p className="mt-0.5 text-xs text-shell-muted">{question.why}</p>
+										<div className="mt-2 flex flex-wrap gap-2">
+											{question.suggestions.map((suggestion) => (
+												<button
+													className={cn(
+														"rounded-md border px-2 py-1 text-xs",
+														replies[question.id] === suggestion
+															? "border-caret-accent text-caret-accent"
+															: "border-shell-border",
+													)}
+													key={suggestion}
+													onClick={() => setReplies({ ...replies, [question.id]: suggestion })}
+													type="button">
+													{suggestion}
+												</button>
+											))}
+										</div>
+										{/* Suggestions are fast paths, never the whole answer. */}
+										<input
+											className="mt-2 w-full rounded-md border border-shell-border bg-transparent px-3 py-2 text-sm outline-none"
+											data-generate-clarify-input={question.id}
+											onChange={(event) => setReplies({ ...replies, [question.id]: event.target.value })}
+											placeholder="or say it yourself"
+											value={replies[question.id] ?? ""}
+										/>
+									</div>
+								))}
+							</div>
+							<div className="mt-8 flex items-center gap-3">
+								<button
+									className="rounded-md bg-caret-accent px-4 py-2 text-sm text-white disabled:opacity-50"
+									data-testid="generate-clarify-done"
+									disabled={busy}
+									onClick={() => rebuildAndRoute(replies)}
+									type="button">
+									{briefing ? (
+										<>
+											<ButtonSpinner /> Writing the brief…
+										</>
+									) : (
+										"Generate"
+									)}
+								</button>
+								{/* Answering is optional. Nothing here is a gate — and the
 							    rebuild still runs, because skipping the questions is not
 							    the same as wanting a raw prompt. */}
-							<button
-								className="text-xs text-shell-muted hover:text-shell-fg"
-								data-testid="generate-clarify-skip"
-								disabled={busy}
-								onClick={() => rebuildAndRoute({})}
-								type="button">
-								Skip — just make it
-							</button>
-						</div>
-						<p className="mt-3 max-w-md text-[11px] text-shell-muted">
-							Your answers are rewritten into a professional brief — you'll see it in the prompt box and can edit
-							every word before anything is made.
-						</p>
-					</section>
-				)}
-
-				{stage === "recipe" && (
-					<section className="mx-auto max-w-4xl" data-testid="generate-recipes">
-						{recipes.length === 0 ? (
-							<p className="text-sm text-shell-muted">Nothing in the library fits that yet.</p>
-						) : (
-							<div className="grid grid-cols-2 gap-4">
-								{recipes.map((card) => (
-									<button
-										className={cn(
-											"overflow-hidden rounded-xl border border-shell-border text-left disabled:opacity-50",
-											card.unavailable ? "cursor-default opacity-60" : "hover:border-caret-accent",
-										)}
-										data-generate-recipe={card.id}
-										data-generate-unavailable={card.unavailable ? "" : undefined}
-										disabled={busy || Boolean(card.unavailable)}
-										key={card.id}
-										onClick={() => chooseRecipe(card)}
-										type="button">
-										{/*
-										 * On the project's surface, not the chrome's. Several
-										 * recipes are transparent by design, and against this
-										 * dark shell they showed nothing at all.
-										 */}
-										<span className="block" style={{ backgroundColor: card.surface }}>
-											<img alt="" className="block w-full" src={card.specimen} />
-										</span>
-										<span className="block border-t border-shell-border p-3">
-											<span className="block text-sm font-medium">{card.name}</span>
-											<span className="mt-0.5 block text-xs text-shell-muted">
-												{card.unavailable ?? card.use}
-											</span>
-										</span>
-									</button>
-								))}
-							</div>
-						)}
-					</section>
-				)}
-
-				{stage === "variant" && (
-					<section className="mx-auto max-w-4xl" data-testid="generate-variants">
-						{kind !== "texture" && (
-							<div className="mb-3 flex gap-2">
-								<input
-									className="flex-1 rounded-md border border-shell-border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-caret-accent"
-									data-testid="generate-prompt-edit"
-									disabled={busy || refining}
-									onChange={(event) => setText(event.target.value)}
-									value={text}
-								/>
 								<button
-									className="rounded-md border border-shell-border px-3 py-1.5 text-xs disabled:opacity-50"
-									data-testid="generate-prompt-rerun"
-									disabled={busy || refining || text.trim().length < 2}
-									onClick={() => runTakes(aspect, replies)}
-									type="button">
-									New takes with this prompt
-								</button>
-							</div>
-						)}
-						<div className="mb-4 flex items-center gap-2">
-							<span className="text-xs text-shell-muted">Proportions</span>
-							{aspects.map((option) => (
-								<button
-									className={cn(
-										"rounded-md border px-2 py-1 text-xs",
-										option === aspect ? "border-caret-accent text-caret-accent" : "border-shell-border",
-									)}
-									data-generate-aspect={option}
+									className="text-xs text-shell-muted hover:text-shell-fg"
+									data-testid="generate-clarify-skip"
 									disabled={busy}
-									key={option}
-									onClick={() =>
-										kind === "texture" && recipe ? chooseRecipe(recipe, option) : runTakes(option, replies)
-									}
+									onClick={() => rebuildAndRoute({})}
 									type="button">
-									{option}
+									Skip — just make it
 								</button>
-							))}
-						</div>
-
-						{busy && (
-							<p className="mb-3 text-xs text-shell-muted" data-testid="generate-working">
-								{kind === "texture"
-									? "Composing…"
-									: "Generating takes on your own key. About fifteen seconds each, running together."}
+							</div>
+							<p className="mt-3 max-w-md text-[11px] text-shell-muted">
+								Your answers are rewritten into a professional brief — you'll see it in the prompt box and can
+								edit every word before anything is made.
 							</p>
-						)}
+						</section>
+					)}
 
-						<div
-							className={cn(
-								"grid gap-3",
-								variants.length > 4 || (busy && kind === "texture") ? "grid-cols-4" : "grid-cols-2",
-							)}>
-							{busy &&
-								variants.length === 0 &&
-								Array.from({ length: kind === "texture" ? 8 : 4 }, (_, index) => (
-									<Shimmer aspect={aspect} key={`skeleton-${index}`} />
-								))}
-							{variants.map((variant) =>
-								variant.error ? (
-									// The lane's own words, per take. A content refusal on one
-									// framing says nothing about the other two, and collapsing
-									// them into one message would throw away good images to
-									// report a bad one.
-									<p
-										className="min-w-0 overflow-hidden rounded-lg border border-amber-500/40 p-3 text-xs break-words [overflow-wrap:anywhere] text-shell-muted"
-										data-generate-variant-error={variant.variant}
-										key={variant.variant}>
-										{variant.error}
-									</p>
-								) : (
-									<button
-										className={cn(
-											"group relative overflow-hidden rounded-lg border",
-											chosen === variant.variant ? "border-caret-accent" : "border-shell-border",
-										)}
-										data-generate-variant={variant.variant}
-										key={variant.variant}
-										onClick={() => setChosen(variant.variant)}
-										type="button">
-										<span className="block" style={{ backgroundColor: variant.surface }}>
-											<img alt="" className="block w-full" src={variant.preview} />
-										</span>
-										{variant.variant >= 100 && (
-											<span className="absolute top-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-												refined
+					{stage === "recipe" && (
+						<section className="mx-auto max-w-4xl" data-testid="generate-recipes">
+							{recipes.length === 0 ? (
+								<p className="text-sm text-shell-muted">Nothing in the library fits that yet.</p>
+							) : (
+								<div className="grid grid-cols-2 gap-4">
+									{recipes.map((card) => (
+										<button
+											className={cn(
+												"overflow-hidden rounded-xl border border-shell-border text-left disabled:opacity-50",
+												card.unavailable ? "cursor-default opacity-60" : "hover:border-caret-accent",
+											)}
+											data-generate-recipe={card.id}
+											data-generate-unavailable={card.unavailable ? "" : undefined}
+											disabled={busy || Boolean(card.unavailable)}
+											key={card.id}
+											onClick={() => chooseRecipe(card)}
+											type="button">
+											{/*
+											 * On the project's surface, not the chrome's. Several
+											 * recipes are transparent by design, and against this
+											 * dark shell they showed nothing at all.
+											 */}
+											<span className="block" style={{ backgroundColor: card.surface }}>
+												<img alt="" className="block w-full" src={card.specimen} />
 											</span>
-										)}
-										<span
-											className="absolute top-1.5 right-1.5 rounded-md bg-black/50 p-1.5 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
-											data-generate-expand={variant.variant}
-											onClick={(event) => {
-												event.stopPropagation()
-												setExpandedTake(variant.variant)
-											}}
-											title="View large">
-											<Maximize2 size={12} />
-										</span>
-									</button>
-								),
+											<span className="block border-t border-shell-border p-3">
+												<span className="block text-sm font-medium">{card.name}</span>
+												<span className="mt-0.5 block text-xs text-shell-muted">
+													{card.unavailable ?? card.use}
+												</span>
+											</span>
+										</button>
+									))}
+								</div>
 							)}
-							{refining && <Shimmer aspect={aspect} />}
-						</div>
-						{expandedTake !== null &&
-							(() => {
-								const take = variants.find((candidate) => candidate.variant === expandedTake)
-								return take && !take.error ? (
-									<ExpandOverlay onClose={() => setExpandedTake(null)}>
-										<span className="block rounded-lg" style={{ backgroundColor: take.surface }}>
-											<img
-												alt=""
-												className="mx-auto block max-h-[85vh] w-auto max-w-full"
-												src={take.preview}
-											/>
-										</span>
-									</ExpandOverlay>
-								) : null
-							})()}
+						</section>
+					)}
 
-						{chosen !== null && kind !== "texture" && (
-							<div className="mt-4 rounded-lg border border-shell-border p-3" data-testid="generate-refine">
-								<div className="flex gap-2">
+					{stage === "variant" && (
+						<section className="mx-auto max-w-4xl" data-testid="generate-variants">
+							{kind !== "texture" && (
+								<div className="mb-3 flex gap-2">
 									<input
 										className="flex-1 rounded-md border border-shell-border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-caret-accent"
-										data-testid="generate-refine-note"
+										data-testid="generate-prompt-edit"
 										disabled={busy || refining}
-										onChange={(event) => setRefineNote(event.target.value)}
-										onKeyDown={(event) => event.key === "Enter" && refine()}
-										placeholder='What should change on this take? — "harder shadow", "label bigger", "less clutter"'
-										value={refineNote}
+										onChange={(event) => setText(event.target.value)}
+										value={text}
 									/>
 									<button
 										className="rounded-md border border-shell-border px-3 py-1.5 text-xs disabled:opacity-50"
-										data-testid="generate-refine-run"
-										disabled={busy || refining || !refineNote.trim()}
-										onClick={refine}
+										data-testid="generate-prompt-rerun"
+										disabled={busy || refining || text.trim().length < 2}
+										onClick={() => runTakes(aspect, replies)}
 										type="button">
-										{refining ? (
-											<>
-												<ButtonSpinner /> Refining…
-											</>
-										) : (
-											"Refine it"
-										)}
-									</button>
-									<button
-										className="rounded-md bg-caret-accent px-3 py-1.5 text-xs text-white disabled:opacity-50"
-										data-testid="generate-use-take"
-										disabled={busy || refining}
-										onClick={() => {
-											setTag(suggestTag(text))
-											setStage("name")
-										}}
-										type="button">
-										Use this take
+										New takes with this prompt
 									</button>
 								</div>
-								<p className="mt-1.5 text-[11px] text-shell-muted">
-									Refining sends this exact take back as the reference with your note — it converges, where new
-									takes start over. Every earlier take stays in the grid.
-								</p>
+							)}
+							<div className="mb-4 flex items-center gap-2">
+								<span className="text-xs text-shell-muted">Proportions</span>
+								{aspects.map((option) => (
+									<button
+										className={cn(
+											"rounded-md border px-2 py-1 text-xs",
+											option === aspect ? "border-caret-accent text-caret-accent" : "border-shell-border",
+										)}
+										data-generate-aspect={option}
+										disabled={busy}
+										key={option}
+										onClick={() =>
+											kind === "texture" && recipe
+												? chooseRecipe(recipe, option)
+												: runTakes(option, replies)
+										}
+										type="button">
+										{option}
+									</button>
+								))}
 							</div>
-						)}
-						{chosen !== null && kind === "texture" && (
+
+							{busy && (
+								<p className="mb-3 text-xs text-shell-muted" data-testid="generate-working">
+									{kind === "texture"
+										? "Composing…"
+										: "Generating takes on your own key. About fifteen seconds each, running together."}
+								</p>
+							)}
+
+							<div
+								className={cn(
+									"grid gap-3",
+									variants.length > 4 || (busy && kind === "texture") ? "grid-cols-4" : "grid-cols-2",
+								)}>
+								{busy &&
+									variants.length === 0 &&
+									Array.from({ length: kind === "texture" ? 8 : 4 }, (_, index) => (
+										<Shimmer aspect={aspect} key={`skeleton-${index}`} />
+									))}
+								{variants.map((variant) =>
+									variant.error ? (
+										// The lane's own words, per take. A content refusal on one
+										// framing says nothing about the other two, and collapsing
+										// them into one message would throw away good images to
+										// report a bad one.
+										<p
+											className="min-w-0 overflow-hidden rounded-lg border border-amber-500/40 p-3 text-xs break-words [overflow-wrap:anywhere] text-shell-muted"
+											data-generate-variant-error={variant.variant}
+											key={variant.variant}>
+											{variant.error}
+										</p>
+									) : (
+										<button
+											className={cn(
+												"group relative overflow-hidden rounded-lg border",
+												chosen === variant.variant ? "border-caret-accent" : "border-shell-border",
+											)}
+											data-generate-variant={variant.variant}
+											key={variant.variant}
+											onClick={() => setChosen(variant.variant)}
+											type="button">
+											<span className="block" style={{ backgroundColor: variant.surface }}>
+												<img alt="" className="block w-full" src={variant.preview} />
+											</span>
+											{variant.variant >= 100 && (
+												<span className="absolute top-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+													refined
+												</span>
+											)}
+											<span
+												className="absolute top-1.5 right-1.5 rounded-md bg-black/50 p-1.5 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
+												data-generate-expand={variant.variant}
+												onClick={(event) => {
+													event.stopPropagation()
+													setExpandedTake(variant.variant)
+												}}
+												title="View large">
+												<Maximize2 size={12} />
+											</span>
+										</button>
+									),
+								)}
+								{refining && <Shimmer aspect={aspect} />}
+							</div>
+							{expandedTake !== null &&
+								(() => {
+									const take = variants.find((candidate) => candidate.variant === expandedTake)
+									return take && !take.error ? (
+										<ExpandOverlay onClose={() => setExpandedTake(null)}>
+											<span className="block rounded-lg" style={{ backgroundColor: take.surface }}>
+												<img
+													alt=""
+													className="mx-auto block max-h-[85vh] w-auto max-w-full"
+													src={take.preview}
+												/>
+											</span>
+										</ExpandOverlay>
+									) : null
+								})()}
+
+							{chosen !== null && kind !== "texture" && (
+								<div className="mt-4 rounded-lg border border-shell-border p-3" data-testid="generate-refine">
+									<div className="flex gap-2">
+										<input
+											className="flex-1 rounded-md border border-shell-border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-caret-accent"
+											data-testid="generate-refine-note"
+											disabled={busy || refining}
+											onChange={(event) => setRefineNote(event.target.value)}
+											onKeyDown={(event) => event.key === "Enter" && refine()}
+											placeholder='What should change on this take? For example "harder shadow", "label bigger", "less clutter"'
+											value={refineNote}
+										/>
+										<button
+											className="rounded-md border border-shell-border px-3 py-1.5 text-xs disabled:opacity-50"
+											data-testid="generate-refine-run"
+											disabled={busy || refining || !refineNote.trim()}
+											onClick={refine}
+											type="button">
+											{refining ? (
+												<>
+													<ButtonSpinner /> Refining…
+												</>
+											) : (
+												"Refine it"
+											)}
+										</button>
+										<button
+											className="rounded-md bg-caret-accent px-3 py-1.5 text-xs text-white disabled:opacity-50"
+											data-testid="generate-use-take"
+											disabled={busy || refining}
+											onClick={() => {
+												setTag(suggestTag(text))
+												setStage("name")
+											}}
+											type="button">
+											Use this take
+										</button>
+									</div>
+									<p className="mt-1.5 text-[11px] text-shell-muted">
+										Refining sends this exact take back as the reference with your note — it converges, where
+										new takes start over. Every earlier take stays in the grid.
+									</p>
+								</div>
+							)}
+							{chosen !== null && kind === "texture" && (
+								<button
+									className="mt-4 rounded-md bg-caret-accent px-3 py-1.5 text-xs text-white"
+									data-testid="generate-use-take"
+									onClick={() => {
+										setTag(suggestTag(text))
+										setStage("name")
+									}}
+									type="button">
+									Use this one
+								</button>
+							)}
+
 							<button
-								className="mt-4 rounded-md bg-caret-accent px-3 py-1.5 text-xs text-white"
-								data-testid="generate-use-take"
-								onClick={() => {
-									setTag(suggestTag(text))
-									setStage("name")
-								}}
+								className="mt-4 block text-xs text-shell-muted hover:text-shell-fg"
+								data-testid="generate-more"
+								disabled={busy || refining}
+								onClick={regenerate}
 								type="button">
-								Use this one
+								None of these — a fresh round
 							</button>
-						)}
+						</section>
+					)}
 
-						<button
-							className="mt-4 block text-xs text-shell-muted hover:text-shell-fg"
-							data-testid="generate-more"
-							disabled={busy || refining}
-							onClick={regenerate}
-							type="button">
-							None of these — a fresh round
-						</button>
-					</section>
-				)}
-
-				{stage === "name" && chosen !== null && (
-					<section className="mx-auto max-w-lg" data-testid="generate-name">
-						<span
-							className="block overflow-hidden rounded-lg border border-shell-border"
-							style={{ backgroundColor: variants.find((variant) => variant.variant === chosen)?.surface }}>
-							<img
-								alt=""
-								className="block w-full"
-								src={variants.find((variant) => variant.variant === chosen)?.preview}
+					{stage === "name" && chosen !== null && (
+						<section className="mx-auto max-w-lg" data-testid="generate-name">
+							<span
+								className="block overflow-hidden rounded-lg border border-shell-border"
+								style={{ backgroundColor: variants.find((variant) => variant.variant === chosen)?.surface }}>
+								<img
+									alt=""
+									className="block w-full"
+									src={variants.find((variant) => variant.variant === chosen)?.preview}
+								/>
+							</span>
+							<label className="mt-6 block text-sm" htmlFor="generated-tag">
+								What should it be called?
+							</label>
+							<p className="mt-1 text-xs text-shell-muted">
+								This is what you and your agent will type: <code>@{tag || "name"}</code>
+							</p>
+							<input
+								className="mt-2 w-full rounded-md border border-shell-border bg-transparent px-3 py-2 font-mono text-sm outline-none"
+								data-testid="generate-tag"
+								id="generated-tag"
+								onChange={(event) => setTag(event.target.value)}
+								onKeyDown={(event) => event.key === "Enter" && save()}
+								value={tag}
 							/>
-						</span>
-						<label className="mt-6 block text-sm" htmlFor="generated-tag">
-							What should it be called?
-						</label>
-						<p className="mt-1 text-xs text-shell-muted">
-							This is what you and your agent will type: <code>@{tag || "name"}</code>
-						</p>
-						<input
-							className="mt-2 w-full rounded-md border border-shell-border bg-transparent px-3 py-2 font-mono text-sm outline-none"
-							data-testid="generate-tag"
-							id="generated-tag"
-							onChange={(event) => setTag(event.target.value)}
-							onKeyDown={(event) => event.key === "Enter" && save()}
-							value={tag}
-						/>
-						{error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-						<button
-							className="mt-4 rounded-md bg-caret-accent px-4 py-2 text-sm text-white disabled:opacity-50"
-							data-testid="generate-save"
-							disabled={busy}
-							onClick={save}
-							type="button">
-							Add to assets
-						</button>
-					</section>
-				)}
+							{error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+							<button
+								className="mt-4 rounded-md bg-caret-accent px-4 py-2 text-sm text-white disabled:opacity-50"
+								data-testid="generate-save"
+								disabled={busy}
+								onClick={save}
+								type="button">
+								Add to assets
+							</button>
+						</section>
+					)}
 
-				{stage === "mark" && <MarkFlow onClose={onClose} project={project} subject={text.trim()} />}
-				{stage === "model3d" && <Model3dFlow initialText={text} onClose={onClose} project={project} />}
-				{stage === "shader" && <ShaderFlow answers={replies} onClose={onClose} project={project} subject={text.trim()} />}
-			</div>
+					{stage === "mark" && <MarkFlow onClose={onClose} project={project} subject={text.trim()} />}
+					{stage === "model3d" && <Model3dFlow initialText={text} onClose={onClose} project={project} />}
+					{stage === "shader" && (
+						<ShaderFlow answers={replies} onClose={onClose} project={project} subject={text.trim()} />
+					)}
+				</div>
+			)}
 		</div>
 	)
 }
@@ -1117,7 +1382,7 @@ function MarkFlow({
 									disabled={busy || targetRefining}
 									onChange={(event) => setTargetNote(event.target.value)}
 									onKeyDown={(event) => event.key === "Enter" && refineTarget()}
-									placeholder={'What should change? — "thicker stroke", "flame taller", "simpler"'}
+									placeholder={'What should change? For example "thicker stroke", "flame taller", "simpler"'}
 									value={targetNote}
 								/>
 								<button
@@ -1481,7 +1746,7 @@ function ShaderFlow({
 								disabled={busy || refining}
 								onChange={(event) => setNote(event.target.value)}
 								onKeyDown={(event) => event.key === "Enter" && refine()}
-								placeholder='What should change? — "slower", "more layered", "less green"'
+								placeholder='What should change? For example "slower", "more layered", "less green"'
 								value={note}
 							/>
 							<button
@@ -1794,7 +2059,7 @@ function Model3dFlow({
 							disabled={busy || sourceBusy || sourceRefining}
 							onChange={(event) => setSourceNote(event.target.value)}
 							onKeyDown={(event) => event.key === "Enter" && refineSource()}
-							placeholder={'What should change? — "thicker profile", "heavier base", "cleaner silhouette"'}
+							placeholder={'What should change? For example "thicker profile", "heavier base", "cleaner silhouette"'}
 							value={sourceNote}
 						/>
 						<button
@@ -2013,4 +2278,126 @@ function suggestMarkTag(subject: string): string {
 		.slice(0, 32)
 		.replace(/-+$/g, "")
 	return slug || "mark"
+}
+
+/**
+ * Caret's brief, for reading and editing before anything is made.
+ *
+ * The phrases Caret chose where the person said nothing (the light, the camera,
+ * the setting) are dashed; clicking one offers alternatives that fit the same
+ * place. "Edit" turns the whole brief into a text box.
+ */
+function BriefEditor({
+	brief,
+	phrases,
+	onChange,
+	onBack,
+}: {
+	brief: string
+	phrases: Array<{ text: string; alternatives: string[] }>
+	onChange(brief: string, phrases: Array<{ text: string; alternatives: string[] }>): void
+	onBack(): void
+}) {
+	const [editing, setEditing] = useState(false)
+	const [open, setOpen] = useState<string | null>(null)
+
+	// The brief split into plain text and swappable phrases, in reading order.
+	const segments: Array<{ text: string; phrase?: { text: string; alternatives: string[] } }> = []
+	const found = phrases
+		.map((phrase) => ({ phrase, at: brief.indexOf(phrase.text) }))
+		.filter((entry) => entry.at >= 0)
+		.sort((a, b) => a.at - b.at)
+	let cursor = 0
+	for (const { phrase, at } of found) {
+		if (at < cursor) continue
+		if (at > cursor) segments.push({ text: brief.slice(cursor, at) })
+		segments.push({ text: phrase.text, phrase })
+		cursor = at + phrase.text.length
+	}
+	if (cursor < brief.length) segments.push({ text: brief.slice(cursor) })
+
+	const swap = (phrase: { text: string; alternatives: string[] }, alternative: string) => {
+		const at = brief.indexOf(phrase.text)
+		if (at < 0) return
+		const next = brief.slice(0, at) + alternative + brief.slice(at + phrase.text.length)
+		onChange(
+			next,
+			phrases.map((other) =>
+				other === phrase
+					? {
+							text: alternative,
+							alternatives: [phrase.text, ...phrase.alternatives.filter((alt) => alt !== alternative)],
+						}
+					: other,
+			),
+		)
+		setOpen(null)
+	}
+
+	return (
+		<div className="mt-4 rounded-lg border border-caret-accent/60 bg-caret-accent/5 p-3" data-testid="generate-brief">
+			<div className="text-[11px] tracking-wider text-shell-muted uppercase">
+				Caret's brief ·{" "}
+				{editing ? "edit anything" : phrases.length > 0 ? "click a dashed phrase to swap it" : "read it, or edit it"}
+			</div>
+			{editing ? (
+				<textarea
+					className="mt-2 w-full resize-y rounded-md border border-shell-border bg-shell-panel px-2.5 py-2 text-[13px] leading-relaxed outline-none focus:border-caret-accent"
+					data-testid="generate-brief-text"
+					onChange={(event) =>
+						onChange(
+							event.target.value,
+							phrases.filter((phrase) => event.target.value.includes(phrase.text)),
+						)
+					}
+					rows={5}
+					value={brief}
+				/>
+			) : (
+				<p className="mt-2 text-[13px] leading-relaxed" data-testid="generate-brief-view">
+					{segments.map((segment, index) =>
+						segment.phrase ? (
+							<span className="relative" key={index}>
+								<button
+									className="rounded-sm border-b border-dashed border-blue-400 text-blue-200 hover:bg-caret-accent/15"
+									data-testid="generate-brief-phrase"
+									onClick={() => setOpen(open === segment.text ? null : segment.text)}
+									type="button">
+									{segment.text}
+								</button>
+								{open === segment.text && (
+									<span className="absolute top-full left-0 z-20 mt-1 flex min-w-[200px] flex-col rounded-lg border border-shell-border bg-shell-panel p-1 shadow-xl">
+										{segment.phrase.alternatives.map((alternative) => (
+											<button
+												className="rounded px-2 py-1 text-left text-xs hover:bg-shell-border"
+												data-testid="generate-brief-alternative"
+												key={alternative}
+												onClick={() => swap(segment.phrase!, alternative)}
+												type="button">
+												{alternative}
+											</button>
+										))}
+									</span>
+								)}
+							</span>
+						) : (
+							<span key={index}>{segment.text}</span>
+						),
+					)}
+				</p>
+			)}
+			<div className="mt-2 flex gap-3 text-xs">
+				<button
+					className="text-shell-muted hover:text-shell-fg"
+					data-testid="generate-brief-edit"
+					onClick={() => setEditing(!editing)}
+					type="button">
+					{editing ? "Done editing" : "Edit"}
+				</button>
+				<button className="text-shell-muted hover:text-shell-fg" onClick={onBack} type="button">
+					Back to the questions
+				</button>
+			</div>
+		</div>
+	)
 }

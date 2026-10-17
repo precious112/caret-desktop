@@ -1,0 +1,1419 @@
+{
+	"entries": 128,
+	"habits": [
+		{
+			"id": "warm-cream-background",
+			"name": "Warm cream background",
+			"sources": 13,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Second-order \"tasteful\" default: warm cream / beige surface with terracotta accent"
+			],
+			"description": "What models produce when told to avoid purple: warm off-white page with a terracotta accent (the Claude interf",
+			"colours": [
+				"#F4F1EA",
+				"#EDE7D8",
+				"#F7F1E4"
+			],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "terracotta-accent",
+			"name": "Terracotta accent",
+			"sources": 7,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [],
+			"description": "",
+			"colours": [
+				"#D97757",
+				"#D9622B"
+			],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "serif-display-hero",
+			"name": "Serif display hero",
+			"sources": 11,
+			"kinds": [
+				"font",
+				"foundation"
+			],
+			"terms": [
+				"Massive display-serif (or serif-italic + sans) hero headline"
+			],
+			"description": "Newer GPT-5.6 outputs swing to a huge editorial serif hero ('publication energy') or a serif italic word mixed",
+			"colours": [],
+			"fonts": [
+				"Fraunces",
+				"Playfair",
+				"Playfair Display",
+				"Instrument Serif",
+				"Georgia",
+				"GT Sectra",
+				"Newsreader"
+			],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "italic-accent-word",
+			"name": "Italic accent word",
+			"sources": 11,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"One word or phrase in the headline set in italic (often italic serif) or a different colour",
+				"One italic serif accent word inside an otherwise sans hero headline"
+			],
+			"description": "A single word in the hero headline is accented, most often italicised in a serif, sometimes coloured.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "eyebrow-labels",
+			"name": "Eyebrow labels",
+			"sources": 15,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Tracked-out ALL-CAPS eyebrow label above every heading",
+				"Eyebrow / kicker / pretitle label above headings",
+				"Tracked all-caps eyebrow / kicker label above every section heading"
+			],
+			"description": "A small, letter-spaced uppercase label (eyebrow/kicker) sits above the hero H1 and above each section heading,",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "monospace-labels",
+			"name": "Monospace labels",
+			"sources": 7,
+			"kinds": [
+				"font"
+			],
+			"terms": [],
+			"description": "",
+			"colours": [],
+			"fonts": [
+				"JetBrains Mono"
+			],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "numbered-section-labels",
+			"name": "Numbered section labels",
+			"sources": 10,
+			"kinds": [
+				"element",
+				"copy"
+			],
+			"terms": [
+				"Decorative 01 / 02 / 03 numbering on sections and features",
+				"Numbered meta-labels and all-caps/mono section markers ('SECTION 01', '01 / 02 / 03')",
+				"Decorative 01 / 02 / 03 numbered section labels"
+			],
+			"description": "Sections, feature lists or steps carry zero-padded numeric markers even when the content is not a sequence.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "pill-buttons",
+			"name": "Pill buttons",
+			"sources": 4,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Pill-shaped (fully rounded) buttons"
+			],
+			"description": "Buttons and chips default to fully rounded pill shapes.",
+			"colours": [],
+			"fonts": [],
+			"radius": true,
+			"fewOptions": false
+		},
+		{
+			"id": "pulsing-status-dots",
+			"name": "Pulsing status dots",
+			"sources": 7,
+			"kinds": [
+				"element",
+				"treatment"
+			],
+			"terms": [
+				"Blinking / pulsing green status dot or 'LIVE' badge",
+				"Scroll fade-up on every section, bounce easing, hover:scale-105, pulsing dot"
+			],
+			"description": "A small animated dot (usually green or lime), often inside a pill with an ALL-CAPS word like LIVE or 'now with",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "coloured-glow-effects",
+			"name": "Coloured glow effects",
+			"sources": 6,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Glows: coloured text-shadow / box-shadow halos on labels and UI",
+				"Large coloured glows / chromatic box-shadows"
+			],
+			"description": "Labels, status indicators and text get chromatic glow halos (offset or zero-offset text-shadow / box-shadow), ",
+			"colours": [
+				"#000"
+			],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "near-black-neon-theme",
+			"name": "Near-black neon theme",
+			"sources": 6,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Near-black page with one acid-green or vermilion accent",
+				"Near-black page with one acid-green / vermilion / cyan signal colour"
+			],
+			"description": "The second fallback look: a near-black background with a single bright acid-green (or vermilion) signal colour",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "tinted-near-black",
+			"name": "Tinted near-black",
+			"sources": 2,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [],
+			"description": "",
+			"colours": [
+				"#0B0B0B",
+				"#111",
+				"#211D18"
+			],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "broadsheet-layout",
+			"name": "Broadsheet layout",
+			"sources": 4,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Broadsheet / newspaper layout: hairline rules, zero radius, dense columns"
+			],
+			"description": "The third fallback look: editorial broadsheet structure with hairline horizontal rules as dividers, zero borde",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "default-card-grids",
+			"name": "Default card grids",
+			"sources": 14,
+			"kinds": [
+				"layout",
+				"element"
+			],
+			"terms": [
+				"SaaS card kit: identical rounded cards, one radius everywhere, same soft grey shadow",
+				"Cards everywhere / default card grids"
+			],
+			"description": "Content is chopped into identical rounded cards with one border-radius on everything and the same soft grey sh",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "nested-cards",
+			"name": "Nested cards",
+			"sources": 12,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Cards inside cards; whole page sections styled as floating cards",
+				"Cards nested inside cards",
+				"Container soup: pills inside cards inside cards"
+			],
+			"description": "The most-reported GPT-specific card habit: a card inside a card inside a card, and full-width sections wrapped",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "card-side-stripes",
+			"name": "Card side stripes",
+			"sources": 8,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Coloured accent border on one side (usually left) of every card",
+				"Coloured accent border on one edge of a card (top or left stripe)"
+			],
+			"description": "Cards get a thick coloured rule on one edge, often the left, applied decoratively to every card.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "middle-dot-metadata",
+			"name": "Middle-dot metadata",
+			"sources": 2,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Meta strings joined with middle dots (A · B · C)"
+			],
+			"description": "Metadata, taglines and footers are built as short fragments joined by ' · '.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "em-dash-copy",
+			"name": "Em-dash copy",
+			"sources": 6,
+			"kinds": [
+				"copy"
+			],
+			"terms": [
+				"Em dashes in UI copy and 'WORD — fragment' labels",
+				"Em-dash saturation in body copy",
+				"Emoji as icons/decoration and em dashes in copy"
+			],
+			"description": "Headlines, labels and microcopy lean on em dashes, including labels built as 'WORD — fragment' with a spaced e",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "arrow-ctas",
+			"name": "Arrow CTAs",
+			"sources": 4,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"'→' appended to link and button text",
+				"Rounded text buttons and plain-text glyph arrows instead of icons"
+			],
+			"description": "Buttons and text links end with a right arrow glyph by default.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "aphoristic-contrast-copy",
+			"name": "Aphoristic contrast copy",
+			"sources": 4,
+			"kinds": [
+				"copy"
+			],
+			"terms": [
+				"Manufactured-contrast copy cadence ('X isn't Y — it's Z', 'A URL, not a laptop')",
+				"Aphoristic rebuttal cadence (\"Not a feature. A platform.\" / \"X. No Y.\")"
+			],
+			"description": "Headlines and section copy are built as short contrast aphorisms that negate one thing to assert another, deli",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "stat-metrics",
+			"name": "Stat metrics",
+			"sources": 11,
+			"kinds": [
+				"layout",
+				"element"
+			],
+			"terms": [
+				"Big number + small label + supporting stats + gradient accent as the hero",
+				"Stat strips and invented metrics (in the hero and on dashboards)",
+				"Stat banner row of big numbers (often invented)"
+			],
+			"description": "The hero (or the section after it) is a large figure with a small caption and a row of supporting stats, often",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "universal-fade-up-motion",
+			"name": "Universal fade-up motion",
+			"sources": 3,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Fade-and-slide-up entrance on every section, hover transitions on every card",
+				"Fade-and-slide entrance on every element"
+			],
+			"description": "Scroll reveal animations applied uniformly to each section plus hover lifts on every card, instead of one orch",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "purple-indigo-gradients",
+			"name": "Purple-indigo gradients",
+			"sources": 26,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Purple / blue-indigo gradient on white (the older Claude default)",
+				"Purple / indigo / purple-blue gradient as the default look",
+				"\"VibeCode Purple\": indigo/violet accent and purple-to-blue gradients",
+				"\"AI purple/blue\" accent (vendor-banned)"
+			],
+			"description": "Purple-to-blue or indigo-to-violet gradients on white hero sections.",
+			"colours": [
+				"#6366f1",
+				"#a855f7",
+				"#ec4899",
+				"#4f46e5",
+				"#0F172A"
+			],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "default-sans-font",
+			"name": "Default sans font",
+			"sources": 25,
+			"kinds": [
+				"font",
+				"foundation"
+			],
+			"terms": [],
+			"description": "",
+			"colours": [],
+			"fonts": [
+				"Inter",
+				"Roboto",
+				"Arial",
+				"Geist",
+				"Space Grotesk",
+				"Open Sans"
+			],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "centered-hero-with-three-cards",
+			"name": "Centered hero with three cards",
+			"sources": 11,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Centered hero (eyebrow, headline, subhead, two CTAs) over a three-column feature grid",
+				"Centered hero + two buttons + three equal feature cards skeleton",
+				"Centered hero with 3 identical cards below"
+			],
+			"description": "Landing skeleton: centered hero with eyebrow, big headline, subhead and two CTAs (sometimes a faint gradient b",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "teal-accent",
+			"name": "Teal accent",
+			"sources": 3,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [],
+			"description": "",
+			"colours": [
+				"#16d5e6"
+			],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "ticker-bars",
+			"name": "Ticker bars",
+			"sources": 1,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"News-ticker / marquee bars"
+			],
+			"description": "Horizontal ticker-like strips, as if the page were a news channel.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "lucide-icons",
+			"name": "Lucide icons",
+			"sources": 1,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Lucide icon stack everywhere"
+			],
+			"description": "The default icon set across nav, buttons and empty states is Lucide.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "noise-grain-texture",
+			"name": "Noise grain texture",
+			"sources": 2,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Noise / grain texture overlay"
+			],
+			"description": "A subtle grain or noise texture laid over (often dark) surfaces.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "dark-brown-theme",
+			"name": "Dark brown theme",
+			"sources": 5,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"'Claude brown' dark theme: orange on brown / anthracite, low-contrast beige text"
+			],
+			"description": "Dark-mode variant of the house style: brown or anthracite grounds with orange accents and brown/beige text tha",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "font-size-sprawl",
+			"name": "Font size sprawl",
+			"sources": 2,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Many fonts, weights and text sizes on one page"
+			],
+			"description": "Pages mix many families and weights and a large number of distinct font sizes, with tiny headings next to over",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "tight-display-leading",
+			"name": "Tight display leading",
+			"sources": 1,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Tight display line-height (~0.9) with generous spacing elsewhere"
+			],
+			"description": "Display headings set very tight (~0.9 line-height) while section padding stays generous.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "humanist-sans-body",
+			"name": "Humanist sans body",
+			"sources": 1,
+			"kinds": [
+				"font"
+			],
+			"terms": [],
+			"description": "",
+			"colours": [],
+			"fonts": [
+				"DM Sans"
+			],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "half-width-hero-text",
+			"name": "Half-width hero text",
+			"sources": 1,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Hero text confined to a ~50% width column"
+			],
+			"description": "Hero headline and copy sit in a half-width column.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "generic-saas-copy",
+			"name": "Generic SaaS copy",
+			"sources": 12,
+			"kinds": [
+				"copy"
+			],
+			"terms": [
+				"Generic SaaS headlines and adjective-filler feature bullets",
+				"Buzzword SaaS copy ('empower', 'seamless', 'robust', 'Transform your workflow')",
+				"Weightless SaaS buzzword copy (Elevate / Empower / Seamless / Unlock)",
+				"Corporate filler copy (\"Empowering your workflow\")"
+			],
+			"description": "Category-description headlines ('Streamline Your [Noun]...') and feature bullets made of interchangeable adjec",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "overexplained-microcopy",
+			"name": "Overexplained microcopy",
+			"sources": 2,
+			"kinds": [
+				"copy"
+			],
+			"terms": [
+				"Over-explaining, reassuring microcopy and boilerplate on every surface"
+			],
+			"description": "Helper text that restates the obvious or reassures ('swap it any time'), and excess explanatory text on every ",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "emoji-icons",
+			"name": "Emoji icons",
+			"sources": 9,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Emoji used as icons",
+				"Emoji used as icons (nav, feature cards, sparkle-for-AI)",
+				"Emoji used as icons (vendor-banned)"
+			],
+			"description": "Emoji standing in for feature/nav icons on Claude-built sites.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "one-hue-palettes",
+			"name": "One-hue palettes",
+			"sources": 6,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"One-hue palettes: beige/cream/sand, dark blue/slate, brown/orange/espresso"
+			],
+			"description": "OpenAI's GPT-5.5 frontend prompt names the single-hue-family palettes the model drifts into and tells it to sc",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "baby-blue-accent",
+			"name": "Baby-blue accent",
+			"sources": 3,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Baby-blue / bright-blue accent and single muted-blue charts"
+			],
+			"description": "A plain blue used as the only accent: baby blue with rounded corners in app UIs, a heavy bright-blue active si",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "dark-saas-accent-theme",
+			"name": "Dark SaaS accent theme",
+			"sources": 4,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Dark 'dev-tool' SaaS theme with a single bright accent"
+			],
+			"description": "Landing pages, pricing and app screens default to a dark background with one saturated accent (blue/purple on ",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "oversized-hero-headline",
+			"name": "Oversized hero headline",
+			"sources": 7,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Oversized hero headline (huge text, viewport-scaled type, many-line wraps)"
+			],
+			"description": "The hero is carried by enormous type rather than an image: 'massive' left-aligned headlines, giant text, viewp",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "negative-heading-tracking",
+			"name": "Negative heading tracking",
+			"sources": 3,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Negative letter-spacing (tight tracking) on headings"
+			],
+			"description": "OpenAI's GPT-5.5 frontend prompt has to tell the model letter spacing must be 0, not negative.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "pill-and-badge-clutter",
+			"name": "Pill and badge clutter",
+			"sources": 6,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Pill clusters, chips, floating badges and stickers in the hero"
+			],
+			"description": "Rows of pills/chips under the hero, floating badges or 'stamp' icons on hero media, utility pills and pseudo-s",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "gradient-orbs-and-halos",
+			"name": "Gradient orbs and halos",
+			"sources": 8,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Gradient orbs, bokeh blobs and glow effects as decoration",
+				"Radial spotlight halo / aurora blobs / floating orbs behind the hero"
+			],
+			"description": "Blurred coloured blobs/orbs behind the hero, bokeh, random glows.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "decorative-ui-gradients",
+			"name": "Decorative UI gradients",
+			"sources": 10,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Decorative gradients on routine product UI (metric widgets, pricing backgrounds, panels)",
+				"Gradients everywhere (backgrounds, buttons, borders)",
+				"Injects a \"subtle\" gradient on buttons or card edges even when gradients are banned"
+			],
+			"description": "Gradients used as decoration where they carry no meaning: on KPI widgets, dark blue/purple pricing backgrounds",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "abstract-hero-artwork",
+			"name": "Abstract hero artwork",
+			"sources": 6,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Abstract gradient / SVG illustration hero instead of real imagery"
+			],
+			"description": "The hero's visual is a gradient, an abstract background, a hand-drawn SVG illustration or fake 3D object rathe",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "atmospheric-hero-media",
+			"name": "Atmospheric hero media",
+			"sources": 4,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Dark, blurred, tinted 'atmospheric' media and colour washes over hero images"
+			],
+			"description": "Imagery that sets a mood but shows nothing: dark or blurred photos, stock-photo haze, cinematic wallpaper, col",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "glassmorphism",
+			"name": "Glassmorphism",
+			"sources": 8,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Glassmorphism panels and a glassy navbar",
+				"Glassmorphism: frosted translucent panels and glassy navbars"
+			],
+			"description": "Frosted-glass panels and a glass navbar.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "over-rounded-surfaces",
+			"name": "Over-rounded surfaces",
+			"sources": 6,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Over-rounded corners on cards, buttons and section wrappers"
+			],
+			"description": "Big radii everywhere: rounded-2xl/3xl cards, very round buttons, rounded wrappers around whole sections.",
+			"colours": [],
+			"fonts": [],
+			"radius": true,
+			"fewOptions": false
+		},
+		{
+			"id": "soft-card-shadows",
+			"name": "Soft card shadows",
+			"sources": 4,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Soft card shadows, dramatic drop shadows and embossed buttons"
+			],
+			"description": "Default soft shadows on every card (Tailwind shadow-lg/xl), heavy drop shadows, embossed/3D buttons.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "grid-backgrounds",
+			"name": "Grid backgrounds",
+			"sources": 3,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Grid-pattern background",
+				"Decorative hairline grid-line background"
+			],
+			"description": "A faint grid (graph-paper) pattern behind the page, even on utilitarian screens like settings.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "bento-grids",
+			"name": "Bento grids",
+			"sources": 4,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Bento-box grids (often with dead cells)",
+				"Bento grid of mixed-span rounded cards"
+			],
+			"description": "Feature sections laid out as bento grids.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "ui-explaining-copy",
+			"name": "UI-explaining copy",
+			"sources": 6,
+			"kinds": [
+				"copy"
+			],
+			"terms": [
+				"In-app text that explains the UI, design commentary or prompt language leaking into copy"
+			],
+			"description": "Visible text describing what the app does, how to use it, its styling or its shortcuts ('Click here to filter ",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "marketing-inside-products",
+			"name": "Marketing inside products",
+			"sources": 5,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Marketing heroes and aspirational headlines inside dashboards/tools (or a landing page instead of the app)"
+			],
+			"description": "Asked for an app or dashboard, the model builds a landing page, or puts a hero-scale aspirational headline ('M",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "fragmented-taglines",
+			"name": "Fragmented taglines",
+			"sources": 5,
+			"kinds": [
+				"copy"
+			],
+			"terms": [
+				"Tagline headlines and clipped two-fragment cadence ('More direction. Less interpretation.')"
+			],
+			"description": "Headlines are value-prop taglines instead of the brand/product name, and section heads use short paired fragme",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "weak-brand-presence",
+			"name": "Weak brand presence",
+			"sources": 3,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Weak brand presence: brand only in nav, headline overpowers the brand"
+			],
+			"description": "The first viewport could belong to any company: the product name sits only in the nav (or an eyebrow) and a ge",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "ornamental-icon-rows",
+			"name": "Ornamental icon rows",
+			"sources": 3,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Icon rows and ornamental icons (icon-heavy nav, icon on every feature)"
+			],
+			"description": "Rows of icons, an icon in front of every feature/heading, and icon-heavy headers.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "repeated-template",
+			"name": "Repeated template",
+			"sources": 7,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Same template every time (low variance across briefs)"
+			],
+			"description": "Different briefs get the same visual language and layout.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "underdesigned-static-output",
+			"name": "Underdesigned static output",
+			"sources": 4,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Safe, under-designed output with no motion ('competent wireframe')"
+			],
+			"description": "The opposite failure from the slop list: GPT pages are clean but do the minimum: flat white cards, no visual h",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "three-tier-pricing",
+			"name": "Three-tier pricing",
+			"sources": 3,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Three-tier pricing with an inverted/'Most Popular' middle tier and 'Save 20%' toggle"
+			],
+			"description": "Pricing pages follow the stock playbook: three tiers, the middle one flipped/highlighted with a 'Most Popular'",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "dashboard-card-mosaic",
+			"name": "Dashboard card mosaic",
+			"sources": 4,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Dashboard card mosaic with decorative charts"
+			],
+			"description": "App/dashboard UIs built as a mosaic of bordered cards (KPI tiles + chart cards + table card) with thick border",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "confetti-overuse",
+			"name": "Confetti overuse",
+			"sources": 1,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Confetti effects (GPT-5.6 Sol)"
+			],
+			"description": "Design Arena measured GPT-5.6 Sol adding confetti in over a quarter of website generations, hand-rolling its o",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "circular-design-elements",
+			"name": "Circular design elements",
+			"sources": 1,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Recurring circular design elements (GPT-5.6)"
+			],
+			"description": "A reviewer noticed GPT-5.6 repeatedly reaching for circular elements (rings, round progress, circular motifs) ",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "tasteful-ai-font-set",
+			"name": "Tasteful AI font set",
+			"sources": 5,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [],
+			"description": "",
+			"colours": [],
+			"fonts": [
+				"Space Grotesk",
+				"Instrument Serif",
+				"Geist",
+				"Fraunces",
+				"Syne",
+				"Plus Jakarta Sans",
+				"Roboto",
+				"Inter"
+			],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "gradient-headline-text",
+			"name": "Gradient headline text",
+			"sources": 4,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Gradient-filled headline text (background-clip: text)"
+			],
+			"description": "Hero H1 or metric numbers filled with a purple-pink or blue-cyan gradient via background-clip:text.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "centered-hero",
+			"name": "Centered hero",
+			"sources": 6,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Centered hero: headline, subhead, two buttons, all centered (often full viewport)",
+				"Centered hero (vendor-banned at higher variance)"
+			],
+			"description": "Full-width centered hero in a generic sans, short sentence, one or two CTAs, often min-height:100vh.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": true
+		},
+		{
+			"id": "hero-badge",
+			"name": "Hero badge",
+			"sources": 6,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Pill badge / eyebrow chip right above the hero H1"
+			],
+			"description": "Rounded pill (\"New\", \"Now in beta\", often with sparkle) or tiny tracked uppercase label sitting directly above",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "feature-card-icon-tiles",
+			"name": "Feature card icon tiles",
+			"sources": 8,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Three identical feature cards, each with an icon tile on top"
+			],
+			"description": "Row of 3 equal rounded cards: small rounded-square icon container, two-line heading, three-line body.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "numbered-steps",
+			"name": "Numbered steps",
+			"sources": 2,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Numbered \"1, 2, 3\" step sequence section"
+			],
+			"description": "How-it-works row of three numbered steps.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "untouched-component-defaults",
+			"name": "Untouched component defaults",
+			"sources": 6,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Untouched shadcn/ui + Tailwind defaults (rounded-2xl, shadow-lg, slate)"
+			],
+			"description": "Stock shadcn/ui components and Tailwind default tokens left as shipped.",
+			"colours": [
+				"#0f172a",
+				"#f8fafc"
+			],
+			"fonts": [],
+			"radius": true,
+			"fewOptions": false
+		},
+		{
+			"id": "fake-window-chrome",
+			"name": "Fake window chrome",
+			"sources": 2,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Re-drawn UI chrome: fake browser bar / traffic-light window dots"
+			],
+			"description": "Hand-built browser frame or macOS window dots around screenshots or code blocks.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "generic-saas-navigation",
+			"name": "Generic SaaS navigation",
+			"sources": 2,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Generic SaaS nav and 4-column footer"
+			],
+			"description": "Wordmark left, 4-5 links (Features · Pricing · Docs · Blog · About), CTA right, sticky; footer of Product · Co",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "testimonial-placeholder-avatars",
+			"name": "Testimonial placeholder avatars",
+			"sources": 2,
+			"kinds": [
+				"element"
+			],
+			"terms": [
+				"Letter-only testimonial avatars on gradient circles / placeholder avatars"
+			],
+			"description": "Testimonials with initials on gradient backgrounds instead of photos.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "hairline-borders-and-shadows",
+			"name": "Hairline borders and shadows",
+			"sources": 1,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Every card wears a hairline border plus a wide diffuse shadow"
+			],
+			"description": "Row of cards each with 1px border and soft wide shadow.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "placeholder-names",
+			"name": "Placeholder names",
+			"sources": 1,
+			"kinds": [
+				"copy"
+			],
+			"terms": [
+				"Startup-cliche product names and placeholder people"
+			],
+			"description": "Acme / Nexus / Pulse product names; Jane Doe / John Smith testimonials.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "minimalist-homogenization",
+			"name": "Minimalist homogenization",
+			"sources": 2,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Globally averaged minimalist look: whitespace, standard sans, rounded corners, drop shadows"
+			],
+			"description": "Vibe-coded sites converge on a Western-centric minimalist aesthetic regardless of locale or genre.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "white-and-blue-default",
+			"name": "White and blue default",
+			"sources": 4,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"White background with a blue CTA / blue accent",
+				"Untouched Tailwind blue as the accent"
+			],
+			"description": "Plain white or slate-50 page with a single blue primary button.",
+			"colours": [
+				"#f8fafc",
+				"#2563eb",
+				"#3b82f6"
+			],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "material-3-pastel-residue",
+			"name": "Material 3 pastel residue",
+			"sources": 1,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [],
+			"description": "",
+			"colours": [],
+			"fonts": [
+				"Google Sans",
+				"Roboto"
+			],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "gold-yellow-palette",
+			"name": "Gold-yellow palette",
+			"sources": 2,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Gold / yellow (gold-and-white) colour scheme"
+			],
+			"description": "Two independent comparison tests saw Gemini settle on a gold/yellow accent palette.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "same-colour-text-failures",
+			"name": "Same-colour text failures",
+			"sources": 1,
+			"kinds": [
+				"treatment"
+			],
+			"terms": [
+				"Text rendered in the same colour as its background; generic, outdated layout with stock images"
+			],
+			"description": "Redesign looked generic, used stock images and had legibility failures where text and background shared a colo",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "terminal-aesthetic",
+			"name": "Terminal aesthetic",
+			"sources": 1,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Gravitates to a terminal aesthetic"
+			],
+			"description": "DeepSeek-V3 drifts to terminal-style UI (dark, monospace) by default; must be told 'NOT terminal' to get other",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "hero-with-a-floating-product-preview-card-or-dashboard-mock",
+			"name": "Hero with a floating product-preview card or dashboard mock",
+			"sources": 6,
+			"kinds": [
+				"layout"
+			],
+			"terms": [
+				"Hero with a floating product-preview card or dashboard mock"
+			],
+			"description": "Split hero: text on one side and a floating product-preview card, dashboard mock or 'pack' preview card on the",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		},
+		{
+			"id": "permanent-dark-mode-with-medium-grey-body-text-barely-passing-contrast",
+			"name": "Permanent dark mode with medium-grey body text (barely passing contrast)",
+			"sources": 2,
+			"kinds": [
+				"foundation"
+			],
+			"terms": [
+				"Permanent dark mode with medium-grey body text (barely passing contrast)"
+			],
+			"description": "Dark page background by default, body copy in mid grey, often near the WCAG AA floor.",
+			"colours": [],
+			"fonts": [],
+			"radius": false,
+			"fewOptions": false
+		}
+	]
+}

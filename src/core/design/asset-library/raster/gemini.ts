@@ -49,6 +49,12 @@ export interface GeminiConfig {
 	 * from a provider, which arrives with no indication of what was expected.
 	 */
 	model?: GeminiModel
+	/**
+	 * A different host speaking the same API, for the test image service only.
+	 * Set by the desktop app in development builds (`CARET_TEST_IMAGE_SERVICE`);
+	 * a packaged app never sets it.
+	 */
+	endpoint?: string
 }
 
 export type GeminiModel = "flash-image" | "flash-image-legacy" | "pro-image"
@@ -93,11 +99,17 @@ export interface ImageRequest {
 	aspect: string
 	/** Reference images, for "match this palette" and "the same style as this". */
 	references?: Array<{ mime: string; base64: string }>
+	/** Cancels the call: before its turn it is never sent, in flight it is aborted. */
+	signal?: AbortSignal
+	/** Called when this call's turn in the queue comes, just before it is sent. */
+	onStart?: () => void
 }
 
 export type ImageResult =
 	| { ok: true; mime: string; bytes: Buffer; model: string; resolved: string; usage?: ImageUsage }
-	| { ok: false; reason: string; retryable: boolean }
+	| { ok: false; reason: string; retryable: boolean; cancelled?: boolean }
+
+const CANCELLED: ImageResult = { ok: false, reason: "Cancelled.", retryable: false, cancelled: true }
 
 /** What the provider metered for one call, as it reported it. For provenance. */
 export interface ImageUsage {
@@ -125,8 +137,23 @@ const PACING = {
 	backoffMs: [4_000, 10_000, 20_000, 40_000],
 	/** ±fraction of jitter on each backoff, so retries never re-synchronize. */
 	jitter: 0.2,
+	/** How long one call may take before it counts as a failure. */
+	requestTimeoutMs: 120_000,
 	sleep: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
 	now: () => Date.now(),
+}
+
+/**
+ * A hard ceiling on real image calls in this process, for paid test runs only
+ * (set by the desktop app from CARET_IMAGE_CALL_CAP in development builds).
+ * Past it every call is refused without being sent, so a test run can never
+ * spend more than it was allowed.
+ */
+let callCap: number | null = null
+let callsSent = 0
+export function configureCallCap(cap: number | null): void {
+	callCap = cap
+	callsSent = 0
 }
 
 /** Test hook (and tuning): override timing without touching the queue logic. */
@@ -179,11 +206,16 @@ export class GeminiImages {
 	 */
 	async generate(request: ImageRequest): Promise<ImageResult> {
 		return paced(async () => {
+			// Cancelled while it waited its turn: never spend the call.
+			if (request.signal?.aborted) return CANCELLED
+			request.onStart?.()
 			let result = await this.generateOnce(request)
 			for (let retry = 0; !result.ok && result.retryable && retry < PACING.backoffMs.length; retry++) {
+				if (request.signal?.aborted) return CANCELLED
 				const base = PACING.backoffMs[retry]
 				const jitter = base * PACING.jitter * (Math.random() * 2 - 1)
 				await PACING.sleep(Math.max(0, Math.round(base + jitter)))
+				if (request.signal?.aborted) return CANCELLED
 				result = await this.generateOnce(request)
 			}
 			return result
@@ -195,6 +227,10 @@ export class GeminiImages {
 		if (misconfigured) return { ok: false, reason: misconfigured, retryable: false }
 
 		const { model, prompt, url } = this.resolve(request)
+		if (callCap !== null && callsSent >= callCap) {
+			return { ok: false, reason: `The test spending cap (${callCap} image calls) is reached; nothing was sent.`, retryable: false }
+		}
+		callsSent++
 
 		let headers: Record<string, string>
 		try {
@@ -224,18 +260,29 @@ export class GeminiImages {
 			},
 		}
 
+		// A call that never answers used to wait forever. Two minutes is several
+		// times the slowest image measured; past it the call counts as a failure
+		// worth retrying. A cancel aborts the same call.
+		const timeout = AbortSignal.timeout(PACING.requestTimeoutMs)
+		const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout
 		let response: Response
+		let text: string
 		try {
 			response = await fetch(url, {
 				method: "POST",
 				headers: { "content-type": "application/json", ...headers },
 				body: JSON.stringify(body),
+				signal,
 			})
+			text = await response.text()
 		} catch (err) {
+			if (request.signal?.aborted) return CANCELLED
+			if (timeout.aborted) {
+				return { ok: false, reason: "The image service did not answer within two minutes.", retryable: true }
+			}
 			return { ok: false, reason: message(err), retryable: true }
 		}
 
-		const text = await response.text()
 		if (!response.ok) {
 			return {
 				ok: false,
@@ -295,6 +342,7 @@ export class GeminiImages {
 	}
 
 	private endpoint(model: string): string {
+		if (this.config.endpoint) return `${this.config.endpoint.replace(/\/$/, "")}/v1beta/models/${model}:generateContent`
 		if (this.config.backend === "api-key") {
 			return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
 		}

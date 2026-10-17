@@ -19,9 +19,6 @@ afterSign: build/after-sign.cjs
 files:
   - out/**/*
   - package.json
-  # The vendored component catalog: MIT/Apache source mirrored at pinned SHAs,
-  # licences alongside. Ships in the bundle so catalog installs need no network.
-  - assets/catalog/**/*
   # The dock/window icon read at runtime (desktop/main/index.ts) — the .app/.exe
   # icon comes from build/icon.png separately.
   - assets/icons/**/*

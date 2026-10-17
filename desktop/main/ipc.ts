@@ -36,17 +36,24 @@ import {
 	searchGoogleFonts,
 	setPoster,
 	validateFoundationTokens,
-	type WizardAnswer,
 	withDerivedScales,
 	writeFoundationTokens,
 } from "../../src/core/design"
 import { Logger } from "../../src/shared/services/Logger"
-import type { AssetRequestWire, ComposerImage } from "../shared/ipc"
+import type {
+	AssetRequestWire,
+	BoardStartWire,
+	ComposerImage,
+	IpcRequestChannel,
+	IpcRequests,
+	TakeChangeWire,
+} from "../shared/ipc"
 import { CHANNEL_EVENTS, RENDERER_EVENTS, rendererEventProps } from "../shared/telemetry"
 import { buildAgentClientConfigs } from "./agent-configs"
 import { capture, captureError, scrubForTelemetry, setTelemetryEnabled } from "./analytics"
 import { acceptMark, authorMark, discardMark, holdMark } from "./authored-marks"
 import { acceptShader, authorShader, discardShader, holdShader, refineHeldShader, type ShaderOutcome } from "./authored-shaders"
+import { listCodingTools, setUpCodingTool } from "./coding-tools"
 import { resolveNotification } from "./electron-host"
 import { acceptModel3d, discardModel3d, generateModel3d } from "./generate-3d"
 import {
@@ -60,15 +67,20 @@ import {
 	refineAssetBrief,
 	refineRequestTake,
 	requestTakes,
+	takeBoardDeps,
 } from "./generate-assets"
 import { answerInterviewPrompt, currentPrompt } from "./interview"
+import { libraryHub } from "./libraries/libraries"
 import { refreshMenu } from "./menu"
 import { forgetRecentProject, getPrefs, setPref, setPrefs } from "./prefs"
 import { regenerateRulesFiles } from "./rules/generate"
 import { clearSecret, type SecretName, secretStatus, setSecret } from "./secrets"
+import { skillService } from "./skills/skills"
+import { boardSnapshot, branchTake, cancelTakes, closeBoard, saveTake, startBoard, takePicture } from "./take-board"
 import { type LaneTask, listTaskModels, setTaskModel, taskModel } from "./task-models"
 import {
 	abandonWizard,
+	answerOpening,
 	answerWizard,
 	commitWizard,
 	finishWizard,
@@ -486,6 +498,29 @@ export function registerIpcHandlers(windows: WindowManager): void {
 		requestTakes(projectPath, request, aspect),
 	)
 
+	// The take board behind the image kind: every take of a sitting as a tree.
+	// Each change to it is pushed to the project's window as it happens.
+	const boardDeps = takeBoardDeps((projectPath, board) =>
+		windows.get(projectPath)?.sendToChrome("generate:board", projectPath, board),
+	)
+	handle("generate:boardStart", (_event, projectPath: string, start: BoardStartWire) =>
+		startBoard(boardDeps, projectPath, start),
+	)
+	handle("generate:boardBranch", (_event, projectPath: string, takeId: string, change: TakeChangeWire) =>
+		branchTake(boardDeps, projectPath, takeId, change),
+	)
+	handle("generate:boardCancel", (_event, projectPath: string, takeIds?: string[]) =>
+		cancelTakes(boardDeps, projectPath, takeIds),
+	)
+	handle("generate:boardSave", async (_event, projectPath: string, takeId: string, tag: string) => {
+		const result = await saveTake(boardDeps, projectPath, takeId, tag)
+		if (result.ok) await regenerateRulesFiles(projectPath).catch(() => {})
+		return result
+	})
+	handle("generate:boardPicture", (_event, projectPath: string, takeId: string) => takePicture(projectPath, takeId))
+	handle("generate:boardGet", (_event, projectPath: string) => boardSnapshot(projectPath))
+	handle("generate:boardClose", (_event, projectPath: string) => closeBoard(projectPath))
+
 	handle(
 		"generate:acceptTake",
 		async (_event, projectPath: string, request: AssetRequest, aspect: string, variant: number, tag: string) => {
@@ -640,6 +675,7 @@ export function registerIpcHandlers(windows: WindowManager): void {
 	// the picker is the moment they stop being candidates.
 	handle("generate:discard", (_event, projectPath: string) => {
 		discardPending(projectPath)
+		closeBoard(projectPath)
 		discardMark(projectPath)
 		discardModel3d(projectPath)
 		discardShader(projectPath)
@@ -769,6 +805,52 @@ export function registerIpcHandlers(windows: WindowManager): void {
 			await windows.get(projectPath)?.getAgent().conversation.respondToPermission(requestId, decision)
 		},
 	)
+
+	// ── design skills ─────────────────────────────────────────────────────────
+
+	handle("skills:list", (_event, projectPath: string | null) => skillService().list(projectPath))
+
+	handle("skills:install", (_event, id: string) => skillService().install(id))
+
+	handle("skills:remove", (_event, projectPath: string | null, id: string) => skillService().remove(id, projectPath))
+
+	handle("skills:choose", (_event, projectPath: string, id: string | null) => skillService().choose(projectPath, id))
+
+	// ── your coding tools ─────────────────────────────────────────────────────
+
+	handle("codingTools:list", () => listCodingTools())
+
+	handle("codingTools:setUp", (_event, id: string) => {
+		if (!["claude", "codex", "cursor", "opencode"].includes(id)) return { ok: false, error: "Caret doesn't know that tool." }
+		return setUpCodingTool(id as "claude" | "codex" | "cursor" | "opencode")
+	})
+
+	// ── component and reference libraries ─────────────────────────────────────
+
+	handle("libraries:list", (_event, projectPath: string | null) => libraryHub().list(projectPath))
+
+	handle("libraries:install", async (_event, id: string) => {
+		await libraryHub().install(id)
+	})
+
+	handle("libraries:remove", async (_event, id: string) => {
+		await libraryHub().uninstall(id)
+	})
+
+	handle("libraries:set", async (_event, projectPath: string, id: string, on: boolean) => {
+		if (!libraryHub().definition(id)) return
+		await libraryHub().setEnabled(projectPath, id, on)
+	})
+
+	handle("libraries:setKey", (_event, _projectPath: string | null, id: string, key: string) => {
+		if (!libraryHub().definition(id)) return { ok: false as const, error: "Unknown library." }
+		return libraryHub().setKey(id, key)
+	})
+
+	handle("libraries:signIn", (_event, _projectPath: string, id: string) => {
+		if (!libraryHub().definition(id)) return { ok: false as const, error: "Unknown library." }
+		return libraryHub().signIn(id)
+	})
 
 	handle("agent:setMode", (_event, projectPath: string, mode: "read-only" | "write", steering?: string) => {
 		return windows.get(projectPath)?.getAgent().setChatMode(mode, steering) ?? { executed: false }
@@ -1000,17 +1082,26 @@ export function registerIpcHandlers(windows: WindowManager): void {
 
 	handle("interview:pending", () => currentPrompt())
 
-	// The AI-run token wizard — the Foundation surface's default door.
-	handle("wizard:resume", (_event, projectPath: string) => resumeWizard(projectPath))
-	handle("wizard:start", (_event, projectPath: string, description: string, mode?: "ai-led" | "collaborative") =>
-		startWizard(projectPath, description, mode ?? "collaborative"),
-	)
-	handle("wizard:answer", (_event, projectPath: string, answer: WizardAnswer) => answerWizard(projectPath, answer))
-	handle("wizard:finishNow", (_event, projectPath: string) => finishWizard(projectPath))
-	handle("wizard:retry", (_event, projectPath: string) => retryWizard(projectPath))
-	handle("wizard:back", (_event, projectPath: string) => wizardBack(projectPath))
-	handle("wizard:commit", (_event, projectPath: string) => commitWizard(projectPath))
-	handle("wizard:abandon", (_event, projectPath: string) => abandonWizard(projectPath))
+	// The AI interview. One typed table: a missing interview channel, or one
+	// whose arguments or result don't match the shared contract, fails to build.
+	const interview: {
+		[C in Extract<IpcRequestChannel, `wizard:${string}`>]: (
+			...args: Parameters<IpcRequests[C]>
+		) => Promise<ReturnType<IpcRequests[C]>>
+	} = {
+		"wizard:resume": (projectPath) => resumeWizard(projectPath),
+		"wizard:start": (projectPath, description, mode) => startWizard(projectPath, description, mode),
+		"wizard:openingAnswer": (projectPath, verdicts) => answerOpening(projectPath, verdicts),
+		"wizard:answer": (projectPath, answer) => answerWizard(projectPath, answer),
+		"wizard:finishNow": (projectPath) => finishWizard(projectPath),
+		"wizard:retry": (projectPath) => retryWizard(projectPath),
+		"wizard:back": (projectPath) => wizardBack(projectPath),
+		"wizard:commit": (projectPath) => commitWizard(projectPath),
+		"wizard:abandon": (projectPath) => abandonWizard(projectPath),
+	}
+	for (const [channel, run] of Object.entries(interview)) {
+		handle(channel, (_event, ...args) => (run as (...a: unknown[]) => unknown)(...args))
+	}
 }
 
 /**

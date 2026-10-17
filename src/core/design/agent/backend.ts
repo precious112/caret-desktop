@@ -134,6 +134,11 @@ export interface OauthChallenge {
 }
 
 export interface StartSessionOptions {
+	/**
+	 * A session that only answers (image checks, drawing a mark, writing a
+	 * shader): Caret's lean answer agent, no tools, instead of a coding agent.
+	 */
+	lean?: boolean
 	workingDirectory: string
 	/** `read-only` is the plan phase: the agent may read anything and write nothing. */
 	mode: SessionMode
@@ -172,7 +177,15 @@ export type BackendEvent =
 	| { type: "text"; text: string }
 	| { type: "thinking"; text: string }
 	| { type: "tool-start"; callId: string; name: string; summary: string }
-	| { type: "tool-end"; callId: string; name: string; ok: boolean; summary?: string }
+	| {
+			type: "tool-end"
+			callId: string
+			name: string
+			ok: boolean
+			summary?: string
+			/** The file a completed read tool read: how Caret knows the design layer's rules were read. */
+			readPath?: string
+	  }
 	| { type: "file-changed"; path: string }
 	| { type: "permission"; requestId: string; tool: string; path?: string; summary: string }
 	/**
@@ -222,6 +235,39 @@ export interface StructuredRequest {
 	model?: string
 	effort?: ReasoningEffort
 	systemPrompt?: string
+	/**
+	 * Tools to switch on (true) or off (false) for this one answer, over the
+	 * defaults. Keys may be globs (`"lazyweb_*"`); later keys win, so put a glob
+	 * before the specific names it makes exceptions for.
+	 */
+	tools?: Record<string, boolean>
+	/** Cancels the answer: the session is aborted and the call rejects. */
+	signal?: AbortSignal
+	/**
+	 * The answer may need tool calls first. A schema-constrained answer forces
+	 * the model straight to the answer, so this asks in words and parses instead.
+	 */
+	allowTools?: boolean
+	/** The answer may read the project (read, glob, grep, list): the from-app interview, the import survey. */
+	reads?: boolean
+	/**
+	 * The answer needs nothing from the project: run it in a scratch folder, so
+	 * the project's AGENTS.md and MCP servers stay out of its context.
+	 */
+	scratch?: boolean
+	/**
+	 * What this call is ("interview:area" and the topic), for recordings and
+	 * replay. Backends that talk to a model ignore it.
+	 */
+	trace?: { tag: string; area?: string }
+}
+
+/** One tool call made while answering, for callers that watch their tools' health. */
+export interface ToolCallRecord {
+	tool: string
+	ok: boolean
+	/** The tool's own error text, when it failed. */
+	error?: string
 }
 
 export interface StructuredResult<T> {
@@ -232,6 +278,8 @@ export interface StructuredResult<T> {
 	 * load-bearing in that case — schema-valid is a weaker guarantee here.
 	 */
 	emulated: boolean
+	/** Every tool call the model made while answering, in order. */
+	toolCalls?: ToolCallRecord[]
 }
 
 /** Why a backend can or cannot be used, in terms the setup screen can render. */
@@ -275,6 +323,7 @@ export interface CodingBackend {
 	startSession(options: StartSessionOptions): Promise<BackendSession>
 	/** One-shot, JSON-schema-constrained. Carries the interview and recipe narrowing. */
 	structured<T>(request: StructuredRequest): Promise<StructuredResult<T>>
+
 	/**
 	 * Models this backend can reach, grouped by provider.
 	 *
@@ -388,6 +437,29 @@ export class BackendError extends Error {
 }
 
 /** The model answered, but not with something the schema allows. */
+/**
+ * The provider refused the request itself: a plan's usage limit, no quota, a
+ * billing or sign-in problem. Asking again in a minute gets the same answer,
+ * so nothing retries it — the interview used to spin for ten minutes on one
+ * (five attempts, each retried by the server) while the user watched a loader.
+ */
+export class ProviderRefusalError extends BackendError {
+	constructor(readonly providerMessage: string) {
+		super(
+			`The model's provider refused the request: "${providerMessage}". Choose another model in the backend tab, or try again once the limit resets.`,
+			false,
+		)
+		this.name = "ProviderRefusalError"
+	}
+}
+
+/** Whether a provider's error message is a refusal no retry will change (not a passing rate limit). */
+export function isProviderRefusal(message: string): boolean {
+	return /usage limit|quota|insufficient (funds|balance|credit)|billing|payment required|credit balance|unauthori[sz]ed|invalid api key|authentication|not entitled|no access to model|subscription (has )?(expired|required)|can only be used from within/i.test(
+		message,
+	)
+}
+
 export class StructuredOutputError extends BackendError {
 	constructor(detail: string) {
 		super(`The model did not produce a valid answer: ${detail}`, true)

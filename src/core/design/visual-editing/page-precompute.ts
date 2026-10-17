@@ -1,7 +1,7 @@
+import { parse } from "@babel/parser"
 import * as recast from "recast"
 
 import { applyEdits, type SpliceEdit } from "../param/splice"
-import { parseSource } from "./ast-editor"
 
 type ASTNode = recast.types.namedTypes.Node
 
@@ -462,7 +462,11 @@ function isInsideIterator(path: any): boolean {
 export function precomputePage(source: string, filePath: string): PrecomputeResult {
 	let ast: ASTNode
 	try {
-		ast = parseSource(source)
+		// @babel/parser directly, not recast: recast parses a copy of the source
+		// with tabs turned into spaces, so its node positions don't match the
+		// file, and every id spliced into a tab-indented page landed in the
+		// wrong place. The param splice editors parse this way for the same reason.
+		ast = parse(source, { sourceType: "module", plugins: ["jsx", "typescript"], errorRecovery: false }) as unknown as ASTNode
 	} catch (err) {
 		console.error(`[design] precompute: failed to parse ${filePath}:`, err)
 		return { filePath, modified: false, dynamicRanges: [], caretIdViolations: { dynamic: 0, duplicate: 0, inIterator: 0 } }

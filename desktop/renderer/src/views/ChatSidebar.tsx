@@ -68,14 +68,18 @@ type TakesPromptWire = Extract<InterviewPromptWire, { kind: "takes" }>
 interface ChatSidebarProps {
 	project: ProjectState
 	onClose(): void
+	/** Opens the backend tab. */
 	onOpenBackendSetup(): void
+	/** Opens the Skills tab (the chat's design-skill label). */
+	onOpenSkills(): void
 	/** Opens the asset viewer over the canvas. State lives in App, not here. */
 	onViewAsset(tag: string): void
 	/** Text placed in the composer (never sent) — a new nonce re-applies it. */
 	seed?: { text: string; nonce: number } | null
 }
 
-export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset, seed }: ChatSidebarProps) {
+export function ChatSidebar({ project, onClose, onOpenBackendSetup, onOpenSkills, onViewAsset, seed }: ChatSidebarProps) {
+	const skillName = useProjectSkill(project.path)
 	const [state, setState] = useState<AgentStateWire | null>(null)
 	const [draft, setDraft] = useState("")
 	const [attached, setAttached] = useState<ComposerImage[]>([])
@@ -130,7 +134,10 @@ export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset,
 			if (prompt && landsInChat(prompt)) setDocked(prompt)
 		}
 		void invoke("interview:pending").then(keep)
-		return on("interview:prompt", keep)
+		const offPrompt = on("interview:prompt", keep)
+		return () => {
+			offPrompt()
+		}
 	}, [])
 
 	const resolveDocked = (answer: string | null) => {
@@ -246,6 +253,8 @@ export function ChatSidebar({ project, onClose, onOpenBackendSetup, onViewAsset,
 		onOpenBackendSetup,
 		onStop: () => void invoke("agent:abort", project.path),
 		onReferenceAsset: mentions.begin,
+		skillName,
+		onOpenSkills,
 	}
 
 	return (
@@ -403,6 +412,9 @@ interface ComposerProps {
 	onStop(): void
 	inputRef: React.RefObject<HTMLTextAreaElement | null>
 	mentions: AssetMentions
+	/** The project's design skill, or null for none. */
+	skillName: string | null
+	onOpenSkills(): void
 }
 
 const PLACEHOLDER = "Ask for a change, @ for an asset…"
@@ -495,8 +507,21 @@ function Composer(props: ComposerProps) {
 			    and the in-box row is already spent on per-message controls. It also
 			    stopped fitting — the toggle inside the row squeezed the model pill
 			    into the effort pill at this width. */}
-			<div className="mt-1.5 flex items-center px-1">
+			<div className="relative mt-1.5 flex items-center gap-2 px-1">
 				<ModeToggle disabled={!props.ready} flipMode={props.flipMode} mode={props.mode} />
+				{/* The project's design skill: the chat follows it. One click to change it. */}
+				<button
+					className={cn(
+						"flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11.5px] transition-colors hover:bg-white/5",
+						props.skillName ? "border-caret-accent/40 text-caret-accent" : "border-shell-border text-shell-muted",
+					)}
+					data-testid="chat-skill"
+					onClick={props.onOpenSkills}
+					title="The design skill the chat follows in this project"
+					type="button">
+					{props.skillName && <span className="size-1.5 rounded-full bg-caret-accent" />}
+					{`Skill: ${props.skillName ?? "none"}`}
+				</button>
 			</div>
 		</footer>
 	)
@@ -1514,7 +1539,7 @@ function WorkingRow({ lastEventAt, waitingOn }: { lastEventAt: number | null; wa
 		return (
 			<div className="mt-3 flex items-center gap-2.5 text-[12px] text-caret-accent" data-testid="chat-working">
 				<ThinkingOrb size={20} state="breathing" theme="dark" />
-				<span>Waiting for you — {waitingOn}</span>
+				<span>Waiting for you: {waitingOn}</span>
 			</div>
 		)
 	}
@@ -1597,4 +1622,18 @@ function describeModel(model: string, providerName: string | null | undefined): 
 	const slash = model.lastIndexOf("/")
 	if (slash === -1) return providerName ? `${model} (${providerName})` : model
 	return `${model.slice(slash + 1)} (${model.slice(0, slash)})`
+}
+
+/** The name of the project's design skill, kept current as it changes. */
+function useProjectSkill(projectPath: string): string | null {
+	const [name, setName] = useState<string | null>(null)
+	useEffect(() => {
+		const read = () =>
+			void invoke("skills:list", projectPath).then((skills) => setName(skills?.find((skill) => skill.chosen)?.name ?? null))
+		read()
+		return on("skills:changed", (changed) => {
+			if (!changed || changed === projectPath) read()
+		})
+	}, [projectPath])
+	return name
 }

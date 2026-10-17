@@ -128,3 +128,48 @@ describe("refineBrief", () => {
 		assert.equal(result, null, "a dead backend must mean generate-as-typed, never a blocked user")
 	})
 })
+
+describe("the swappable phrases in a brief", () => {
+	const brief = "A walnut keyboard seen in a three-quarter view on a dark oak desk, lit by low warm window light from the left."
+	it("keeps only phrases that appear word for word, never the person's own words, never overlapping", async () => {
+		const { usablePhrases } = await import("../refine-brief")
+		const phrases = usablePhrases(brief, "a walnut keyboard", [
+			{ text: "three-quarter view", alternatives: ["top-down view", "straight-on view", "three-quarter view"] },
+			{ text: "low warm window light", alternatives: ["soft overcast light"] },
+			{ text: "warm window", alternatives: ["cool window"] },
+			{ text: "walnut keyboard", alternatives: ["oak keyboard"] },
+			{ text: "a sunny beach", alternatives: ["a forest"] },
+			{ text: "dark oak desk", alternatives: [] },
+		])
+		assert.deepEqual(
+			phrases.map((phrase) => phrase.text),
+			["three-quarter view", "low warm window light"],
+		)
+		assert.deepEqual(
+			phrases[0].alternatives,
+			["top-down view", "straight-on view"],
+			"the phrase itself is not an alternative",
+		)
+	})
+	it("comes back from the rewriter with the brief, and is dropped when malformed", async () => {
+		const { backend } = backendReturning({
+			prompt: brief,
+			phrases: [{ text: "dark oak desk", alternatives: ["slate counter", "linen cloth"] }],
+		})
+		const result = await refineBrief({
+			backend,
+			workingDirectory: "/tmp/p",
+			request: { kind: "image", text: "keyboard" },
+			tokens: null,
+		})
+		assert.deepEqual(result?.phrases, [{ text: "dark oak desk", alternatives: ["slate counter", "linen cloth"] }])
+		const { backend: odd } = backendReturning({ prompt: brief, phrases: "nonsense" })
+		const plain = await refineBrief({
+			backend: odd,
+			workingDirectory: "/tmp/p",
+			request: { kind: "image", text: "keyboard" },
+			tokens: null,
+		})
+		assert.equal(plain?.phrases, undefined)
+	})
+})

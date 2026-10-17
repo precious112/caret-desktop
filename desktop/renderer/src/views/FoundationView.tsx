@@ -19,7 +19,7 @@
  */
 import { useEffect, useState } from "react"
 
-import { landsInChat, type ProjectState, type WizardModeWire, type WizardStateWire } from "../../../shared/ipc"
+import { type InterviewModeWire, type InterviewWire, landsInChat, type ProjectState } from "../../../shared/ipc"
 import { TokenWizard } from "../components/design-wizard/TokenWizard"
 import { invoke, on } from "../ipc"
 import { setActiveProject } from "../services/design-client"
@@ -49,8 +49,8 @@ export function FoundationView({
 	onOpenBackend?(): void
 }) {
 	const [mode, setMode] = useState<Mode>(project.hasFoundation ? "overview" : "entry")
-	const [wizardState, setWizardState] = useState<WizardStateWire | null>(null)
-	const [wizardStart, setWizardStart] = useState<{ mode: WizardModeWire; description: string } | null>(null)
+	const [wizardState, setWizardState] = useState<InterviewWire | null>(null)
+	const [wizardStart, setWizardStart] = useState<{ mode: InterviewModeWire; description: string } | null>(null)
 	const [description, setDescription] = useState("")
 	const importProgress = useImportProgress(project.path)
 	const [blastRadius, setBlastRadius] = useState<{ occurrences: number; files: number } | null>(null)
@@ -76,7 +76,7 @@ export function FoundationView({
 		let cancelled = false
 		void invoke("wizard:resume", project.path).then((resumed) => {
 			if (cancelled || !resumed) return
-			if (resumed.phase === "question" || resumed.phase === "finish" || resumed.phase === "error") {
+			if (resumed.phase !== "needs-backend") {
 				setWizardState(resumed)
 				setMode((current) => (current === "agent" ? current : "wizard"))
 			}
@@ -171,7 +171,9 @@ export function FoundationView({
 					app={project.app}
 					onManual={(described) => {
 						setDescription(described)
-						setMode("manual")
+						// Choosing "Set it by hand" throws away any half-finished interview, so it
+						// never reappears over what is set by hand.
+						void invoke("wizard:abandon", project.path).finally(() => setMode("manual"))
 					}}
 					onStart={(startMode, described) => {
 						setDescription(described)
@@ -187,12 +189,12 @@ export function FoundationView({
 					header={!project.hasFoundation ? <SetupStepper step={1} /> : undefined}
 					initialState={wizardState}
 					key={wizardStart ? `${wizardStart.mode}:${wizardStart.description}` : "resume"}
-					onOpenBackend={onOpenBackend}
-					start={wizardState ? null : wizardStart}
 					onCommitted={onDone}
 					onNothingInFlight={() => setMode("entry")}
+					onOpenBackend={onOpenBackend}
 					onSwitchToManual={() => setMode("manual")}
 					projectPath={project.path}
+					start={wizardState ? null : wizardStart}
 				/>
 			)}
 			{mode === "manual" && <TokenWizard initialDescription={description} onDone={onDone} />}

@@ -8,6 +8,7 @@ import {
 	applyLeaf,
 	createExploration,
 	discardExploration,
+	markNodeStarted,
 	readExploration,
 	registerExternalRound,
 	spawnRound,
@@ -235,5 +236,69 @@ describe("the playground's exploration tree", () => {
 			JSON.stringify({ version: 1, pageId: "home", variants: [] }),
 		)
 		should(await readExploration(workspace)).be.null()
+	})
+
+	describe("as a branching board", () => {
+		async function readyAll(): Promise<void> {
+			const open = await readExploration(workspace)
+			for (const node of open!.nodes) await updateNodeStatus(workspace, node.id, "ready")
+		}
+
+		it("two branches started at the same moment get their own takes and folders", async () => {
+			const exploration = await createExploration(workspace, { pageId: "home", instruction: "premium" })
+			await readyAll()
+			const [a, b] = await Promise.all([
+				spawnRound(workspace, exploration.nodes[0].id, "warmer"),
+				spawnRound(workspace, exploration.nodes[2].id, "darker"),
+			])
+			const ids = [...a, ...b].map((node) => node.id)
+			new Set(ids).size.should.equal(6)
+			const open = (await readExploration(workspace))!
+			open.nodes.should.have.length(9)
+			open.nextTake.should.equal(10)
+			for (const node of a) node.parentId.should.equal(exploration.nodes[0].id)
+			for (const node of b) node.parentId.should.equal(exploration.nodes[2].id)
+			;(a[0].round !== b[0].round).should.be.true()
+		})
+
+		it("a take finishing while a branch is being copied stays finished", async () => {
+			const exploration = await createExploration(workspace, { pageId: "home", instruction: "premium" })
+			await updateNodeStatus(workspace, exploration.nodes[0].id, "ready")
+			const branching = spawnRound(workspace, exploration.nodes[0].id, "warmer")
+			const finishing = updateNodeStatus(workspace, exploration.nodes[1].id, "ready")
+			await Promise.all([branching, finishing])
+			const open = (await readExploration(workspace))!
+			open.nodes.find((node) => node.id === exploration.nodes[1].id)!.status.should.equal("ready")
+		})
+
+		it("branches one take twice and the original again, records the round and strength, and keeps titles short", async () => {
+			const exploration = await createExploration(workspace, { pageId: "home", instruction: "premium" })
+			await readyAll()
+			const first = await spawnRound(workspace, exploration.nodes[1].id, "warmer", { strength: "subtle" })
+			const second = await spawnRound(workspace, exploration.nodes[1].id, "a new layout", { strength: "strong" })
+			const fresh = await spawnRound(workspace, "home", "a whole new direction")
+			first[0].strength!.should.equal("subtle")
+			second[0].strength!.should.equal("strong")
+			;(first[0].round !== second[0].round).should.be.true()
+			fresh[0].parentId.should.equal("home")
+			for (const node of first) await updateNodeStatus(workspace, node.id, "ready")
+			const deep = await spawnRound(workspace, first[0].id, "closer")
+			const meta = JSON.parse(await fs.readFile(path.join(pagesDir, deep[0].id, "meta.json"), "utf-8"))
+			meta.title.should.equal(`Home — take ${deep[0].id.split("--v")[1]}`)
+		})
+
+		it("a take's timer starts when its turn starts, not when it was queued", async () => {
+			const exploration = await createExploration(workspace, { pageId: "home", instruction: "premium" })
+			const queuedAt = exploration.nodes[0].startedAt
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			await markNodeStarted(workspace, exploration.nodes[0].id)
+			const open = (await readExploration(workspace))!
+			;(Date.parse(open.nodes[0].startedAt) > Date.parse(queuedAt)).should.be.true()
+			// A take that has already finished keeps its time.
+			await updateNodeStatus(workspace, exploration.nodes[1].id, "ready")
+			const before = (await readExploration(workspace))!.nodes[1].startedAt
+			await markNodeStarted(workspace, exploration.nodes[1].id)
+			;(await readExploration(workspace))!.nodes[1].startedAt.should.equal(before)
+		})
 	})
 })

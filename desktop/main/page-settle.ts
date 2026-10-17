@@ -150,3 +150,52 @@ export interface SettleReport {
 }
 
 export const EMPTY_SETTLE_REPORT: SettleReport = { broken: [], scrollHeight: 0 }
+
+/**
+ * Plays every entrance animation to its end, so checks judge the page as it
+ * looks once it has finished moving.
+ *
+ * Field-found: the design checks measured a landing page halfway through its
+ * fade-ins and reported five contrast errors on colours that all pass (each
+ * was the real colour at about 46% strength); the AI removed the page's motion
+ * to clear them. Run after `settleScript(…, { fullPage: true })`, whose scroll
+ * sweep starts the animations that wait for their section to come into view.
+ *
+ * Endless animations (a pulsing dot) are left running: they have no end to
+ * jump to. Animations driven frame by frame from script, which the browser
+ * can't finish for the page, are waited out until nothing moves, up to
+ * `deadlineMs`.
+ */
+export function finishMotionScript(deadlineMs: number): string {
+	return `(async () => {
+		const deadline = Date.now() + ${deadlineMs}
+		const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+		const finishAll = () => {
+			for (const animation of document.getAnimations()) {
+				const timing = animation.effect && animation.effect.getComputedTiming ? animation.effect.getComputedTiming() : null
+				if (timing && timing.iterations === Infinity) continue
+				try { animation.finish() } catch {}
+			}
+		}
+		const snapshot = () => {
+			const out = []
+			for (const el of document.body ? document.body.querySelectorAll("*") : []) {
+				const style = getComputedStyle(el)
+				out.push(style.opacity + style.transform + style.color)
+				if (out.length >= 3000) break
+			}
+			return out.join("|")
+		}
+		finishAll()
+		await raf2()
+		let previous = snapshot()
+		while (Date.now() < deadline) {
+			await new Promise((r) => setTimeout(r, 150))
+			finishAll()
+			await raf2()
+			const now = snapshot()
+			if (now === previous) break
+			previous = now
+		}
+	})()`
+}

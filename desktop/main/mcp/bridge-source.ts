@@ -57,6 +57,9 @@ function forward(message) {
 				"content-type": "application/json",
 				accept: "application/json, text/event-stream",
 				authorization: "Bearer " + record.token,
+				// Caret's own chat: its permission ruling already makes it read the
+				// design layer's rules, so the MCP-side check for outside agents stands aside.
+				"x-caret-client": "chat",
 				"content-length": Buffer.byteLength(body),
 			},
 		},

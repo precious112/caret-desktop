@@ -356,6 +356,7 @@ async function verifySingleObject(projectPath: string, image: Buffer, mime: stri
 			mode: "read-only",
 			model: model || undefined,
 			title: "caret source check",
+			lean: true,
 		})
 		for await (const event of session.send({
 			text:

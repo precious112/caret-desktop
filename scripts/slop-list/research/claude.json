@@ -1,0 +1,1990 @@
+[
+	{
+		"id": "claude-cream-offwhite-background",
+		"family": "claude",
+		"models": [
+			"Claude Opus 4.7",
+			"Claude Opus 4.8",
+			"Claude Opus 5.5",
+			"Claude Design"
+		],
+		"kind": "foundation",
+		"name": "Warm cream / off-white / beige page background",
+		"description": "The page (and slide) background defaults to a warm cream, off-white, beige or light taupe instead of a colour derived from the brief. Anthropic documents it as the persistent 'house style' of Opus 4.7/4.8 and lists it first among Opus 5.5's fallback styles; telling the model 'don't use cream' tends to swap in another fixed palette rather than producing variety.",
+		"detect": {
+			"type": "color",
+			"hint": "Computed background-color of html/body/main hero is a warm light neutral: high lightness (L > ~90%), low chroma, hue in the yellow-orange range (~30-60deg). Flag especially values within a small delta-E of the listed hexes.",
+			"values": [
+				"#F4F1EA",
+				"#EDE7D8",
+				"#F7F1E4"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8",
+				"date": "2026-05-28",
+				"author": "Anthropic (Prompting Claude Opus 4.8 docs; date = model launch, inferred)",
+				"quote": "warm cream/off-white backgrounds (~`#F4F1EA`)",
+				"model_named": "Claude Opus 4.8"
+			},
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5",
+				"date": "2026-09-22",
+				"author": "Anthropic (Prompting Claude Opus 5.5 docs; date = model launch, inferred)",
+				"quote": "Do not use a cream or off-white background",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://github.com/anthropics/skills/commit/2235be7c",
+				"date": "2026-06-09",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "a warm cream background (near #F4F1EA) with a high-contrast serif display and a terracotta accent",
+				"model_named": null
+			},
+			{
+				"url": "https://caylent.com/blog/claude-opus-4-7-deep-dive-capabilities-migration-and-the-new-economics-of-long-running-agents",
+				"date": "2026-04-16",
+				"author": "Guille Ojeda & Brian Tarbox (Caylent)",
+				"quote": "warm cream or off-white backgrounds, serif display typography, italic accents, and terracotta or amber highlights",
+				"model_named": "Claude Opus 4.7"
+			},
+			{
+				"url": "https://muz.li/blog/claude-design-one-week-in-hacks-best-practices-tips-from-real-world-use/",
+				"date": "2026-04-27",
+				"author": "Eyal Zuri (Muzli)",
+				"quote": "warm cream backgrounds, Fraunces-style serifs, terracotta accents",
+				"model_named": "Claude Opus 4.7"
+			},
+			{
+				"url": "https://roughworks.ca/blog/claude-design-may-2026-impact/",
+				"date": "2026-05-15",
+				"author": "Rough Works",
+				"quote": "Warm off-white background, somewhere between `#F4F1EA` and `#EDE7D8`",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.generativelabs.com/insights/why-ai-design-tools-look-the-same",
+				"date": "2026-07-14",
+				"author": "Bill Cava (Generative Labs)",
+				"quote": "sampled values: cream #F7F1E4, ink #211D18, orange #D9622B",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.rotecodefraktion.de/en/blog/opus-5-5-richtig-prompten/",
+				"date": "2026-09-24",
+				"author": "David Krcek (rotecodefraktion)",
+				"quote": "cream or off-white background",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47850925",
+				"date": "2026-04-21",
+				"author": "deaux (Hacker News)",
+				"quote": "The background color will be a shade of cream, to properly represent Anthropic",
+				"model_named": "Claude Opus"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48481352",
+				"date": "2026-06-10",
+				"author": "nekooooo (Hacker News)",
+				"quote": "it's so easy to tell it's claude. nonsense oblique text. beige bg.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49451580",
+				"date": "2026-08-26",
+				"author": "lanewinfield (Hacker News)",
+				"quote": "a light beige background",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49499657",
+				"date": "2026-08-30",
+				"author": "onion2k (Hacker News)",
+				"quote": "the light taupe background",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49767323",
+				"date": "2026-09-19",
+				"author": "GPerson (Hacker News)",
+				"quote": "The beige / slightly faded Claude design trend is atrocious.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49096600",
+				"date": "2026-07-29",
+				"author": "ghlancet (Hacker News)",
+				"quote": "Website is by Claude (Claude likes beige).",
+				"model_named": null
+			},
+			{
+				"url": "https://techarion.com/blog/claude-ui-design-prompts-art-direction-templates",
+				"date": "2026-10-01",
+				"author": "Tech Arion Team",
+				"quote": "Warm cream background near \"#F4F1EA\"",
+				"model_named": "Claude Opus 4.8"
+			}
+		],
+		"independent_sources": 13,
+		"newest_source_date": "2026-10-01",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-terracotta-clay-accent",
+		"family": "claude",
+		"models": [
+			"Claude Opus 4.7",
+			"Claude Opus 4.8",
+			"Claude Design"
+		],
+		"kind": "foundation",
+		"name": "Single terracotta / clay / rusty-orange accent colour",
+		"description": "One warm accent (terracotta, warm clay, rusty or burnt orange, sometimes amber or muted forest green) used for links, highlights and CTAs on the cream field. Anthropic's own skill notes the accent is often near Claude's interface accent, so on a user's brief it reads as a tell.",
+		"detect": {
+			"type": "color",
+			"hint": "Primary accent (links, buttons, highlighted words) has an orange-red hue (~15-30deg), medium-high chroma; compare to listed hexes. Strongest signal when paired with claude-cream-offwhite-background.",
+			"values": [
+				"#D97757",
+				"#D9622B"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "a terracotta or warm-clay accent (often near #D97757 — Anthropic's own Claude-interaction accent, so on a user's brief it reads as a tell)",
+				"model_named": null
+			},
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8",
+				"date": "2026-05-28",
+				"author": "Anthropic (Prompting Claude Opus 4.8 docs; date = model launch, inferred)",
+				"quote": "a terracotta/amber accent",
+				"model_named": "Claude Opus 4.8"
+			},
+			{
+				"url": "https://caylent.com/blog/claude-opus-4-7-deep-dive-capabilities-migration-and-the-new-economics-of-long-running-agents",
+				"date": "2026-04-16",
+				"author": "Guille Ojeda & Brian Tarbox (Caylent)",
+				"quote": "terracotta or amber highlights",
+				"model_named": "Claude Opus 4.7"
+			},
+			{
+				"url": "https://roughworks.ca/blog/claude-design-may-2026-impact/",
+				"date": "2026-05-15",
+				"author": "Rough Works",
+				"quote": "One muted accent color (terracotta, oxidized orange, muted forest green)",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.generativelabs.com/insights/why-ai-design-tools-look-the-same",
+				"date": "2026-07-14",
+				"author": "Bill Cava (Generative Labs)",
+				"quote": "most famously rusty orange",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-09-24",
+				"author": "funboy322 (avoid-ai-design README, v0.4.0)",
+				"quote": "cream with a terracotta accent (Claude's own interface color)",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49451580",
+				"date": "2026-08-26",
+				"author": "lanewinfield (Hacker News)",
+				"quote": "burnt sienna anchor and/or highlight text",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49122138",
+				"date": "2026-07-31",
+				"author": "stasomatic (Hacker News)",
+				"quote": "beige/cream colors, orange accents, and serif typefaces",
+				"model_named": null
+			}
+		],
+		"independent_sources": 7,
+		"newest_source_date": "2026-09-24",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-serif-display-headline",
+		"family": "claude",
+		"models": [
+			"Claude Opus 4.6",
+			"Claude Opus 4.7",
+			"Claude Opus 4.8",
+			"Claude Design"
+		],
+		"kind": "font",
+		"name": "High-contrast serif display face for headlines (Fraunces, Playfair, Instrument Serif, Newsreader, Georgia)",
+		"description": "Hero and section headings are set in a large, often oversized serif display face regardless of subject, typically paired with a sans body. Named faces vary by source; Fraunces and Instrument Serif are called out repeatedly, and Claude Design's own system prompt lists Fraunces as overused.",
+		"detect": {
+			"type": "font",
+			"hint": "Computed font-family of h1/h2 resolves to a serif display face; flag the listed families by name. Weight the signal by display size (h1 >= ~48px) and pairing with a sans body.",
+			"values": [
+				"Fraunces",
+				"Playfair",
+				"Playfair Display",
+				"Instrument Serif",
+				"Georgia",
+				"GT Sectra",
+				"Newsreader"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8",
+				"date": "2026-05-28",
+				"author": "Anthropic (Prompting Claude Opus 4.8 docs; date = model launch, inferred)",
+				"quote": "serif display type (Georgia, Fraunces, Playfair)",
+				"model_named": "Claude Opus 4.8"
+			},
+			{
+				"url": "https://roughworks.ca/blog/claude-design-may-2026-impact/",
+				"date": "2026-05-15",
+				"author": "Rough Works",
+				"quote": "Oversized serif display type — Fraunces, Playfair, Instrument Serif, GT Sectra",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://muz.li/blog/claude-design-one-week-in-hacks-best-practices-tips-from-real-world-use/",
+				"date": "2026-04-27",
+				"author": "Eyal Zuri (Muzli)",
+				"quote": "Fraunces-style serifs",
+				"model_named": "Claude Opus 4.7"
+			},
+			{
+				"url": "https://x.com/SachinRamje/status/2090997886570082397",
+				"date": "2026-08-22",
+				"author": "Sachin Ramje (X; date decoded from post ID)",
+				"quote": "Instrument Serif was a beautiful font. Then Claude found it.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49881488",
+				"date": "2026-09-28",
+				"author": "dzink (Hacker News)",
+				"quote": "stop using the same exact Fraunces font everywhere",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49499657",
+				"date": "2026-08-30",
+				"author": "onion2k (Hacker News)",
+				"quote": "The Newsreader font",
+				"model_named": null
+			},
+			{
+				"url": "https://github.com/rohitg00/awesome-claude-design",
+				"date": "2026-04-19",
+				"author": "rohitg00 (awesome-claude-design README)",
+				"quote": "Tiempos- or Source-Serif-adjacent serif paired with sans body",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.lobsterpack.com/blog/claude-design-trenchcoat/",
+				"date": "2026-04-18",
+				"author": "Linas Valiukas (Lobster Pack, quoting Claude Design's system prompt)",
+				"quote": "Inter, Roboto, Arial, Fraunces, system fonts",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://workflowswithai.substack.com/p/what-opus-46-does-differently-with",
+				"date": "2026-02-14",
+				"author": "Sumant (Workflows with AI)",
+				"quote": "One serif for headings, one sans-serif for body",
+				"model_named": "Claude Opus 4.6"
+			},
+			{
+				"url": "https://www.theneurondaily.com/p/anthropic-s-claude-design-launched-and-reddit-has-thoughts",
+				"date": "2026-04-20",
+				"author": "Grant Harvey (The Neuron, summarising r/ClaudeAI)",
+				"quote": "right down to the serif font",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 10,
+		"newest_source_date": "2026-09-28",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-italic-accent-word",
+		"family": "claude",
+		"models": [
+			"Claude Opus 4.7",
+			"Claude Opus 4.8",
+			"Claude Opus 5.5"
+		],
+		"kind": "treatment",
+		"name": "One word or phrase in the headline set in italic (often italic serif) or a different colour",
+		"description": "A single word in the hero headline is accented, most often italicised in a serif, sometimes coloured. Anthropic names 'italic word-accents' as part of the house style and lists it among Opus 5.5's defaults; its 2026 skill calls single-word headline accents the commonest tell of a generated page.",
+		"detect": {
+			"type": "dom",
+			"hint": "Inside h1/h2, an <em>/<i>/<span> wrapping 1-3 words whose computed font-style is italic or whose font-family/color differs from the rest of the heading.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8",
+				"date": "2026-05-28",
+				"author": "Anthropic (Prompting Claude Opus 4.8 docs; date = model launch, inferred)",
+				"quote": "italic word-accents",
+				"model_named": "Claude Opus 4.8"
+			},
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5",
+				"date": "2026-09-22",
+				"author": "Anthropic (Prompting Claude Opus 5.5 docs; date = model launch, inferred)",
+				"quote": "italic accent words in headlines",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "Accenting just a single word or phrase in a headline, like putting one word in italic/bold or a different color.",
+				"model_named": null
+			},
+			{
+				"url": "https://blog.kilo.ai/p/we-asked-gpt-55-and-claude-opus-47",
+				"date": "2026-04-27",
+				"author": "Darko Gjorgjievski (Kilo)",
+				"quote": "italicized serif accent on the word 'compound.'",
+				"model_named": "Claude Opus 4.7"
+			},
+			{
+				"url": "https://www.generativelabs.com/insights/why-ai-design-tools-look-the-same",
+				"date": "2026-07-14",
+				"author": "Bill Cava (Generative Labs)",
+				"quote": "big serif type in italics",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.rotecodefraktion.de/en/blog/opus-5-5-richtig-prompten/",
+				"date": "2026-09-24",
+				"author": "David Krcek (rotecodefraktion)",
+				"quote": "italic accent words in headlines",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48679076",
+				"date": "2026-06-25",
+				"author": "f3408fh (Hacker News)",
+				"quote": "The italic serif font as subtitle.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49020693",
+				"date": "2026-07-23",
+				"author": "ericpauley (Hacker News)",
+				"quote": "the exact same over-stylized italic serif preference as Claude does",
+				"model_named": null
+			}
+		],
+		"independent_sources": 6,
+		"newest_source_date": "2026-09-24",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-allcaps-tracked-eyebrow",
+		"family": "claude",
+		"models": [
+			"Claude Design",
+			"Claude Opus"
+		],
+		"kind": "element",
+		"name": "Tracked-out ALL-CAPS eyebrow label above every heading",
+		"description": "A small, letter-spaced uppercase label (eyebrow/kicker) sits above the hero H1 and above each section heading, often orange or mono. Anthropic's 2026 skill lists it as 'template chrome'; commenters describe Claude as 'eyebrow crazy'.",
+		"detect": {
+			"type": "dom",
+			"hint": "Element immediately preceding an h1/h2/h3 with text-transform: uppercase (or all-caps text), letter-spacing >= ~0.08em, font-size well below the heading. Count per page; repeated on most sections is the tell.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "a tracked-out ALL-CAPS eyebrow label above every heading",
+				"model_named": null
+			},
+			{
+				"url": "https://syrens.com/insights/claude-ification-of-design",
+				"date": "2026-10-05",
+				"author": "Syrens Studio",
+				"quote": "All-caps labels, letter-spaced wide, used as eyebrows above every heading",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=50015926",
+				"date": "2026-10-09",
+				"author": "simonw (Hacker News)",
+				"quote": "Claude et al insisted on adding them to everything",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49533455",
+				"date": "2026-09-02",
+				"author": "bargainbin (Hacker News)",
+				"quote": "That model is eyebrow crazy, every section of the output has them.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49765151",
+				"date": "2026-09-19",
+				"author": "tefkah (Hacker News)",
+				"quote": "The small all-caps \"built for the agent era\" eyebrow.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49328574",
+				"date": "2026-08-17",
+				"author": "akx (Hacker News)",
+				"quote": "the web site's layout (eyebrows, glows, em-dashes, middots",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48679076",
+				"date": "2026-06-25",
+				"author": "f3408fh (Hacker News)",
+				"quote": "the all-caps bold letter-spaced microcopy",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49451580",
+				"date": "2026-08-26",
+				"author": "lanewinfield (Hacker News)",
+				"quote": "ALL CAPS subheaders",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49628115",
+				"date": "2026-09-09",
+				"author": "davidpapermill (Hacker News)",
+				"quote": "the excessive CAPS headings alone give it away",
+				"model_named": null
+			},
+			{
+				"url": "https://www.generativelabs.com/insights/why-ai-design-tools-look-the-same",
+				"date": "2026-07-14",
+				"author": "Bill Cava (Generative Labs)",
+				"quote": "subheadings with the letters spaced far apart",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.theadpharm.com/insights/claude-design-without-the-ai-slop-look",
+				"date": "2026-05-01",
+				"author": "Adpharm Digital",
+				"quote": "Centered hero with eyebrow plus 64-pt headline plus subhead plus two CTAs",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 11,
+		"newest_source_date": "2026-10-09",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-monospace-labels",
+		"family": "claude",
+		"models": [
+			"Claude Opus 4.6",
+			"Claude Opus 5.5",
+			"Claude Design"
+		],
+		"kind": "font",
+		"name": "Monospace face for small labels, kickers and data (often JetBrains Mono)",
+		"description": "Small labels, eyebrows, meta and numbers are set in a monospace face, frequently over-applied across the page. One commenter tied JetBrains Mono specifically to Opus 4.6 output; Anthropic lists 'monospace labels' among Opus 5.5 defaults.",
+		"detect": {
+			"type": "font",
+			"hint": "Short (< ~40 chars) text nodes outside <code>/<pre> with a monospace computed font-family; ratio of mono text to total text. Flag JetBrains Mono by name.",
+			"values": [
+				"JetBrains Mono"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5",
+				"date": "2026-09-22",
+				"author": "Anthropic (Prompting Claude Opus 5.5 docs; date = model launch, inferred)",
+				"quote": "monospace labels",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "a monospace face for small data labels",
+				"model_named": null
+			},
+			{
+				"url": "https://www.threads.com/@goodworkjoe/post/Dd7D7eRD80S",
+				"date": "2026-09-30",
+				"author": "goodworkjoe (Threads)",
+				"quote": "it has made me hate monospaced eyebrow text over an H1 more than anything else in the world",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48401736",
+				"date": "2026-06-04",
+				"author": "wunderlotus (Hacker News)",
+				"quote": "serif headline with mono kickers",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47177336",
+				"date": "2026-02-27",
+				"author": "deaux (Hacker News)",
+				"quote": "Jetbrains Mono is as strong of a tell for web as \"Not just A, but B\" for text.",
+				"model_named": "Claude Opus 4.6"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49146587",
+				"date": "2026-08-02",
+				"author": "1bpp (Hacker News)",
+				"quote": "monospace glowy-text black-background",
+				"model_named": null
+			},
+			{
+				"url": "https://www.rotecodefraktion.de/en/blog/opus-5-5-richtig-prompten/",
+				"date": "2026-09-24",
+				"author": "David Krcek (rotecodefraktion)",
+				"quote": "labels in a monospace font",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-09-24",
+				"author": "funboy322 (avoid-ai-design README, v0.4.0)",
+				"quote": "all-caps mono labels",
+				"model_named": null
+			}
+		],
+		"independent_sources": 7,
+		"newest_source_date": "2026-09-30",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-numbered-section-labels",
+		"family": "claude",
+		"models": [
+			"Claude Opus 5.5",
+			"Claude Design"
+		],
+		"kind": "element",
+		"name": "Decorative 01 / 02 / 03 numbering on sections and features",
+		"description": "Sections, feature lists or steps carry zero-padded numeric markers even when the content is not a sequence.",
+		"detect": {
+			"type": "text",
+			"hint": "Regex on short standalone text nodes near headings: ^0[1-9]$ or ^0[1-9]\\s*[/.\\u2014-]; count >= 3 on a page.",
+			"values": [
+				"01",
+				"02",
+				"03",
+				"01 / 02 / 03"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5",
+				"date": "2026-09-22",
+				"author": "Anthropic (Prompting Claude Opus 5.5 docs; date = model launch, inferred)",
+				"quote": "numbered \"01/02/03\" section labels",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://github.com/anthropics/skills/commit/2235be7c",
+				"date": "2026-06-09",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "Many generic designs use numbered markers (01 / 02 / 03)",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49765151",
+				"date": "2026-09-19",
+				"author": "tefkah (Hacker News)",
+				"quote": "The 01 02 03 list",
+				"model_named": null
+			},
+			{
+				"url": "https://www.rotecodefraktion.de/en/blog/opus-5-5-richtig-prompten/",
+				"date": "2026-09-24",
+				"author": "David Krcek (rotecodefraktion)",
+				"quote": "numbered section labels such as '01/02/03'",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://muz.li/blog/claude-opus-5-5-for-designers/",
+				"date": "2026-09-28",
+				"author": "Petras Baukys (Muzli)",
+				"quote": "\"01 / 02 / 03\" section labels",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-09-24",
+				"author": "funboy322 (avoid-ai-design README, v0.4.0)",
+				"quote": "decorative 01 / 02 / 03",
+				"model_named": null
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-09-28",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-pill-buttons",
+		"family": "claude",
+		"models": [
+			"Claude Opus 5.5"
+		],
+		"kind": "element",
+		"name": "Pill-shaped (fully rounded) buttons",
+		"description": "Buttons and chips default to fully rounded pill shapes.",
+		"detect": {
+			"type": "css",
+			"hint": "button/a.btn with border-radius >= height/2 (e.g. 9999px or rounded-full).",
+			"values": [
+				"border-radius: 9999px",
+				"rounded-full"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5",
+				"date": "2026-09-22",
+				"author": "Anthropic (Prompting Claude Opus 5.5 docs; date = model launch, inferred)",
+				"quote": "or pill-shaped buttons",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://www.rotecodefraktion.de/en/blog/opus-5-5-richtig-prompten/",
+				"date": "2026-09-24",
+				"author": "David Krcek (rotecodefraktion)",
+				"quote": "pill-shaped buttons",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://muz.li/blog/claude-opus-5-5-for-designers/",
+				"date": "2026-09-28",
+				"author": "Petras Baukys (Muzli)",
+				"quote": "Pill-shaped buttons",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://syrens.com/insights/claude-ification-of-design",
+				"date": "2026-10-05",
+				"author": "Syrens Studio",
+				"quote": "a pill button",
+				"model_named": null
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-10-05",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-pulsing-status-dot",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "element",
+		"name": "Blinking / pulsing green status dot or 'LIVE' badge",
+		"description": "A small animated dot (usually green or lime), often inside a pill with an ALL-CAPS word like LIVE or 'now with ...', signalling liveness by reflex even when nothing is live.",
+		"detect": {
+			"type": "dom",
+			"hint": "Small (<= 12px) round element with a CSS animation (opacity/scale/box-shadow keyframes), adjacent to short uppercase text; text matching /\\bLIVE\\b/ or a leading bullet.",
+			"values": [
+				"LIVE"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://www.theneurondaily.com/p/anthropic-s-claude-design-launched-and-reddit-has-thoughts",
+				"date": "2026-04-20",
+				"author": "Grant Harvey (The Neuron, summarising r/ClaudeAI)",
+				"quote": "the blinking status dot",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://github.com/rohitg00/awesome-claude-design",
+				"date": "2026-04-19",
+				"author": "rohitg00 (awesome-claude-design README)",
+				"quote": "Animated green/lime dot top-right of nav",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48220069",
+				"date": "2026-05-21",
+				"author": "Sirental (Hacker News)",
+				"quote": "the classic \"pill with pulsing green dot that says something is active or live\" claudism",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49328574",
+				"date": "2026-08-17",
+				"author": "akx (Hacker News)",
+				"quote": "another claudeism is the glowy status indicator blob",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49451580",
+				"date": "2026-08-26",
+				"author": "lanewinfield (Hacker News)",
+				"quote": "a \"• LIVE\" (or really any pulsing • symbol with an ALL CAPS follow-up)",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49478870",
+				"date": "2026-08-28",
+				"author": "hallole (Hacker News)",
+				"quote": "Why is there a big unnecessary \"LIVE\" label?",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49765151",
+				"date": "2026-09-19",
+				"author": "tefkah (Hacker News)",
+				"quote": "It loves to create these blinking badges",
+				"model_named": null
+			}
+		],
+		"independent_sources": 7,
+		"newest_source_date": "2026-09-19",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-glow-effects",
+		"family": "claude",
+		"models": [
+			"Claude Code",
+			"Claude Design"
+		],
+		"kind": "treatment",
+		"name": "Glows: coloured text-shadow / box-shadow halos on labels and UI",
+		"description": "Labels, status indicators and text get chromatic glow halos (offset or zero-offset text-shadow / box-shadow), especially on dark pages.",
+		"detect": {
+			"type": "css",
+			"hint": "text-shadow or box-shadow with a non-neutral colour and blur > ~8px, or zero offset; count elements.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=49336967",
+				"date": "2026-08-17",
+				"author": "soulofmischief (Hacker News)",
+				"quote": "Observe the textbook Claude design, full of glows",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49478790",
+				"date": "2026-08-28",
+				"author": "vunderba (Hacker News)",
+				"quote": "Claude is enamored with wrapping labels in a ton of almost gaudy, decadent glow effects",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49478870",
+				"date": "2026-08-28",
+				"author": "hallole (Hacker News)",
+				"quote": "Good lord, why is everything glowing?",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49328574",
+				"date": "2026-08-17",
+				"author": "akx (Hacker News)",
+				"quote": "eyebrows, glows, em-dashes, middots",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49146587",
+				"date": "2026-08-02",
+				"author": "1bpp (Hacker News)",
+				"quote": "monospace glowy-text black-background cursor-trail",
+				"model_named": null
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-08-28",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-near-black-single-neon-accent",
+		"family": "claude",
+		"models": [
+			"Claude Opus 5.5",
+			"Claude Design"
+		],
+		"kind": "foundation",
+		"name": "Near-black page with one acid-green or vermilion accent",
+		"description": "The second fallback look: a near-black background with a single bright acid-green (or vermilion) signal colour, often with mono labels and glows.",
+		"detect": {
+			"type": "color",
+			"hint": "Body background luminance < ~0.03 and exactly one saturated accent hue (green ~90-140deg or red-orange ~5-20deg) used for highlights.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/2235be7c",
+				"date": "2026-06-09",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "a near-black background with a single bright acid-green or vermilion accent",
+				"model_named": null
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-09-24",
+				"author": "funboy322 (avoid-ai-design README, v0.4.0)",
+				"quote": "near-black with one acid-green or vermilion signal",
+				"model_named": null
+			},
+			{
+				"url": "https://muz.li/blog/claude-opus-5-5-for-designers/",
+				"date": "2026-09-28",
+				"author": "Petras Baukys (Muzli)",
+				"quote": "near-black with one acid-green accent",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://techarion.com/blog/claude-ui-design-prompts-art-direction-templates",
+				"date": "2026-10-01",
+				"author": "Tech Arion Team",
+				"quote": "Near-black backgrounds with acid-green or vermilion accents",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49146587",
+				"date": "2026-08-02",
+				"author": "1bpp (Hacker News)",
+				"quote": "black-background",
+				"model_named": null
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-10-01",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-tinted-near-black",
+		"family": "claude",
+		"models": [],
+		"kind": "foundation",
+		"name": "Tinted near-black (#0B0B0B, #111) standing in for black",
+		"description": "Text and dark surfaces use a tinted near-black like #0B0B0B or #111 rather than a considered ink colour.",
+		"detect": {
+			"type": "color",
+			"hint": "Computed color/background equals or is within a tiny delta of the listed values.",
+			"values": [
+				"#0B0B0B",
+				"#111",
+				"#211D18"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "tinted near-black (#0B0B0B, #111) standing in for black",
+				"model_named": null
+			},
+			{
+				"url": "https://www.generativelabs.com/insights/why-ai-design-tools-look-the-same",
+				"date": "2026-07-14",
+				"author": "Bill Cava (Generative Labs)",
+				"quote": "ink #211D18",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-09-03",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-broadsheet-layout",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "layout",
+		"name": "Broadsheet / newspaper layout: hairline rules, zero radius, dense columns",
+		"description": "The third fallback look: editorial broadsheet structure with hairline horizontal rules as dividers, zero border-radius and dense newspaper-like columns.",
+		"detect": {
+			"type": "structure",
+			"hint": "Many 1px <hr>/border-top rules between sections, border-radius 0 on most boxes, multi-column text grids (column-count or 3+ narrow columns).",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/2235be7c",
+				"date": "2026-06-09",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "a broadsheet-style layout with hairline rules, zero border-radius, and dense newspaper-like columns",
+				"model_named": null
+			},
+			{
+				"url": "https://roughworks.ca/blog/claude-design-may-2026-impact/",
+				"date": "2026-05-15",
+				"author": "Rough Works",
+				"quote": "horizontal rules as structural dividers",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-09-24",
+				"author": "funboy322 (avoid-ai-design README, v0.4.0)",
+				"quote": "broadsheet hairlines",
+				"model_named": null
+			},
+			{
+				"url": "https://youcanbuildthings.substack.com/p/claude-design-generic-output-the",
+				"date": "2026-06-15",
+				"author": "John Cook (youcanbuildthings)",
+				"quote": "it has like 3-4 presets, techy, newspapers",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-24",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-saas-card-kit",
+		"family": "claude",
+		"models": [
+			"Claude Opus 5.5",
+			"Claude Design"
+		],
+		"kind": "layout",
+		"name": "SaaS card kit: identical rounded cards, one radius everywhere, same soft grey shadow",
+		"description": "Content is chopped into identical rounded cards with one border-radius on everything and the same soft grey shadow under each, plus decorative gradient washes.",
+		"detect": {
+			"type": "css",
+			"hint": "Sibling groups of >= 3 cards with identical border-radius and box-shadow; shadow colour near rgba(0,0,0,.1); same radius token on buttons, inputs and cards.",
+			"values": [
+				"rgba(0,0,0,.1)"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "the SaaS-card kit: content chopped into identical rounded cards, one border-radius on everything regardless of hierarchy, the same soft grey shadow (rgba(0,0,0,.1)) under each",
+				"model_named": null
+			},
+			{
+				"url": "https://muz.li/blog/claude-opus-5-5-for-designers/",
+				"date": "2026-09-28",
+				"author": "Petras Baukys (Muzli)",
+				"quote": "identical rounded cards with the same soft grey shadow",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://www.generativelabs.com/insights/why-ai-design-tools-look-the-same",
+				"date": "2026-07-14",
+				"author": "Bill Cava (Generative Labs)",
+				"quote": "dashboards of rounded rectangles",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.mindstudio.ai/blog/claude-design-avoid-ai-slop-design-system",
+				"date": "2026-04-28",
+				"author": "Luis Chavez-Mattos (MindStudio)",
+				"quote": "Large rounded corners on cards and buttons",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=46957026",
+				"date": "2026-02-10",
+				"author": "JonathanLiem (Hacker News)",
+				"quote": "Everything looks like the same beige SaaS dashboard: rounded cards, random gradient",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47850925",
+				"date": "2026-04-21",
+				"author": "deaux (Hacker News)",
+				"quote": "There will be an excess of cards in different styles",
+				"model_named": "Claude Opus"
+			},
+			{
+				"url": "https://www.theadpharm.com/insights/claude-design-without-the-ai-slop-look",
+				"date": "2026-05-01",
+				"author": "Adpharm Digital",
+				"quote": "Shadcn-default cards. Tailwind-default rounded-xl buttons.",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 7,
+		"newest_source_date": "2026-09-28",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-card-side-accent-border",
+		"family": "claude",
+		"models": [
+			"Claude Opus",
+			"Claude Design"
+		],
+		"kind": "treatment",
+		"name": "Coloured accent border on one side (usually left) of every card",
+		"description": "Cards get a thick coloured rule on one edge, often the left, applied decoratively to every card. Claude Design's own system prompt names it as a trope to reject.",
+		"detect": {
+			"type": "css",
+			"hint": "Element with border-left (or one side) width >= 3px in an accent colour while other sides are 0/1px; often combined with border-radius.",
+			"values": [
+				"4px"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=47850925",
+				"date": "2026-04-21",
+				"author": "deaux (Hacker News)",
+				"quote": "has a colored, round border either on hover or by default on exactly one side of the card",
+				"model_named": "Claude Opus"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48679076",
+				"date": "2026-06-25",
+				"author": "f3408fh (Hacker News)",
+				"quote": "Many card-like elements with a colored border on one side only.",
+				"model_named": null
+			},
+			{
+				"url": "https://github.com/rohitg00/awesome-claude-design",
+				"date": "2026-04-19",
+				"author": "rohitg00 (awesome-claude-design README)",
+				"quote": "4px coloured rule on every card, regardless of semantic meaning",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.theneurondaily.com/p/anthropic-s-claude-design-launched-and-reddit-has-thoughts",
+				"date": "2026-04-20",
+				"author": "Grant Harvey (The Neuron, summarising r/ClaudeAI)",
+				"quote": "colored accent bars",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.lobsterpack.com/blog/claude-design-trenchcoat/",
+				"date": "2026-04-18",
+				"author": "Linas Valiukas (Lobster Pack, quoting Claude Design's system prompt)",
+				"quote": "containers using rounded corners with a left-border accent color",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-06-25",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-middot-meta-strings",
+		"family": "claude",
+		"models": [],
+		"kind": "element",
+		"name": "Meta strings joined with middle dots (A · B · C)",
+		"description": "Metadata, taglines and footers are built as short fragments joined by ' · '.",
+		"detect": {
+			"type": "text",
+			"hint": "Regex on short text nodes: /\\S+ · \\S+ · \\S+/ (U+00B7 separators, two or more).",
+			"values": [
+				"·"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "meta strings joined with middle dots ('A · B · C')",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49328574",
+				"date": "2026-08-17",
+				"author": "akx (Hacker News)",
+				"quote": "eyebrows, glows, em-dashes, middots",
+				"model_named": null
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-09-03",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-em-dash-ui-copy",
+		"family": "claude",
+		"models": [
+			"Claude Code",
+			"Claude Design"
+		],
+		"kind": "copy",
+		"name": "Em dashes in UI copy and 'WORD — fragment' labels",
+		"description": "Headlines, labels and microcopy lean on em dashes, including labels built as 'WORD — fragment' with a spaced em dash.",
+		"detect": {
+			"type": "text",
+			"hint": "Count U+2014 in visible UI text per 1,000 chars; regex for labels /^[A-Z][A-Z ]+ — /.",
+			"values": [
+				"—"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "labels built as 'WORD — fragment' with a spaced em dash",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48401736",
+				"date": "2026-06-04",
+				"author": "wunderlotus (Hacker News)",
+				"quote": "Sprinkle in em dashes and punchy (non-UX writing) and voila! You’ve got yourself a Claude coded page.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49336967",
+				"date": "2026-08-17",
+				"author": "soulofmischief (Hacker News)",
+				"quote": "Count the number of em dashes.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49328574",
+				"date": "2026-08-17",
+				"author": "akx (Hacker News)",
+				"quote": "eyebrows, glows, em-dashes, middots",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49146587",
+				"date": "2026-08-02",
+				"author": "1bpp (Hacker News)",
+				"quote": "breathless emdash",
+				"model_named": null
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-09-03",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-arrow-appended-cta",
+		"family": "claude",
+		"models": [],
+		"kind": "element",
+		"name": "'→' appended to link and button text",
+		"description": "Buttons and text links end with a right arrow glyph by default.",
+		"detect": {
+			"type": "text",
+			"hint": "Regex on a/button text: /\\s?→\\s*$/ (also ↗).",
+			"values": [
+				"→"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "a '→' appended to link and button text",
+				"model_named": null
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-06-18",
+				"author": "funboy322 (avoid-ai-design, CP3 arrow-glyph tell commit)",
+				"quote": "arrows welded to CTAs",
+				"model_named": null
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-09-03",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-contrast-aphorism-copy",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "copy",
+		"name": "Manufactured-contrast copy cadence ('X isn't Y — it's Z', 'A URL, not a laptop')",
+		"description": "Headlines and section copy are built as short contrast aphorisms that negate one thing to assert another, delivered in a breathless, punchy register.",
+		"detect": {
+			"type": "text",
+			"hint": "Regex on headings/paragraphs: /\\b(isn['’]t|is not|not)\\b[^.]{0,40}[—,.;]\\s*(it['’]s|but)\\b/i and /, not an? \\w+\\.?$/; flag when >= 2 sections use it.",
+			"values": [
+				"isn't a distraction—it's",
+				"not a laptop"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=49336967",
+				"date": "2026-08-17",
+				"author": "soulofmischief (Hacker News)",
+				"quote": "Fun isn’t a distraction—it’s a retention strategy.",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49765151",
+				"date": "2026-09-19",
+				"author": "tefkah (Hacker News)",
+				"quote": "the \"Your agent needs a URL, not a laptop\" has a lot of tells of just being a straight Claude (design) output",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48401736",
+				"date": "2026-06-04",
+				"author": "wunderlotus (Hacker News)",
+				"quote": "punchy (non-UX writing)",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49328574",
+				"date": "2026-08-17",
+				"author": "akx (Hacker News)",
+				"quote": "that certain breathless tone in the pricing box",
+				"model_named": null
+			}
+		],
+		"independent_sources": 4,
+		"newest_source_date": "2026-09-19",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-big-number-stat-hero",
+		"family": "claude",
+		"models": [],
+		"kind": "layout",
+		"name": "Big number + small label + supporting stats + gradient accent as the hero",
+		"description": "The hero (or the section after it) is a large figure with a small caption and a row of supporting stats, often with a gradient accent; copy brags about specific quantities.",
+		"detect": {
+			"type": "structure",
+			"hint": "Hero region containing >= 3 elements whose text is mostly digits/%, font-size >= 2x body, each followed by a small caption.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/2235be7c",
+				"date": "2026-06-09",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "a big number with a small label, supporting stats, and a gradient accent is the template answer",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49336967",
+				"date": "2026-08-17",
+				"author": "soulofmischief (Hacker News)",
+				"quote": "Count the number of times it brags about a specific quantity.",
+				"model_named": null
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-08-17",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-fade-up-every-section",
+		"family": "claude",
+		"models": [],
+		"kind": "treatment",
+		"name": "Fade-and-slide-up entrance on every section, hover transitions on every card",
+		"description": "Scroll reveal animations applied uniformly to each section plus hover lifts on every card, instead of one orchestrated moment.",
+		"detect": {
+			"type": "css",
+			"hint": "IntersectionObserver/reveal classes on most sections; keyframes animating opacity 0->1 with translateY; transition on :hover for all cards.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/anthropics/skills/commit/41bbe19d",
+				"date": "2026-09-03",
+				"author": "Anthropic (anthropics/skills frontend-design)",
+				"quote": "fade-and-slide-up entrances on each section and hover transitions on every card are the generic default and read as AI-generated",
+				"model_named": null
+			},
+			{
+				"url": "https://github.com/funboy322/avoid-ai-design",
+				"date": "2026-09-24",
+				"author": "funboy322 (avoid-ai-design README, v0.4.0)",
+				"quote": "fade-up on every section, bounce easing",
+				"model_named": null
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-09-24",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-purple-gradient-legacy",
+		"family": "claude",
+		"models": [
+			"Claude Sonnet 3.7",
+			"Claude Sonnet 4",
+			"Claude Opus 4.8",
+			"Claude Design"
+		],
+		"kind": "foundation",
+		"name": "Purple / blue-indigo gradient on white (the older Claude default)",
+		"description": "Purple-to-blue or indigo-to-violet gradients on white hero sections. Anthropic still ships an anti-purple snippet in its 2026 model docs; 2026 commenters describe it as the earlier Claude (Sonnet 3.7/4 era) default that newer models moved away from, though it still appears.",
+		"detect": {
+			"type": "color",
+			"hint": "linear-gradient in hero/background with hues in ~240-290deg; bg-clip-text gradients; Tailwind from-purple/indigo/violet classes.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8",
+				"date": "2026-05-28",
+				"author": "Anthropic (Prompting Claude Opus 4.8 docs; date = model launch, inferred)",
+				"quote": "cliched color schemes (particularly purple gradients on white or dark backgrounds)",
+				"model_named": "Claude Opus 4.8"
+			},
+			{
+				"url": "https://www.theadpharm.com/insights/claude-design-without-the-ai-slop-look",
+				"date": "2026-05-01",
+				"author": "Adpharm Digital",
+				"quote": "Purple gradients on white. Pastel rainbow accents. Indigo-to-violet hero washes",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://dmaya.ai/blog/claude-code-frontend-design-skill",
+				"date": "2026-04-28",
+				"author": "Dhairya Purohit (dmaya.ai)",
+				"quote": "Purple-to-blue gradient",
+				"model_named": null
+			},
+			{
+				"url": "https://www.mindstudio.ai/blog/claude-design-avoid-ai-slop-design-system",
+				"date": "2026-04-28",
+				"author": "Luis Chavez-Mattos (MindStudio)",
+				"quote": "Blue or indigo as the primary accent with subtle hover states",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47466876",
+				"date": "2026-03-21",
+				"author": "pennomi (Hacker News)",
+				"quote": "Claude will nearly always make a purple or blue website with gross rainbow gradients",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49117904",
+				"date": "2026-07-31",
+				"author": "firasd (Hacker News)",
+				"quote": "a Claude Sonnet 3.7 (or was it Sonnet 4) mid-2025 purple gradient background",
+				"model_named": "Claude Sonnet 3.7"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48257749",
+				"date": "2026-05-24",
+				"author": "franga2000 (Hacker News)",
+				"quote": "lots of blue/purple and gradients",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49808555",
+				"date": "2026-09-22",
+				"author": "mingyukma88 (Hacker News)",
+				"quote": "purple gradients, cookie-cutter hero sections, lorem ipsum",
+				"model_named": null
+			}
+		],
+		"independent_sources": 8,
+		"newest_source_date": "2026-09-22",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-inter-default-font",
+		"family": "claude",
+		"models": [
+			"Claude Opus 4.8",
+			"Claude Design"
+		],
+		"kind": "font",
+		"name": "Inter (or Roboto/Arial/Geist/Space Grotesk) as the unconsidered default sans",
+		"description": "Without direction the sans is Inter at many weights, or Geist/Roboto/system; Space Grotesk appears as the 'I tried' upgrade.",
+		"detect": {
+			"type": "font",
+			"hint": "Computed font-family of body/headings starts with one of the listed families.",
+			"values": [
+				"Inter",
+				"Roboto",
+				"Arial",
+				"Geist",
+				"Space Grotesk"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8",
+				"date": "2026-05-28",
+				"author": "Anthropic (Prompting Claude Opus 4.8 docs; date = model launch, inferred)",
+				"quote": "overused font families (Inter, Roboto, Arial, system fonts)",
+				"model_named": "Claude Opus 4.8"
+			},
+			{
+				"url": "https://www.theadpharm.com/insights/claude-design-without-the-ai-slop-look",
+				"date": "2026-05-01",
+				"author": "Adpharm Digital",
+				"quote": "Inter, Roboto, Arial. System fonts. Space Grotesk as the 'I tried' upgrade",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://dmaya.ai/blog/claude-code-frontend-design-skill",
+				"date": "2026-04-28",
+				"author": "Dhairya Purohit (dmaya.ai)",
+				"quote": "Inter at all weights",
+				"model_named": null
+			},
+			{
+				"url": "https://www.mindstudio.ai/blog/claude-design-avoid-ai-slop-design-system",
+				"date": "2026-04-28",
+				"author": "Luis Chavez-Mattos (MindStudio)",
+				"quote": "Inter or Geist",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://youcanbuildthings.substack.com/p/claude-design-generic-output-the",
+				"date": "2026-06-15",
+				"author": "John Cook (youcanbuildthings)",
+				"quote": "Inter 800 all-caps",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49950747",
+				"date": "2026-10-04",
+				"author": "onion2k (Hacker News)",
+				"quote": "all in AI Beige with Inter as your font choice",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49868750",
+				"date": "2026-09-27",
+				"author": "WorldMaker (Hacker News)",
+				"quote": "unreadably thin weights of the already too thin Inter font",
+				"model_named": null
+			}
+		],
+		"independent_sources": 7,
+		"newest_source_date": "2026-10-04",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-centered-hero-three-cards",
+		"family": "claude",
+		"models": [
+			"Claude Design",
+			"Claude Opus 4.7"
+		],
+		"kind": "layout",
+		"name": "Centered hero (eyebrow, headline, subhead, two CTAs) over a three-column feature grid",
+		"description": "Landing skeleton: centered hero with eyebrow, big headline, subhead and two CTAs (sometimes a faint gradient blur), then a three-up feature card grid, logo row, pricing, FAQ.",
+		"detect": {
+			"type": "structure",
+			"hint": "First section text-align center with h1 + p + 2 buttons; next section a 3-column grid of similar cards with icon/heading/text.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://www.theadpharm.com/insights/claude-design-without-the-ai-slop-look",
+				"date": "2026-05-01",
+				"author": "Adpharm Digital",
+				"quote": "Three-up feature cards. Logo soup. Pricing toggle. FAQ accordion",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://dmaya.ai/blog/claude-code-frontend-design-skill",
+				"date": "2026-04-28",
+				"author": "Dhairya Purohit (dmaya.ai)",
+				"quote": "Centered hero headline with three feature cards",
+				"model_named": null
+			},
+			{
+				"url": "https://github.com/rohitg00/awesome-claude-design",
+				"date": "2026-04-19",
+				"author": "rohitg00 (awesome-claude-design README)",
+				"quote": "Almost every landing the model produces has the same section-2 layout",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://syrens.com/insights/claude-ification-of-design",
+				"date": "2026-10-05",
+				"author": "Syrens Studio",
+				"quote": "A centered hero, one balanced line of text, a pill button, and a faint gradient blur",
+				"model_named": null
+			},
+			{
+				"url": "https://roast.page/blog/claude-design-landing-pages-guide",
+				"date": "2026-04-18",
+				"author": "roast.page editorial",
+				"quote": "The same three sections. The same two CTAs.",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.mindstudio.ai/blog/claude-design-avoid-ai-slop-design-system",
+				"date": "2026-04-28",
+				"author": "Luis Chavez-Mattos (MindStudio)",
+				"quote": "Gradient hero sections with headline, subheadline, and CTA button",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 6,
+		"newest_source_date": "2026-10-05",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-teal-accent",
+		"family": "claude",
+		"models": [
+			"Claude Design",
+			"Claude Opus 4.7"
+		],
+		"kind": "foundation",
+		"name": "Teal / cyan accent used everywhere (Claude Design launch-week default)",
+		"description": "Launch-week Claude Design output reused one teal action colour for CTAs, headline accents, focus rings and charts, sometimes as a teal gradient. Hex stated by one source as approximate ('-adjacent').",
+		"detect": {
+			"type": "color",
+			"hint": "Single accent hue ~180-195deg used on buttons, focus rings and chart fills.",
+			"values": [
+				"#16d5e6"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/rohitg00/awesome-claude-design",
+				"date": "2026-04-19",
+				"author": "rohitg00 (awesome-claude-design README)",
+				"quote": "The default `#16d5e6`-adjacent action color appears on CTA, headline accent, focus rings, and chart fill",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://www.theneurondaily.com/p/anthropic-s-claude-design-launched-and-reddit-has-thoughts",
+				"date": "2026-04-20",
+				"author": "Grant Harvey (The Neuron, summarising r/ClaudeAI)",
+				"quote": "primarily characterized by teal aesthetics",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://youcanbuildthings.substack.com/p/claude-design-generic-output-the",
+				"date": "2026-06-15",
+				"author": "John Cook (youcanbuildthings)",
+				"quote": "teal-gradient",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 3,
+		"newest_source_date": "2026-06-15",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-container-soup",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "layout",
+		"name": "Container soup: pills inside cards inside cards",
+		"description": "Deeply nested containers (pills wrapping cards wrapping content) with stacked equal padding.",
+		"detect": {
+			"type": "structure",
+			"hint": "DOM depth of bordered/backgrounded boxes > 2 inside one region; repeated equal padding (e.g. 24px) at each level.",
+			"values": [
+				"24/24/24"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://www.theneurondaily.com/p/anthropic-s-claude-design-launched-and-reddit-has-thoughts",
+				"date": "2026-04-20",
+				"author": "Grant Harvey (The Neuron, summarising r/ClaudeAI)",
+				"quote": "container soup",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://github.com/rohitg00/awesome-claude-design",
+				"date": "2026-04-19",
+				"author": "rohitg00 (awesome-claude-design README)",
+				"quote": "Pills wrapping cards wrapping cards wrapping content; padding stacking 24/24/24",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-04-20",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-ticker-bars",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "element",
+		"name": "News-ticker / marquee bars",
+		"description": "Horizontal ticker-like strips, as if the page were a news channel.",
+		"detect": {
+			"type": "dom",
+			"hint": "Element with continuous translateX keyframe animation or <marquee>; repeated inline items separated by bullets.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://www.generativelabs.com/insights/why-ai-design-tools-look-the-same",
+				"date": "2026-07-14",
+				"author": "Bill Cava (Generative Labs)",
+				"quote": "ticker-like bars as if the page were a news channel",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-07-14",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-lucide-icons",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "element",
+		"name": "Lucide icon stack everywhere",
+		"description": "The default icon set across nav, buttons and empty states is Lucide.",
+		"detect": {
+			"type": "dom",
+			"hint": "svg.lucide / lucide-* class names or lucide-react imports.",
+			"values": [
+				"Lucide"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://github.com/rohitg00/awesome-claude-design",
+				"date": "2026-04-19",
+				"author": "rohitg00 (awesome-claude-design README)",
+				"quote": "Default icon set across nav, buttons, empty states",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-04-19",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-noise-grain-texture",
+		"family": "claude",
+		"models": [
+			"Claude Opus 4.6"
+		],
+		"kind": "treatment",
+		"name": "Noise / grain texture overlay",
+		"description": "A subtle grain or noise texture laid over (often dark) surfaces.",
+		"detect": {
+			"type": "css",
+			"hint": "Fixed/absolute overlay with an SVG feTurbulence or noise PNG background at low opacity; mix-blend-mode on a full-page pseudo-element.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=48481352",
+				"date": "2026-06-10",
+				"author": "nekooooo (Hacker News)",
+				"quote": "noise texture.",
+				"model_named": null
+			},
+			{
+				"url": "https://workflowswithai.substack.com/p/what-opus-46-does-differently-with",
+				"date": "2026-02-14",
+				"author": "Sumant (Workflows with AI)",
+				"quote": "A noise texture overlay on dark surfaces",
+				"model_named": "Claude Opus 4.6"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-06-10",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-brown-anthracite-dark",
+		"family": "claude",
+		"models": [
+			"Claude Code",
+			"Claude Design"
+		],
+		"kind": "foundation",
+		"name": "'Claude brown' dark theme: orange on brown / anthracite, low-contrast beige text",
+		"description": "Dark-mode variant of the house style: brown or anthracite grounds with orange accents and brown/beige text that can fail contrast.",
+		"detect": {
+			"type": "color",
+			"hint": "Dark background with warm hue (~20-40deg) or neutral anthracite; text colour in brown/beige range; check WCAG contrast < 4.5:1.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=49188300",
+				"date": "2026-08-05",
+				"author": "jaggederest (Hacker News)",
+				"quote": "generic claude design orange-on-brown",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49902542",
+				"date": "2026-09-30",
+				"author": "jjcm (Hacker News)",
+				"quote": "doesn't result in purple gradients or claude brown",
+				"model_named": "Claude Opus 5.5"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=48152029",
+				"date": "2026-05-15",
+				"author": "xiaoyu2006 (Hacker News)",
+				"quote": "the Anthropic Serif and Brown-ish color",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49867681",
+				"date": "2026-09-27",
+				"author": "jd7h (Hacker News)",
+				"quote": "\"Claude beige\" and \"Claude anthracite grey\"",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=47865126",
+				"date": "2026-04-22",
+				"author": "vunderba (Hacker News)",
+				"quote": "text (and subtext) are various shades of dark brown or beige",
+				"model_named": "Claude Code"
+			}
+		],
+		"independent_sources": 5,
+		"newest_source_date": "2026-09-30",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-font-size-sprawl",
+		"family": "claude",
+		"models": [
+			"Claude Opus"
+		],
+		"kind": "foundation",
+		"name": "Many fonts, weights and text sizes on one page",
+		"description": "Pages mix many families and weights and a large number of distinct font sizes, with tiny headings next to oversized display type.",
+		"detect": {
+			"type": "font",
+			"hint": "Count distinct computed font-size values on visible text (flag > ~10) and distinct family/weight combos.",
+			"values": [
+				"15 different text sizes"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=47850925",
+				"date": "2026-04-21",
+				"author": "deaux (Hacker News)",
+				"quote": "There will be excessive use of different fonts and weights on the same page",
+				"model_named": "Claude Opus"
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49451580",
+				"date": "2026-08-26",
+				"author": "lanewinfield (Hacker News)",
+				"quote": "tons of variation in font sizes (this one has 15 different text sizes!)",
+				"model_named": null
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-08-26",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-tight-display-leading",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "foundation",
+		"name": "Tight display line-height (~0.9) with generous spacing elsewhere",
+		"description": "Display headings set very tight (~0.9 line-height) while section padding stays generous.",
+		"detect": {
+			"type": "css",
+			"hint": "h1/h2 computed line-height / font-size <= ~0.95.",
+			"values": [
+				"0.9"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://roughworks.ca/blog/claude-design-may-2026-impact/",
+				"date": "2026-05-15",
+				"author": "Rough Works",
+				"quote": "Tight line-height on the display (~0.9), generous everywhere else",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-05-15",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-humanist-sans-body",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "font",
+		"name": "DM Sans (or similar humanist sans) body under a serif display",
+		"description": "Body copy in DM Sans or a similar humanist sans paired with the serif display face.",
+		"detect": {
+			"type": "font",
+			"hint": "Body computed font-family DM Sans (or similar) while headings are serif.",
+			"values": [
+				"DM Sans"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://roughworks.ca/blog/claude-design-may-2026-impact/",
+				"date": "2026-05-15",
+				"author": "Rough Works",
+				"quote": "DM Sans or similar humanist sans for body text",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-05-15",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-half-width-hero-text",
+		"family": "claude",
+		"models": [],
+		"kind": "layout",
+		"name": "Hero text confined to a ~50% width column",
+		"description": "Hero headline and copy sit in a half-width column.",
+		"detect": {
+			"type": "structure",
+			"hint": "Hero text container max-width ~ 50% of viewport with the other half empty or an image.",
+			"values": [
+				"50%"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=49499657",
+				"date": "2026-08-30",
+				"author": "onion2k (Hacker News)",
+				"quote": "the 50% width column of hero text",
+				"model_named": null
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-08-30",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-generic-saas-copy",
+		"family": "claude",
+		"models": [
+			"Claude Design"
+		],
+		"kind": "copy",
+		"name": "Generic SaaS headlines and adjective-filler feature bullets",
+		"description": "Category-description headlines ('Streamline Your [Noun]...') and feature bullets made of interchangeable adjective phrases.",
+		"detect": {
+			"type": "text",
+			"hint": "Regex for /^(Streamline|Supercharge|Transform|Elevate)\\b/ in headings; feature bullets of 2-3 words each with no specifics.",
+			"values": [
+				"Streamline Your [Noun] With [Adjective] [Noun]",
+				"Trusted & vetted"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://roast.page/blog/claude-design-landing-pages-guide",
+				"date": "2026-04-18",
+				"author": "roast.page editorial",
+				"quote": "Streamline Your [Noun] With [Adjective] [Noun]",
+				"model_named": "Claude Design"
+			},
+			{
+				"url": "https://youcanbuildthings.substack.com/p/claude-design-generic-output-the",
+				"date": "2026-06-15",
+				"author": "John Cook (youcanbuildthings)",
+				"quote": "On-time walks / Trusted & vetted / Live updates / Easy booking",
+				"model_named": "Claude Design"
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-06-15",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-overexplaining-microcopy",
+		"family": "claude",
+		"models": [],
+		"kind": "copy",
+		"name": "Over-explaining, reassuring microcopy and boilerplate on every surface",
+		"description": "Helper text that restates the obvious or reassures ('swap it any time'), and excess explanatory text on every surface.",
+		"detect": {
+			"type": "text",
+			"hint": "Long helper/sub-label text (> ~80 chars) on simple controls; reassurance phrases like 'any time', 'no ...' after a dash.",
+			"values": [
+				"swap it any time"
+			]
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=49328574",
+				"date": "2026-08-17",
+				"author": "akx (Hacker News)",
+				"quote": "\"Click here to choose an audio file to transcribe – swap it any time\" are Claude-like copy",
+				"model_named": null
+			},
+			{
+				"url": "https://news.ycombinator.com/item?id=49451580",
+				"date": "2026-08-26",
+				"author": "lanewinfield (Hacker News)",
+				"quote": "a lot of overexplaining",
+				"model_named": null
+			}
+		],
+		"independent_sources": 2,
+		"newest_source_date": "2026-08-26",
+		"older_than_7_months": false
+	},
+	{
+		"id": "claude-emoji-icons",
+		"family": "claude",
+		"models": [],
+		"kind": "element",
+		"name": "Emoji used as icons",
+		"description": "Emoji standing in for feature/nav icons on Claude-built sites. Weakly sourced for Claude specifically in 2026.",
+		"detect": {
+			"type": "text",
+			"hint": "Emoji code points (Extended_Pictographic) as the first child of headings, list items, nav links or feature cards.",
+			"values": []
+		},
+		"evidence": [
+			{
+				"url": "https://news.ycombinator.com/item?id=48549181",
+				"date": "2026-06-16",
+				"author": "joshellington (Hacker News)",
+				"quote": "redesign the website, remove all emojis and all letter-spacing CSS",
+				"model_named": null
+			}
+		],
+		"independent_sources": 1,
+		"newest_source_date": "2026-06-16",
+		"older_than_7_months": false
+	}
+]

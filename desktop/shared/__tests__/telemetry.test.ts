@@ -163,8 +163,11 @@ describe("channel allowlist", () => {
 	})
 
 	it("prop extractors admit only fixed vocabulary, never the argument", () => {
-		const props = CHANNEL_EVENTS["wizard:start"].props?.(["/Users/x/proj", "an ecommerce site for my dog", "ai-led"])
-		assert.deepEqual(props, { mode: "ai-led" })
+		const props = CHANNEL_EVENTS["wizard:start"].props?.(["/Users/x/proj", "an ecommerce site for my dog", "collaborative"])
+		assert.deepEqual(props, { mode: "collaborative" })
+		// The removed AI-led mode is not a known value any more.
+		const removed = CHANNEL_EVENTS["wizard:start"].props?.(["/Users/x/proj", "a dog shop", "ai-led"])
+		assert.deepEqual(removed, { mode: "other" })
 		const raw = CHANNEL_EVENTS["agent:selectBackend"].props?.(["some/arbitrary/string"])
 		assert.deepEqual(raw, { backend_id: "other" })
 	})
