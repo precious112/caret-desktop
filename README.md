@@ -17,7 +17,7 @@
   </p>
 </div>
 
-https://github.com/user-attachments/assets/93e273d4-aed3-45cd-bb5e-c5b587691017
+https://github.com/user-attachments/assets/d98c8028-07c6-4885-9fc0-a6c6cc8803c8
 
 Your pages render on a canvas. Click a headline and retype it, right-click a
 colour and pick a new one, and the change is written into the file behind it.
@@ -142,18 +142,17 @@ Some things are too fiddly to click. Paint over the part of the page you mean
 and say what you want. Your agent gets the exact elements you marked, so it
 does not have to guess which bit you meant.
 
-<p align="center">
-  <img src="assets/docs/describe-a-change.gif" width="100%" alt="Painting over a section of a page and describing a change in words, then the rebuilt section" />
-</p>
+The film below shows it, along with dragging an edge to resize, three versions
+of a page at once, and choosing the design skill and component libraries the AI
+works with.
+
+https://github.com/user-attachments/assets/420a33a2-f5c7-486b-819d-8bb3940b068c
 
 ## Three versions at once
 
 When you do not know what you want yet, ask for a few. Caret builds them side by
-side, live, and you keep one. Picking leaves an undo step.
-
-<p align="center">
-  <img src="assets/docs/explore-takes.gif" width="100%" alt="Three versions of a page generating side by side on the canvas, then one is picked and becomes the live page" />
-</p>
+side, live, and you keep one. Picking leaves an undo step. Any version can grow
+a new round of its own, so you can push one direction further.
 
 ## Make the assets too
 
@@ -162,9 +161,11 @@ real vector files, and animated backgrounds written as code so the colours stay
 adjustable. How it is lit, framed and coloured comes from your design tokens, so
 it matches the rest of your work.
 
-<p align="center">
-  <img src="assets/docs/generate-asset.gif" width="100%" alt="Asking for a logo in one sentence and getting several versions to choose from" />
-</p>
+Takes land on a board. Change one and it grows new takes from that exact
+picture, so nothing is overwritten. Save the one you want by name, and use it
+anywhere in Caret as `@name`.
+
+https://github.com/user-attachments/assets/b2ec0a32-966b-42d8-86c5-32dc73d6352c
 
 ## See the journeys
 

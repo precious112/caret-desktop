@@ -37,9 +37,15 @@ can be verified against the file it came from.
 |---|---|---|---|---|
 | Visual editing — text, colour, image, resize, overlay | 1:11 | 5.5MB | `27b6746a` | https://github.com/user-attachments/assets/2fb6a9f4-f000-423c-8b9c-d70a81422bc6 |
 | Asset generation — mark, shader, photograph | 2:00 | 8.85MB | `d8e9a7fe` | https://github.com/user-attachments/assets/99115f37-797a-454c-978a-421c6dace536 |
-| **Launch demo — the README hero** (`caret_launch_v2`) | 1:43 | 9.00MB | `662e1118` | https://github.com/user-attachments/assets/93e273d4-aed3-45cd-bb5e-c5b587691017 |
+| Launch demo, the previous README hero (`caret_launch_v2`) | 1:43 | 9.00MB | `662e1118` | https://github.com/user-attachments/assets/93e273d4-aed3-45cd-bb5e-c5b587691017 |
+| **Film 1, One repo — the README hero** (16:9) | 1:17 | 8.8MB | `43c4af83` | https://github.com/user-attachments/assets/d98c8028-07c6-4885-9fc0-a6c6cc8803c8 |
+| Film 1, One repo (4:5, for social) | 1:17 | 8.7MB | `7114a0ef` | https://github.com/user-attachments/assets/1e0c8a6b-b89c-4043-ba7d-a435d1755759 |
+| **Film 2, Pictures that belong** (16:9, in "Make the assets too") | 1:11 | 8.9MB | `06209c69` | https://github.com/user-attachments/assets/b2ec0a32-966b-42d8-86c5-32dc73d6352c |
+| Film 2, Pictures that belong (4:5) | 1:11 | 8.9MB | `d990ed55` | https://github.com/user-attachments/assets/d10548fe-4263-4439-a8ce-503a6eaaa862 |
+| **Film 3, Edit where you see it** (16:9, in "Ask for the harder changes") | 1:17 | 8.8MB | `704c5b86` | https://github.com/user-attachments/assets/420a33a2-f5c7-486b-819d-8bb3940b068c |
+| Film 3, Edit where you see it (4:5) | 1:17 | 8.7MB | `c9cf5cee` | https://github.com/user-attachments/assets/1f563af9-fa2d-45de-8ac8-f4691ca4fd76 |
 
-Only the launch demo is embedded in `README.md`. The other two are hosted and
+Films 1–3 are embedded in `README.md`: Film 1 as the hero, Films 2 and 3 in their sections. They are rendered frame by frame from Caret's real interface, not screen-recorded. The other two are hosted and
 kept here for reuse (a docs page, a release note, a social post) rather than
 stacked at the bottom of the README, where a list of long videos reads as a
 dumping ground instead of a feature.
